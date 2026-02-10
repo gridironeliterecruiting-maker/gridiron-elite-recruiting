@@ -41,20 +41,18 @@ export default function NavBar({ profile }: { profile: Profile | null }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full relative">
         <div className="flex items-center justify-between h-full">
           <div className="flex items-center gap-3">
-            {/* Logo badge - overlaps the nav bar */}
-            <div className="relative z-40" style={{ marginTop: '20px' }}>
-              <div className="w-[88px] h-[88px] rounded-full ring-4 ring-white shadow-xl overflow-hidden bg-white">
-                <Image
-                  src="/logo.jpg"
-                  alt="Gridiron Elite Recruiting"
-                  width={88}
-                  height={88}
-                  className="rounded-full object-cover"
-                  priority
-                />
-              </div>
+            {/* Logo shield - raw shape, no circle mask, overlapping the stripe */}
+            <div className="absolute top-[-2px] z-40" style={{ height: '150px', width: '130px' }}>
+              <Image
+                src="/logo.png"
+                alt="Gridiron Elite Recruiting"
+                width={130}
+                height={150}
+                className="object-contain drop-shadow-lg"
+                priority
+              />
             </div>
-            <span className="text-white font-bold text-lg hidden sm:block drop-shadow-sm">
+            <span className="text-white font-bold text-lg hidden sm:block drop-shadow-sm ml-[142px]">
               Gridiron Elite Recruiting
             </span>
           </div>

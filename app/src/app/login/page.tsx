@@ -30,11 +30,11 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-md p-8">
-        <div className="flex justify-center mb-8">
-          <Image src="/logo.jpg" alt="Gridiron Elite Recruiting" width={160} height={160} className="rounded-lg" />
+        <div className="flex justify-center mb-3">
+          <Image src="/logo.png" alt="Gridiron Elite Recruiting" width={220} height={220} className="object-contain" />
         </div>
-        <h1 className="text-2xl font-bold text-center text-[#0047AB] mb-2">Welcome Back</h1>
-        <p className="text-center text-gray-500 mb-8">Sign in to your recruiting dashboard</p>
+        <h1 className="text-2xl font-bold text-center text-[#0047AB] mb-1">Welcome Back</h1>
+        <p className="text-center text-gray-500 mb-6">Sign in to your recruiting dashboard</p>
 
         <form onSubmit={handleLogin} className="space-y-4">
           {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
