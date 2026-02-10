@@ -7,10 +7,11 @@ const divisions = ['ALL', 'FBS', 'FCS', 'DII', 'DIII', 'JUCO', 'NAIA']
 
 interface Program {
   id: string
-  school: string
+  school_name: string
   division: string
   conference: string
   state: string
+  logo_url: string | null
   coaches: { count: number }[]
 }
 
@@ -20,13 +21,13 @@ interface Coach {
   last_name: string
   title: string
   email: string
-  x_handle: string
-  dm_status: string
+  twitter_handle: string
+  twitter_dm_open: boolean
   program_id: string
-  programs: { school: string } | null
+  programs: { school_name: string; logo_url: string | null } | null
 }
 
-type SortKey = 'school' | 'division' | 'conference' | 'state'
+type SortKey = 'school_name' | 'division' | 'conference' | 'state'
 type CoachSortKey = 'name' | 'school' | 'title'
 
 export default function CoachesPage() {
@@ -35,7 +36,7 @@ export default function CoachesPage() {
   const [view, setView] = useState<'programs' | 'coaches'>('programs')
   const [programs, setPrograms] = useState<Program[]>([])
   const [coaches, setCoaches] = useState<Coach[]>([])
-  const [sortKey, setSortKey] = useState<SortKey>('school')
+  const [sortKey, setSortKey] = useState<SortKey>('school_name')
   const [coachSortKey, setCoachSortKey] = useState<CoachSortKey>('name')
   const [sortAsc, setSortAsc] = useState(true)
   const [loading, setLoading] = useState(true)
@@ -45,16 +46,16 @@ export default function CoachesPage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     // Fetch programs with coach count
-    let pQuery = supabase.from('programs').select('id, school, division, conference, state, coaches(count)')
+    let pQuery = supabase.from('programs').select('id, school_name, division, conference, state, logo_url, coaches(count)')
     if (activeDivision !== 'ALL') pQuery = pQuery.eq('division', activeDivision)
-    if (search) pQuery = pQuery.or(`school.ilike.%${search}%,state.ilike.%${search}%,conference.ilike.%${search}%`)
+    if (search) pQuery = pQuery.or(`school_name.ilike.%${search}%,state.ilike.%${search}%,conference.ilike.%${search}%`)
     const { data: pData } = await pQuery
     setPrograms((pData as unknown as Program[]) || [])
 
     // Fetch coaches
-    let cQuery = supabase.from('coaches').select('id, first_name, last_name, title, email, x_handle, dm_status, program_id, programs(school)')
+    let cQuery = supabase.from('coaches').select('id, first_name, last_name, title, email, twitter_handle, twitter_dm_open, program_id, programs(school_name, logo_url)')
     if (activeDivision !== 'ALL') cQuery = cQuery.eq('programs.division', activeDivision)
-    if (search) cQuery = cQuery.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,programs.school.ilike.%${search}%`)
+    if (search) cQuery = cQuery.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,programs.school_name.ilike.%${search}%`)
     const { data: cData } = await cQuery
     setCoaches((cData as unknown as Coach[]) || [])
     setLoading(false)
@@ -73,15 +74,15 @@ export default function CoachesPage() {
   }
 
   const sortedPrograms = [...programs].sort((a, b) => {
-    const av = a[sortKey] || ''
-    const bv = b[sortKey] || ''
+    const av = String(a[sortKey as keyof Program] || '')
+    const bv = String(b[sortKey as keyof Program] || '')
     return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av)
   })
 
   const sortedCoaches = [...coaches].sort((a, b) => {
     let av = '', bv = ''
     if (coachSortKey === 'name') { av = `${a.last_name} ${a.first_name}`; bv = `${b.last_name} ${b.first_name}` }
-    else if (coachSortKey === 'school') { av = (a.programs as { school: string } | null)?.school || ''; bv = (b.programs as { school: string } | null)?.school || '' }
+    else if (coachSortKey === 'school') { av = (a.programs as { school_name: string } | null)?.school_name || ''; bv = (b.programs as { school_name: string } | null)?.school_name || '' }
     else { av = a.title || ''; bv = b.title || '' }
     return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av)
   })
@@ -141,7 +142,7 @@ export default function CoachesPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                {([['school', 'School'], ['division', 'Division'], ['conference', 'Conference'], ['state', 'State']] as [SortKey, string][]).map(([key, label]) => (
+                {([['school_name', 'School'], ['division', 'Division'], ['conference', 'Conference'], ['state', 'State']] as [SortKey, string][]).map(([key, label]) => (
                   <th key={key} className="text-left px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:text-gray-900 select-none" onClick={() => handleProgramSort(key)}>
                     {label}<SortIcon active={sortKey === key} asc={sortAsc} />
                   </th>
@@ -152,7 +153,10 @@ export default function CoachesPage() {
             <tbody className="divide-y divide-gray-100">
               {sortedPrograms.map(p => (
                 <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">{p.school}</td>
+                  <td className="px-4 py-3 font-medium flex items-center gap-2">
+                    {p.logo_url ? <img src={p.logo_url} alt={p.school_name} className="w-6 h-6 object-contain" /> : null}
+                    {p.school_name}
+                  </td>
                   <td className="px-4 py-3"><span className="px-2 py-0.5 bg-blue-100 text-[#0047AB] text-xs font-medium rounded-full">{p.division}</span></td>
                   <td className="px-4 py-3 text-gray-600">{p.conference}</td>
                   <td className="px-4 py-3 text-gray-600">{p.state}</td>
@@ -181,12 +185,15 @@ export default function CoachesPage() {
               {sortedCoaches.map(c => (
                 <tr key={c.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium">{c.first_name} {c.last_name}</td>
-                  <td className="px-4 py-3 text-gray-600">{(c.programs as { school: string } | null)?.school}</td>
+                  <td className="px-4 py-3 text-gray-600 flex items-center gap-2">
+                    {(c.programs as { school_name: string; logo_url: string | null } | null)?.logo_url ? <img src={(c.programs as { school_name: string; logo_url: string | null } | null)!.logo_url!} alt="" className="w-5 h-5 object-contain" /> : null}
+                    {(c.programs as { school_name: string; logo_url: string | null } | null)?.school_name}
+                  </td>
                   <td className="px-4 py-3 text-gray-600">{c.title}</td>
-                  <td className="px-4 py-3">{c.x_handle ? <a href={`https://twitter.com/${c.x_handle.replace('@','')}`} target="_blank" rel="noopener noreferrer" className="text-[#0047AB] hover:underline">{c.x_handle}</a> : '—'}</td>
+                  <td className="px-4 py-3">{c.twitter_handle ? <a href={`https://twitter.com/${c.twitter_handle.replace('@','')}`} target="_blank" rel="noopener noreferrer" className="text-[#0047AB] hover:underline">{c.twitter_handle}</a> : '—'}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${c.dm_status === 'open' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                      {c.dm_status || 'unknown'}
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${c.twitter_dm_open ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {c.twitter_dm_open ? 'open' : 'unknown'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600 text-xs">{c.email || '—'}</td>

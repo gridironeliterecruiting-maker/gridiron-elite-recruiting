@@ -19,7 +19,7 @@ import { useDroppable } from '@dnd-kit/core'
 interface Stage {
   id: string
   name: string
-  order_index: number
+  display_order: number
 }
 
 interface PipelineEntry {
@@ -29,7 +29,7 @@ interface PipelineEntry {
   status: string
   notes: string
   created_at: string
-  programs: { school: string; division: string } | null
+  programs: { school_name: string; division: string; logo_url: string | null } | null
   coaches_primary?: { first_name: string; last_name: string } | null
   last_interaction?: string | null
 }
@@ -49,7 +49,17 @@ function getInitials(school: string): string {
   return school.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 3)
 }
 
-function TeamCircle({ school, size = 32 }: { school: string; size?: number }) {
+function TeamCircle({ school, logoUrl, size = 32 }: { school: string; logoUrl?: string | null; size?: number }) {
+  if (logoUrl) {
+    return (
+      <img
+        src={logoUrl}
+        alt={school}
+        className="rounded-full object-contain shrink-0 bg-white"
+        style={{ width: size, height: size }}
+      />
+    )
+  }
   const color = hashColor(school)
   const initials = getInitials(school)
   const fontSize = size < 40 ? 'text-xs' : size < 60 ? 'text-sm' : 'text-2xl'
@@ -87,7 +97,8 @@ function SortableCard({ entry, onClick }: { entry: PipelineEntry; onClick: () =>
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id, data: { stageId: entry.stage_id } })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
   const [showTooltip, setShowTooltip] = useState(false)
-  const school = entry.programs?.school || 'Unknown'
+  const school = entry.programs?.school_name || 'Unknown'
+  const logoUrl = entry.programs?.logo_url
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}
@@ -95,7 +106,7 @@ function SortableCard({ entry, onClick }: { entry: PipelineEntry; onClick: () =>
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
       className="relative bg-white rounded-lg border border-gray-200 p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition shadow-sm flex items-start gap-3">
-      <TeamCircle school={school} size={36} />
+      <TeamCircle school={school} logoUrl={logoUrl} size={36} />
       <div className="min-w-0 flex-1">
         <div className="font-medium text-sm text-gray-900">{school}</div>
         <div className="flex flex-wrap gap-1 mt-1">
@@ -119,10 +130,11 @@ function SortableCard({ entry, onClick }: { entry: PipelineEntry; onClick: () =>
 }
 
 function CardOverlay({ entry }: { entry: PipelineEntry }) {
-  const school = entry.programs?.school || 'Unknown'
+  const school = entry.programs?.school_name || 'Unknown'
+  const logoUrl = entry.programs?.logo_url
   return (
     <div className="bg-white rounded-lg border-2 border-[#0047AB] p-3 shadow-xl w-[260px] flex items-center gap-3">
-      <TeamCircle school={school} size={36} />
+      <TeamCircle school={school} logoUrl={logoUrl} size={36} />
       <div className="font-medium text-sm text-gray-900">{school}</div>
     </div>
   )
@@ -131,7 +143,8 @@ function CardOverlay({ entry }: { entry: PipelineEntry }) {
 function DetailView({ entry, stages, onClose, onSave }: { entry: PipelineEntry; stages: Stage[]; onClose: () => void; onSave: (notes: string) => void }) {
   const [notes, setNotes] = useState(entry.notes || '')
   const [saving, setSaving] = useState(false)
-  const school = entry.programs?.school || 'Unknown'
+  const school = entry.programs?.school_name || 'Unknown'
+  const logoUrl = entry.programs?.logo_url
   const stage = stages.find(s => s.id === entry.stage_id)
 
   const handleSave = async () => {
@@ -149,7 +162,7 @@ function DetailView({ entry, stages, onClose, onSave }: { entry: PipelineEntry; 
             <span className="text-xl">←</span> Back to Pipeline
           </button>
           <div className="flex items-center gap-5">
-            <TeamCircle school={school} size={80} />
+            <TeamCircle school={school} logoUrl={logoUrl} size={80} />
             <div>
               <h1 className="text-2xl font-bold">{school}</h1>
               <div className="flex items-center gap-3 mt-1 text-blue-200 text-sm">
@@ -230,15 +243,15 @@ export default function PipelinePage() {
   const [activeEntry, setActiveEntry] = useState<PipelineEntry | null>(null)
   const [detailEntry, setDetailEntry] = useState<PipelineEntry | null>(null)
   const [showAdd, setShowAdd] = useState(false)
-  const [programs, setPrograms] = useState<{ id: string; school: string }[]>([])
+  const [programs, setPrograms] = useState<{ id: string; school_name: string; logo_url: string | null }[]>([])
   const supabase = createClient()
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   const fetchData = useCallback(async () => {
     const [{ data: stageData }, { data: entryData }] = await Promise.all([
-      supabase.from('pipeline_stages').select('*').order('order_index'),
-      supabase.from('pipeline_entries').select('id, program_id, stage_id, status, notes, created_at, programs(school, division)'),
+      supabase.from('pipeline_stages').select('*').order('display_order'),
+      supabase.from('pipeline_entries').select('id, program_id, stage_id, status, notes, created_at, programs(school_name, division, logo_url)'),
     ])
     setStages(stageData || [])
     setEntries((entryData as unknown as PipelineEntry[]) || [])
@@ -284,7 +297,7 @@ export default function PipelinePage() {
   }
 
   const loadPrograms = async () => {
-    const { data } = await supabase.from('programs').select('id, school').order('school').limit(100)
+    const { data } = await supabase.from('programs').select('id, school_name, logo_url').order('school_name').limit(100)
     setPrograms(data || [])
     setShowAdd(true)
   }
@@ -326,8 +339,8 @@ export default function PipelinePage() {
               {programs.map(p => (
                 <button key={p.id} onClick={() => handleAddProgram(p.id)}
                   className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 rounded-lg transition flex items-center gap-3">
-                  <TeamCircle school={p.school} size={28} />
-                  {p.school}
+                  <TeamCircle school={p.school_name} logoUrl={p.logo_url} size={28} />
+                  {p.school_name}
                 </button>
               ))}
             </div>
