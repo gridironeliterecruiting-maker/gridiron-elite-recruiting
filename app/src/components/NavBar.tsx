@@ -30,15 +30,36 @@ export default function NavBar({ profile }: { profile: Profile | null }) {
   }
 
   return (
-    <nav className="bg-[#0047AB] shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <nav className="relative bg-gradient-to-r from-[#003080] via-[#0047AB] to-[#0055CC] shadow-lg h-[60px] z-30">
+      {/* Decorative stars */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+        <span className="text-white/10 text-lg tracking-[0.5em] select-none">
+          ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★
+        </span>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full relative">
+        <div className="flex items-center justify-between h-full">
           <div className="flex items-center gap-3">
-            <Image src="/logo.jpg" alt="Logo" width={40} height={40} className="rounded" />
-            <span className="text-white font-bold text-lg hidden sm:block">Gridiron Elite Recruiting</span>
+            {/* Logo badge - overlaps the nav bar */}
+            <div className="relative z-40" style={{ marginTop: '20px' }}>
+              <div className="w-[88px] h-[88px] rounded-full ring-4 ring-white shadow-xl overflow-hidden bg-white">
+                <Image
+                  src="/logo.jpg"
+                  alt="Gridiron Elite Recruiting"
+                  width={88}
+                  height={88}
+                  className="rounded-full object-cover"
+                  priority
+                />
+              </div>
+            </div>
+            <span className="text-white font-bold text-lg hidden sm:block drop-shadow-sm">
+              Gridiron Elite Recruiting
+            </span>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 relative z-10">
             {tabs.map(tab => (
               <Link key={tab.href} href={tab.href}
                 className={`px-3 py-2 rounded-md text-sm font-medium transition ${
@@ -51,7 +72,7 @@ export default function NavBar({ profile }: { profile: Profile | null }) {
             ))}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 relative z-10">
             {profile && (
               <div className="text-right hidden sm:block">
                 <div className="text-white text-sm font-medium">{profile.first_name} {profile.last_name}</div>

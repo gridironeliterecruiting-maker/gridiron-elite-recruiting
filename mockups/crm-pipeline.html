@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gridiron Elite Recruiting — CRM Pipeline</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f0f2f5;color:#1a1a1a;overflow-x:auto;}
+
+/* HEADER */
+.header-wrap{position:relative;width:100%;padding-top:30px;}
+.header-stripe{
+  width:100%;height:70px;
+  background:linear-gradient(180deg,#234d8a 0%,#1a3a6b 40%,#142e55 100%);
+  position:relative;overflow:visible;
+  box-shadow:0 3px 10px rgba(0,0,0,.25);
+}
+.stars{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:18px;pointer-events:none;}
+.stars span{color:rgba(255,255,255,.18);font-size:22px;letter-spacing:4px;}
+.logo-badge{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:120px;height:120px;z-index:10;
+  border-radius:50%;overflow:hidden;
+  box-shadow:0 4px 20px rgba(0,0,0,.4);
+  background:#1a3a6b;
+}
+.logo-badge img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;}
+.user-info{
+  position:absolute;right:24px;top:50%;transform:translateY(-50%);
+  display:flex;align-items:center;gap:10px;color:#fff;font-size:13px;z-index:5;
+}
+.avatar{width:36px;height:36px;border-radius:50%;background:#c41e3a;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;border:2px solid #fff;}
+
+/* NAV */
+.nav{display:flex;justify-content:center;gap:2px;background:#fff;border-bottom:2px solid #e0e0e0;padding:0 20px;}
+.nav a{
+  padding:12px 22px;font-size:14px;font-weight:600;color:#555;text-decoration:none;
+  border-bottom:3px solid transparent;transition:.2s;
+}
+.nav a:hover{color:#1a3a6b;}
+.nav a.active{color:#1a3a6b;border-bottom-color:#c41e3a;}
+
+/* KANBAN */
+.kanban-wrap{padding:20px 16px;overflow-x:auto;}
+.kanban{display:flex;gap:14px;min-height:calc(100vh - 200px);}
+.column{
+  min-width:210px;width:210px;flex-shrink:0;
+  background:#fff;border-radius:10px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+  display:flex;flex-direction:column;
+}
+.column.drag-over{background:#e8f0fe;}
+.col-header{
+  padding:12px 14px 8px;font-size:12px;font-weight:800;letter-spacing:1.2px;
+  color:#1a3a6b;border-bottom:2px solid #e8e8e8;display:flex;align-items:center;justify-content:space-between;
+}
+.col-header .count{
+  background:#1a3a6b;color:#fff;font-size:10px;width:20px;height:20px;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;
+}
+.col-cards{padding:8px;flex:1;min-height:60px;}
+
+/* CARDS */
+.card{
+  background:#fff;border:1px solid #e8e8e8;border-radius:8px;padding:12px;margin-bottom:8px;
+  cursor:grab;position:relative;
+  box-shadow:0 2px 6px rgba(0,0,0,.07);
+  transition:box-shadow .2s,transform .15s;
+}
+.card:hover{box-shadow:0 4px 16px rgba(0,0,0,.15);transform:translateY(-2px);}
+.card:active{cursor:grabbing;}
+.card.dragging{opacity:.4;}
+.card-top{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.team-circle{
+  width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-weight:800;font-size:13px;flex-shrink:0;
+}
+.card-info h4{font-size:13px;font-weight:700;color:#1a1a1a;line-height:1.2;}
+.card-info p{font-size:11px;color:#777;margin-top:2px;}
+.card-meta{font-size:10px;color:#999;display:flex;gap:6px;align-items:center;}
+.card-meta .tag{
+  background:#eef3ff;color:#1a3a6b;padding:2px 6px;border-radius:4px;font-weight:600;
+}
+
+/* TOOLTIP */
+.tooltip{
+  display:none;position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);
+  background:#1a2a44;color:#fff;padding:12px 14px;border-radius:8px;
+  font-size:11px;line-height:1.6;white-space:nowrap;z-index:100;
+  box-shadow:0 6px 20px rgba(0,0,0,.3);pointer-events:none;
+}
+.tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:#1a2a44;}
+.card:hover .tooltip{display:block;}
+
+/* DETAIL OVERLAY */
+.overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;
+  align-items:center;justify-content:center;
+}
+.overlay.show{display:flex;}
+.detail{
+  background:#fff;width:700px;max-width:95vw;max-height:90vh;border-radius:12px;
+  overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);
+}
+.detail-header{
+  background:linear-gradient(135deg,#1a3a6b,#234d8a);color:#fff;padding:20px 24px;
+  display:flex;align-items:center;gap:16px;border-radius:12px 12px 0 0;position:relative;
+}
+.back-btn{
+  background:none;border:none;color:#fff;font-size:22px;cursor:pointer;
+  width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  transition:.2s;
+}
+.back-btn:hover{background:rgba(255,255,255,.15);}
+.detail-header .team-circle{width:50px;height:50px;font-size:18px;}
+.detail-header h2{font-size:20px;font-weight:700;}
+.detail-header p{font-size:13px;opacity:.8;}
+.detail-body{padding:24px;}
+.detail-body h3{font-size:15px;font-weight:700;color:#1a3a6b;margin:16px 0 8px;border-bottom:1px solid #eee;padding-bottom:6px;}
+.detail-body h3:first-child{margin-top:0;}
+.detail-body .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;font-size:13px;margin-bottom:12px;}
+.info-grid .label{color:#888;font-size:11px;text-transform:uppercase;letter-spacing:.5px;}
+.info-grid .value{font-weight:600;}
+.timeline{list-style:none;padding-left:16px;border-left:2px solid #c41e3a;}
+.timeline li{padding:8px 0 8px 16px;position:relative;font-size:13px;}
+.timeline li::before{
+  content:'';position:absolute;left:-7px;top:12px;width:12px;height:12px;
+  border-radius:50%;background:#c41e3a;border:2px solid #fff;
+}
+.timeline .date{font-size:11px;color:#888;}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:20px 10px;color:#bbb;font-size:12px;font-style:italic;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header-wrap">
+  <div class="header-stripe">
+    <div class="stars">
+      <span>★ ★ ★ ★ ★</span>
+      <span style="margin-left:140px">★ ★ ★ ★ ★</span>
+    </div>
+    <div class="logo-badge">
+      <img src="../assets/logo.jpg" alt="Gridiron Elite">
+    </div>
+    <div class="user-info">
+      <span>Marcus Johnson &bull; WR/DB &bull; Class of 2027</span>
+      <div class="avatar">MJ</div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="nav">
+  <a href="#">Dashboard</a>
+  <a href="#">Coach Database</a>
+  <a href="#" class="active">CRM Pipeline</a>
+  <a href="#">X Feed Intel</a>
+  <a href="#">Outreach</a>
+</nav>
+
+<!-- KANBAN -->
+<div class="kanban-wrap">
+  <div class="kanban" id="kanban"></div>
+</div>
+
+<!-- DETAIL OVERLAY -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeDetail()">
+  <div class="detail" id="detail"></div>
+</div>
+
+<script>
+const COLUMNS = ['PROSPECT','CONTACTED','RESPONDED','INTERESTED','VISITED','OFFERED','COMMITTED'];
+
+const CARDS = [
+  {id:'c1',col:'PROSPECT',coach:'Phil Parker',role:'Defensive Coordinator',school:'Iowa',division:'D1 FBS',location:'Iowa City, IA',color:'#FFCD00',textColor:'#000',initials:'UI',lastContact:'—',coaches:['Phil Parker (DC)','Seth Wallace (LB)'],notes:'Top target — strong DB development program.'},
+  {id:'c2',col:'PROSPECT',coach:'Kalen DeBoer',role:'Head Coach',school:'Alabama',division:'D1 FBS',location:'Tuscaloosa, AL',color:'#9E1B32',textColor:'#fff',initials:'UA',lastContact:'—',coaches:['Kalen DeBoer (HC)','Robert Gillespie (RB)'],notes:'Dream school — recently hired HC.'},
+  {id:'c3',col:'CONTACTED',coach:'Kirk Ferentz',role:'Head Coach',school:'Iowa',division:'D1 FBS',location:'Iowa City, IA',color:'#FFCD00',textColor:'#000',initials:'UI',lastContact:'Feb 3 — Email',meta:'Feb 3 • Email',coaches:['Kirk Ferentz (HC)','Phil Parker (DC)'],notes:'Sent intro email with highlight reel.'},
+  {id:'c4',col:'CONTACTED',coach:'Matt Campbell',role:'Head Coach',school:'Iowa State',division:'D1 FBS',location:'Ames, IA',color:'#C8102E',textColor:'#fff',initials:'ISU',lastContact:'Feb 1 — Email',meta:'Feb 1 • Email',coaches:['Matt Campbell (HC)','Nate Scheelhaase (OC)'],notes:'Intro email sent via coach form.'},
+  {id:'c5',col:'RESPONDED',coach:'Nate Scheelhaase',role:'Offensive Coordinator',school:'Iowa State',division:'D1 FBS',location:'Ames, IA',color:'#C8102E',textColor:'#fff',initials:'ISU',lastContact:'Feb 5 — Reply',meta:'Feb 5 • Interested',coaches:['Matt Campbell (HC)','Nate Scheelhaase (OC)'],notes:'Replied positively — wants to see junior film.'},
+  {id:'c6',col:'INTERESTED',coach:'Tyler Staker',role:'Head Coach',school:'Coe College',division:'D3',location:'Cedar Rapids, IA',color:'#C41E3A',textColor:'#fff',initials:'CC',lastContact:'Feb 6 — Camp Invite',meta:'Feb 6 • Camp invite',coaches:['Tyler Staker (HC)'],notes:'Invited to prospect camp March 15.'},
+];
+
+function renderKanban(){
+  const kb=document.getElementById('kanban');
+  kb.innerHTML='';
+  COLUMNS.forEach(col=>{
+    const cards=CARDS.filter(c=>c.col===col);
+    const div=document.createElement('div');
+    div.className='column';
+    div.dataset.col=col;
+    div.innerHTML=`<div class="col-header"><span>${col}</span>${cards.length?`<span class="count">${cards.length}</span>`:''}</div><div class="col-cards" data-col="${col}"></div>`;
+    const area=div.querySelector('.col-cards');
+    if(!cards.length) area.innerHTML='<div class="empty">No programs yet</div>';
+    cards.forEach(c=>{
+      const el=document.createElement('div');
+      el.className='card';el.draggable=true;el.dataset.id=c.id;
+      el.innerHTML=`
+        <div class="card-top">
+          <div class="team-circle" style="background:${c.color};color:${c.textColor}">${c.initials}</div>
+          <div class="card-info"><h4>${c.coach}</h4><p>${c.school} — ${c.role}</p></div>
+        </div>
+        ${c.meta?`<div class="card-meta"><span class="tag">${c.meta}</span></div>`:''}
+        <div class="tooltip">
+          <strong>${c.school}</strong> (${c.division})<br>
+          📍 ${c.location}<br>
+          👤 ${c.coach} — ${c.role}<br>
+          📅 Last: ${c.lastContact}
+        </div>`;
+      el.addEventListener('click',()=>showDetail(c));
+      el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',c.id);el.classList.add('dragging');});
+      el.addEventListener('dragend',()=>el.classList.remove('dragging'));
+      area.appendChild(el);
+    });
+    // drop targets
+    const dropZone=div.querySelector('.col-cards');
+    dropZone.addEventListener('dragover',e=>{e.preventDefault();div.classList.add('drag-over');});
+    dropZone.addEventListener('dragleave',()=>div.classList.remove('drag-over'));
+    dropZone.addEventListener('drop',e=>{
+      e.preventDefault();div.classList.remove('drag-over');
+      const id=e.dataTransfer.getData('text/plain');
+      const card=CARDS.find(c=>c.id===id);
+      if(card){card.col=col;renderKanban();}
+    });
+    kb.appendChild(div);
+  });
+}
+
+function showDetail(c){
+  document.getElementById('detail').innerHTML=`
+    <div class="detail-header">
+      <button class="back-btn" onclick="closeDetail()">←</button>
+      <div class="team-circle" style="background:${c.color};color:${c.textColor}">${c.initials}</div>
+      <div><h2>${c.coach}</h2><p>${c.school} — ${c.role}</p></div>
+    </div>
+    <div class="detail-body">
+      <h3>Program Details</h3>
+      <div class="info-grid">
+        <div><div class="label">School</div><div class="value">${c.school}</div></div>
+        <div><div class="label">Division</div><div class="value">${c.division}</div></div>
+        <div><div class="label">Location</div><div class="value">${c.location}</div></div>
+        <div><div class="label">Pipeline Stage</div><div class="value">${c.col}</div></div>
+      </div>
+      <h3>Coaching Staff</h3>
+      <ul style="font-size:13px;padding-left:18px">${c.coaches.map(x=>`<li>${x}</li>`).join('')}</ul>
+      <h3>Activity Timeline</h3>
+      <ul class="timeline">
+        <li><div class="date">${c.lastContact==='—'?'Pending':''+c.lastContact}</div>${c.notes}</li>
+        <li><div class="date">Jan 28, 2026</div>Added to pipeline as prospect.</li>
+      </ul>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+function closeDetail(){document.getElementById('overlay').classList.remove('show');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDetail();});
+
+renderKanban();
+</script>
+</body>
+</html>
