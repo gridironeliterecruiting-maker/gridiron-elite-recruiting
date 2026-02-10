@@ -34,11 +34,40 @@ interface PipelineEntry {
   last_interaction?: string | null
 }
 
+// Hash a string to a consistent color
+function hashColor(str: string): string {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const hue = Math.abs(hash) % 360
+  return `hsl(${hue}, 65%, 45%)`
+}
+
+// Get initials from school name
+function getInitials(school: string): string {
+  return school.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 3)
+}
+
+function TeamCircle({ school, size = 32 }: { school: string; size?: number }) {
+  const color = hashColor(school)
+  const initials = getInitials(school)
+  const fontSize = size < 40 ? 'text-xs' : size < 60 ? 'text-sm' : 'text-2xl'
+  return (
+    <div
+      className={`rounded-full flex items-center justify-center text-white font-bold shrink-0 ${fontSize}`}
+      style={{ width: size, height: size, backgroundColor: color }}
+    >
+      {initials}
+    </div>
+  )
+}
+
 function DroppableColumn({ stage, entries, onCardClick }: { stage: Stage; entries: PipelineEntry[]; onCardClick: (e: PipelineEntry) => void }) {
   const { setNodeRef } = useDroppable({ id: stage.id })
 
   return (
-    <div ref={setNodeRef} className="bg-gray-50 rounded-xl p-3 min-w-[260px] w-[260px] shrink-0 flex flex-col">
+    <div ref={setNodeRef} className="bg-gray-50 rounded-xl p-3 min-w-[280px] w-[280px] shrink-0 flex flex-col">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold text-gray-700">{stage.name}</h3>
         <span className="text-xs bg-[#0047AB] text-white rounded-full px-2 py-0.5">{entries.length}</span>
@@ -57,41 +86,139 @@ function DroppableColumn({ stage, entries, onCardClick }: { stage: Stage; entrie
 function SortableCard({ entry, onClick }: { entry: PipelineEntry; onClick: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id, data: { stageId: entry.stage_id } })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
+  const [showTooltip, setShowTooltip] = useState(false)
+  const school = entry.programs?.school || 'Unknown'
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}
       onClick={onClick}
-      className="bg-white rounded-lg border border-gray-200 p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition shadow-sm">
-      <div className="font-medium text-sm text-gray-900">{entry.programs?.school || 'Unknown'}</div>
-      {entry.programs?.division && <span className="text-xs px-1.5 py-0.5 bg-blue-50 text-[#0047AB] rounded mt-1 inline-block">{entry.programs.division}</span>}
-      {entry.status && <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded mt-1 ml-1 inline-block">{entry.status}</span>}
-      {entry.notes && <div className="text-xs text-gray-400 mt-1 truncate">{entry.notes}</div>}
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+      className="relative bg-white rounded-lg border border-gray-200 p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition shadow-sm flex items-start gap-3">
+      <TeamCircle school={school} size={36} />
+      <div className="min-w-0 flex-1">
+        <div className="font-medium text-sm text-gray-900">{school}</div>
+        <div className="flex flex-wrap gap-1 mt-1">
+          {entry.programs?.division && <span className="text-xs px-1.5 py-0.5 bg-blue-50 text-[#0047AB] rounded">{entry.programs.division}</span>}
+          {entry.status && <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">{entry.status}</span>}
+        </div>
+        {entry.notes && <div className="text-xs text-gray-400 mt-1 truncate">{entry.notes}</div>}
+      </div>
+
+      {/* Tooltip */}
+      {showTooltip && (
+        <div className="absolute left-full ml-2 top-0 z-50 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-xl w-56 pointer-events-none">
+          <div className="font-bold mb-1">{school}</div>
+          {entry.programs?.division && <div>Division: {entry.programs.division}</div>}
+          {entry.status && <div>Status: {entry.status}</div>}
+          {entry.notes && <div className="mt-1 text-gray-300">{entry.notes}</div>}
+        </div>
+      )}
     </div>
   )
 }
 
 function CardOverlay({ entry }: { entry: PipelineEntry }) {
+  const school = entry.programs?.school || 'Unknown'
   return (
-    <div className="bg-white rounded-lg border-2 border-[#0047AB] p-3 shadow-xl w-[240px]">
-      <div className="font-medium text-sm text-gray-900">{entry.programs?.school || 'Unknown'}</div>
+    <div className="bg-white rounded-lg border-2 border-[#0047AB] p-3 shadow-xl w-[260px] flex items-center gap-3">
+      <TeamCircle school={school} size={36} />
+      <div className="font-medium text-sm text-gray-900">{school}</div>
     </div>
   )
 }
 
-function DetailModal({ entry, onClose, onSave }: { entry: PipelineEntry; onClose: () => void; onSave: (notes: string) => void }) {
+function DetailView({ entry, stages, onClose, onSave }: { entry: PipelineEntry; stages: Stage[]; onClose: () => void; onSave: (notes: string) => void }) {
   const [notes, setNotes] = useState(entry.notes || '')
+  const [saving, setSaving] = useState(false)
+  const school = entry.programs?.school || 'Unknown'
+  const stage = stages.find(s => s.id === entry.stage_id)
+
+  const handleSave = async () => {
+    setSaving(true)
+    await onSave(notes)
+    setSaving(false)
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 mx-4" onClick={e => e.stopPropagation()}>
-        <h2 className="text-lg font-bold text-gray-900 mb-1">{entry.programs?.school}</h2>
-        <p className="text-sm text-gray-500 mb-4">{entry.programs?.division}</p>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0047AB] outline-none" />
-        <div className="flex justify-end gap-2 mt-4">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
-          <button onClick={() => onSave(notes)} className="px-4 py-2 text-sm bg-[#0047AB] text-white rounded-lg hover:bg-[#003a8c]">Save</button>
+    <div className="fixed inset-0 z-50 bg-white overflow-auto">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[#003080] via-[#0047AB] to-[#0055CC] text-white">
+        <div className="max-w-4xl mx-auto px-6 py-6">
+          <button onClick={onClose} className="flex items-center gap-2 text-blue-200 hover:text-white mb-4 transition text-sm">
+            <span className="text-xl">←</span> Back to Pipeline
+          </button>
+          <div className="flex items-center gap-5">
+            <TeamCircle school={school} size={80} />
+            <div>
+              <h1 className="text-2xl font-bold">{school}</h1>
+              <div className="flex items-center gap-3 mt-1 text-blue-200 text-sm">
+                {entry.programs?.division && <span>{entry.programs.division}</span>}
+                {stage && <span>• {stage.name}</span>}
+                {entry.status && <span>• {entry.status}</span>}
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <InfoCard label="Division" value={entry.programs?.division || '—'} />
+          <InfoCard label="Stage" value={stage?.name || '—'} />
+          <InfoCard label="Status" value={entry.status || '—'} />
+        </div>
+
+        {/* Notes */}
+        <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
+          <h2 className="text-sm font-bold text-gray-700 mb-3">Notes</h2>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={5}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0047AB] outline-none" />
+          <div className="flex justify-end mt-3">
+            <button onClick={handleSave} disabled={saving}
+              className="px-4 py-2 text-sm bg-[#0047AB] text-white rounded-lg hover:bg-[#003a8c] disabled:opacity-50 transition">
+              {saving ? 'Saving...' : 'Save Notes'}
+            </button>
+          </div>
+        </div>
+
+        {/* Activity Timeline */}
+        <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
+          <h2 className="text-sm font-bold text-gray-700 mb-3">Activity Timeline</h2>
+          <div className="space-y-3">
+            <TimelineItem date={entry.created_at} text="Added to pipeline" />
+            {entry.stage_id && <TimelineItem date={entry.created_at} text={`Moved to ${stage?.name || 'current stage'}`} />}
+          </div>
+        </div>
+
+        {/* Coaching Staff Placeholder */}
+        <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <h2 className="text-sm font-bold text-gray-700 mb-3">Coaching Staff</h2>
+          <p className="text-sm text-gray-400 italic">No coaching staff linked yet. Add contacts from the Coach Database.</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function InfoCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-gray-50 rounded-xl p-4">
+      <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">{label}</div>
+      <div className="text-sm font-semibold text-gray-900">{value}</div>
+    </div>
+  )
+}
+
+function TimelineItem({ date, text }: { date: string; text: string }) {
+  const formatted = new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return (
+    <div className="flex items-start gap-3">
+      <div className="w-2 h-2 bg-[#0047AB] rounded-full mt-1.5 shrink-0" />
+      <div>
+        <div className="text-sm text-gray-700">{text}</div>
+        <div className="text-xs text-gray-400">{formatted}</div>
       </div>
     </div>
   )
@@ -130,7 +257,6 @@ export default function PipelinePage() {
     if (!over) return
 
     const entryId = active.id as string
-    // over.id could be a stage id or another card id
     let newStageId = over.id as string
     const isStage = stages.some(s => s.id === newStageId)
     if (!isStage) {
@@ -190,7 +316,7 @@ export default function PipelinePage() {
         <DragOverlay>{activeEntry && <CardOverlay entry={activeEntry} />}</DragOverlay>
       </DndContext>
 
-      {detailEntry && <DetailModal entry={detailEntry} onClose={() => setDetailEntry(null)} onSave={handleSaveNotes} />}
+      {detailEntry && <DetailView entry={detailEntry} stages={stages} onClose={() => setDetailEntry(null)} onSave={handleSaveNotes} />}
 
       {showAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowAdd(false)}>
@@ -199,7 +325,8 @@ export default function PipelinePage() {
             <div className="space-y-1">
               {programs.map(p => (
                 <button key={p.id} onClick={() => handleAddProgram(p.id)}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 rounded-lg transition">
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 rounded-lg transition flex items-center gap-3">
+                  <TeamCircle school={p.school} size={28} />
                   {p.school}
                 </button>
               ))}
