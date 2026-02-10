@@ -3,8 +3,6 @@
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
 import {
   LayoutDashboard,
   Users,
@@ -25,33 +23,18 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+  { label: "Dashboard", icon: LayoutDashboard, href: "/" },
   { label: "Programs", icon: Users, href: "/coaches" },
   { label: "Pipeline", icon: GitBranch, href: "/pipeline" },
   { label: "Outreach", icon: Mail, href: "/outreach" },
 ]
 
-interface Profile {
-  first_name: string
-  last_name: string
-  position: string
-  grad_year: number
+interface NavbarProps {
+  activePage?: string
 }
 
-export default function NavBar({ profile }: { profile: Profile | null }) {
+export function Navbar({ activePage = "Dashboard" }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const pathname = usePathname()
-  const router = useRouter()
-
-  const handleSignOut = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push("/login")
-  }
-
-  const initials = profile
-    ? `${profile.first_name?.[0] || ""}${profile.last_name?.[0] || ""}`
-    : "??"
 
   return (
     <header className="sticky top-0 z-50">
@@ -62,7 +45,8 @@ export default function NavBar({ profile }: { profile: Profile | null }) {
         <div className="mx-auto max-w-7xl px-4 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             {/* Logo & Brand */}
-            <Link href="/dashboard" className="relative flex items-center gap-3">
+            <Link href="/" className="relative flex items-center gap-3">
+              {/* Oversized logo that extends below navbar */}
               <div className="relative -mb-8 mt-1 shrink-0">
                 <div className="relative h-28 w-28 drop-shadow-[0_6px_16px_rgba(0,0,0,0.5)] lg:h-32 lg:w-32">
                   <Image
@@ -87,7 +71,7 @@ export default function NavBar({ profile }: { profile: Profile | null }) {
             {/* Desktop Nav */}
             <div className="hidden items-center gap-1 md:flex">
               {navItems.map((item) => {
-                const isActive = pathname === item.href
+                const isActive = item.label === activePage
                 return (
                   <Link
                     key={item.label}
@@ -115,26 +99,24 @@ export default function NavBar({ profile }: { profile: Profile | null }) {
                   >
                     <Avatar className="h-8 w-8 ring-2 ring-accent">
                       <AvatarFallback className="bg-accent text-accent-foreground text-xs font-bold">
-                        {initials}
+                        PK
                       </AvatarFallback>
                     </Avatar>
-                    {profile && (
-                      <div className="hidden text-left lg:block">
-                        <p className="text-sm font-semibold leading-tight text-primary-foreground">
-                          {profile.first_name} {profile.last_name}
-                        </p>
-                        <p className="text-[11px] text-primary-foreground/50">
-                          Class of {profile.grad_year}
-                        </p>
-                      </div>
-                    )}
+                    <div className="hidden text-left lg:block">
+                      <p className="text-sm font-semibold leading-tight text-primary-foreground">
+                        Paul Kongshaug
+                      </p>
+                      <p className="text-[11px] text-primary-foreground/50">
+                        Class of 2026
+                      </p>
+                    </div>
                     <ChevronDown className="hidden h-3.5 w-3.5 text-primary-foreground/50 lg:block" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem>Profile Settings</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
+                  <DropdownMenuItem className="text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign Out
                   </DropdownMenuItem>
@@ -148,7 +130,11 @@ export default function NavBar({ profile }: { profile: Profile | null }) {
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               >
                 <span className="sr-only">Open menu</span>
-                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                {mobileMenuOpen ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Menu className="h-5 w-5" />
+                )}
               </button>
             </div>
           </div>
@@ -159,7 +145,7 @@ export default function NavBar({ profile }: { profile: Profile | null }) {
           <div className="border-t border-primary-foreground/10 md:hidden">
             <div className="flex flex-col gap-1 px-4 py-3">
               {navItems.map((item) => {
-                const isActive = pathname === item.href
+                const isActive = item.label === activePage
                 return (
                   <Link
                     key={item.label}

@@ -15,11 +15,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .single()
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <NavBar profile={profile} />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
         {children}
       </main>
+      <footer className="border-t border-border bg-card">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 lg:px-8">
+          <p className="text-xs text-muted-foreground">Gridiron Elite Recruiting</p>
+          <p className="text-xs text-muted-foreground">Built for athletes, by athletes.</p>
+        </div>
+      </footer>
     </div>
   )
 }
