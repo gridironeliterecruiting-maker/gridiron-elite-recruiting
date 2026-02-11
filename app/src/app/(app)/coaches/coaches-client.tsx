@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect, useCallback } from "react"
 import Image from "next/image"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Search, ArrowUpDown, Users, Building2 } from "lucide-react"
+import { Search, ArrowUpDown, Users, Building2, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
 import { ProgramDetail } from "@/components/programs/program-detail"
 import { CoachDetail } from "@/components/programs/coach-detail"
 
@@ -44,7 +44,7 @@ interface Coach {
   twitter_dm_open: boolean
 }
 
-type SortField = "school_name" | "division" | "conference" | "state" | "coaches"
+type SortField = "school_name" | "division" | "conference" | "state"
 
 const divisionColorMap: Record<string, string> = {
   FBS: "bg-primary text-primary-foreground",
@@ -71,7 +71,7 @@ function SchoolLogo({ school, logoUrl }: { school: string; logoUrl: string | nul
   )
 }
 
-export function CoachesClient({ programs, coaches }: { programs: Program[]; coaches: Coach[] }) {
+export function CoachesClient({ programs }: { programs: Program[] }) {
   const [activeDivision, setActiveDivision] = useState<Division>("ALL")
   const [searchQuery, setSearchQuery] = useState("")
   const [viewMode, setViewMode] = useState<"programs" | "coaches">("programs")
@@ -82,14 +82,15 @@ export function CoachesClient({ programs, coaches }: { programs: Program[]; coac
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null)
   const [selectedCoach, setSelectedCoach] = useState<Coach | null>(null)
   const [coachProgram, setCoachProgram] = useState<Program | null>(null)
+  const [programCoaches, setProgramCoaches] = useState<Coach[]>([])
+  const [loadingCoaches, setLoadingCoaches] = useState(false)
 
-  const coachCountMap = useMemo(() => {
-    const map: Record<string, number> = {}
-    for (const c of coaches) {
-      map[c.program_id] = (map[c.program_id] || 0) + 1
-    }
-    return map
-  }, [coaches])
+  // Coach search state (for coaches tab)
+  const [coachResults, setCoachResults] = useState<(Coach & { programs?: Program })[]>([])
+  const [coachTotal, setCoachTotal] = useState(0)
+  const [coachPage, setCoachPage] = useState(0)
+  const [coachLoading, setCoachLoading] = useState(false)
+  const COACH_PAGE_SIZE = 50
 
   const programMap = useMemo(() => {
     const map: Record<string, Program> = {}
@@ -97,24 +98,57 @@ export function CoachesClient({ programs, coaches }: { programs: Program[]; coac
     return map
   }, [programs])
 
-  const coachesByProgram = useMemo(() => {
-    const map: Record<string, Coach[]> = {}
-    for (const c of coaches) {
-      if (!map[c.program_id]) map[c.program_id] = []
-      map[c.program_id].push(c)
-    }
-    return map
-  }, [coaches])
-
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortAsc(!sortAsc)
     else { setSortField(field); setSortAsc(true) }
   }
 
+  // Fetch coaches for a specific program
+  const fetchProgramCoaches = useCallback(async (programId: string) => {
+    setLoadingCoaches(true)
+    try {
+      const res = await fetch(`/api/programs/${programId}/coaches`)
+      if (res.ok) {
+        const data = await res.json()
+        setProgramCoaches(data)
+      }
+    } catch { /* ignore */ }
+    setLoadingCoaches(false)
+  }, [])
+
+  // Fetch coaches for coaches tab
+  const fetchCoaches = useCallback(async (page: number) => {
+    setCoachLoading(true)
+    try {
+      const params = new URLSearchParams({
+        offset: String(page * COACH_PAGE_SIZE),
+        limit: String(COACH_PAGE_SIZE),
+      })
+      if (searchQuery) params.set("q", searchQuery)
+      if (activeDivision !== "ALL") params.set("division", activeDivision)
+      const res = await fetch(`/api/coaches/search?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setCoachResults(data.coaches)
+        setCoachTotal(data.total)
+      }
+    } catch { /* ignore */ }
+    setCoachLoading(false)
+  }, [searchQuery, activeDivision])
+
+  // When switching to coaches view or filters change, fetch
+  useEffect(() => {
+    if (viewMode === "coaches") {
+      setCoachPage(0)
+      fetchCoaches(0)
+    }
+  }, [viewMode, searchQuery, activeDivision, fetchCoaches])
+
   // Drill-down handlers
   const openProgram = (program: Program) => {
     setSelectedProgram(program)
     setSelectedCoach(null)
+    fetchProgramCoaches(program.id)
   }
 
   const openCoachFromProgram = (coach: Coach) => {
@@ -123,11 +157,12 @@ export function CoachesClient({ programs, coaches }: { programs: Program[]; coac
   }
 
   const openCoachDirectly = (coach: Coach) => {
-    const parentProgram = programMap[coach.program_id]
-    if (parentProgram) {
-      setSelectedProgram(parentProgram)
-      setCoachProgram(parentProgram)
+    const prog = (coach as any).programs || programMap[coach.program_id]
+    if (prog) {
+      setSelectedProgram(prog)
+      setCoachProgram(prog)
       setSelectedCoach(coach)
+      fetchProgramCoaches(prog.id)
     }
   }
 
@@ -140,6 +175,7 @@ export function CoachesClient({ programs, coaches }: { programs: Program[]; coac
     setSelectedProgram(null)
     setSelectedCoach(null)
     setCoachProgram(null)
+    setProgramCoaches([])
   }
 
   const filteredPrograms = useMemo(() => {
@@ -155,38 +191,12 @@ export function CoachesClient({ programs, coaches }: { programs: Program[]; coac
       )
     }
     result = [...result].sort((a, b) => {
-      if (sortField === "coaches") {
-        const av = coachCountMap[a.id] || 0
-        const bv = coachCountMap[b.id] || 0
-        return sortAsc ? av - bv : bv - av
-      }
       const av = (a as any)[sortField] || ""
       const bv = (b as any)[sortField] || ""
       return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av)
     })
     return result
-  }, [activeDivision, searchQuery, sortField, sortAsc, programs, coachCountMap])
-
-  const filteredCoaches = useMemo(() => {
-    let result = coaches
-    if (activeDivision !== "ALL") {
-      const progIds = new Set(programs.filter((p) => p.division === activeDivision).map((p) => p.id))
-      result = result.filter((c) => progIds.has(c.program_id))
-    }
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      result = result.filter((c) => {
-        const prog = programMap[c.program_id]
-        return (
-          `${c.first_name} ${c.last_name}`.toLowerCase().includes(q) ||
-          c.title?.toLowerCase().includes(q) ||
-          c.email?.toLowerCase().includes(q) ||
-          prog?.school_name.toLowerCase().includes(q)
-        )
-      })
-    }
-    return result
-  }, [activeDivision, searchQuery, coaches, programs, programMap])
+  }, [activeDivision, searchQuery, sortField, sortAsc, programs])
 
   const SortButton = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <button
@@ -198,6 +208,8 @@ export function CoachesClient({ programs, coaches }: { programs: Program[]; coac
       <ArrowUpDown className={`h-3 w-3 ${sortField === field ? "text-primary" : "text-muted-foreground/50"}`} />
     </button>
   )
+
+  const coachTotalPages = Math.ceil(coachTotal / COACH_PAGE_SIZE)
 
   return (
     <>
@@ -278,7 +290,6 @@ export function CoachesClient({ programs, coaches }: { programs: Program[]; coac
                   <TableHead><SortButton field="division">Division</SortButton></TableHead>
                   <TableHead><SortButton field="conference">Conference</SortButton></TableHead>
                   <TableHead><SortButton field="state">State</SortButton></TableHead>
-                  <TableHead className="text-right"><SortButton field="coaches">Coaches</SortButton></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -303,16 +314,11 @@ export function CoachesClient({ programs, coaches }: { programs: Program[]; coac
                     </TableCell>
                     <TableCell><span className="text-sm text-foreground">{program.conference}</span></TableCell>
                     <TableCell><span className="text-sm text-muted-foreground">{program.state}</span></TableCell>
-                    <TableCell className="text-right">
-                      <span className="font-display text-sm font-bold text-foreground">
-                        {coachCountMap[program.id] || 0}
-                      </span>
-                    </TableCell>
                   </TableRow>
                 ))}
                 {filteredPrograms.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center">
+                    <TableCell colSpan={4} className="h-32 text-center">
                       <p className="text-sm text-muted-foreground">No programs found matching your filters.</p>
                     </TableCell>
                   </TableRow>
@@ -324,81 +330,110 @@ export function CoachesClient({ programs, coaches }: { programs: Program[]; coac
                 Showing <span className="font-semibold text-foreground">{filteredPrograms.length}</span> of{" "}
                 <span className="font-semibold text-foreground">{programs.length}</span> programs
               </p>
-              <p className="text-xs text-muted-foreground">
-                Total coaches: <span className="font-semibold text-foreground">{coaches.length}</span>
-              </p>
             </div>
           </Card>
         ) : (
+          /* Coaches View — paginated from API */
           <Card className="overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-secondary/50 hover:bg-secondary/50">
-                  <TableHead className="w-[250px]">Coach</TableHead>
-                  <TableHead>School</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Twitter</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCoaches.map((coach) => {
-                  const prog = programMap[coach.program_id]
-                  return (
-                    <TableRow
-                      key={coach.id}
-                      className="group cursor-pointer transition-colors hover:bg-primary/[0.03]"
-                      onClick={() => openCoachDirectly(coach)}
-                    >
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                            {coach.first_name[0]}{coach.last_name[0]}
+            {coachLoading && (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading coaches...</span>
+              </div>
+            )}
+            {!coachLoading && (
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-secondary/50 hover:bg-secondary/50">
+                    <TableHead className="w-[250px]">Coach</TableHead>
+                    <TableHead>School</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Twitter</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {coachResults.map((coach) => {
+                    const prog = (coach as any).programs as Program | undefined
+                    return (
+                      <TableRow
+                        key={coach.id}
+                        className="group cursor-pointer transition-colors hover:bg-primary/[0.03]"
+                        onClick={() => openCoachDirectly(coach)}
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                              {coach.first_name?.[0]}{coach.last_name?.[0]}
+                            </div>
+                            <span className="text-sm font-semibold text-foreground group-hover:text-primary">
+                              {coach.first_name} {coach.last_name}
+                            </span>
                           </div>
-                          <span className="text-sm font-semibold text-foreground group-hover:text-primary">
-                            {coach.first_name} {coach.last_name}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {prog && <SchoolLogo school={prog.school_name} logoUrl={prog.logo_url} />}
-                          <span className="text-sm text-foreground">{prog?.school_name || "—"}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell><span className="text-sm text-muted-foreground">{coach.title || "—"}</span></TableCell>
-                      <TableCell>
-                        {coach.email ? (
-                          <span className="text-sm text-primary">{coach.email}</span>
-                        ) : "—"}
-                      </TableCell>
-                      <TableCell>
-                        {coach.twitter_handle ? (
-                          <div className="flex items-center gap-1">
-                            <span className="text-sm text-primary">@{coach.twitter_handle}</span>
-                            {coach.twitter_dm_open && (
-                              <Badge variant="secondary" className="text-[9px]">DM Open</Badge>
-                            )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {prog && <SchoolLogo school={prog.school_name} logoUrl={prog.logo_url} />}
+                            <span className="text-sm text-foreground">{prog?.school_name || "—"}</span>
                           </div>
-                        ) : "—"}
+                        </TableCell>
+                        <TableCell><span className="text-sm text-muted-foreground">{coach.title || "—"}</span></TableCell>
+                        <TableCell>
+                          {coach.email ? (
+                            <span className="text-sm text-primary">{coach.email}</span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell>
+                          {coach.twitter_handle ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-sm text-primary">@{coach.twitter_handle}</span>
+                              {coach.twitter_dm_open && (
+                                <Badge variant="secondary" className="text-[9px]">DM Open</Badge>
+                              )}
+                            </div>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                  {coachResults.length === 0 && !coachLoading && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-32 text-center">
+                        <p className="text-sm text-muted-foreground">No coaches found matching your filters.</p>
                       </TableCell>
                     </TableRow>
-                  )
-                })}
-                {filteredCoaches.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center">
-                      <p className="text-sm text-muted-foreground">No coaches found matching your filters.</p>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableBody>
+              </Table>
+            )}
             <div className="flex items-center justify-between border-t bg-secondary/30 px-4 py-3">
               <p className="text-xs text-muted-foreground">
-                Showing <span className="font-semibold text-foreground">{filteredCoaches.length}</span> of{" "}
-                <span className="font-semibold text-foreground">{coaches.length}</span> coaches
+                Showing <span className="font-semibold text-foreground">{coachResults.length}</span> of{" "}
+                <span className="font-semibold text-foreground">{coachTotal.toLocaleString()}</span> coaches
               </p>
+              {coachTotalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={coachPage === 0}
+                    onClick={() => { const p = coachPage - 1; setCoachPage(p); fetchCoaches(p) }}
+                    className="flex h-8 w-8 items-center justify-center rounded-md border border-input bg-card text-muted-foreground transition-colors hover:bg-secondary disabled:opacity-30"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <span className="text-xs text-muted-foreground">
+                    Page {coachPage + 1} of {coachTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={coachPage >= coachTotalPages - 1}
+                    onClick={() => { const p = coachPage + 1; setCoachPage(p); fetchCoaches(p) }}
+                    className="flex h-8 w-8 items-center justify-center rounded-md border border-input bg-card text-muted-foreground transition-colors hover:bg-secondary disabled:opacity-30"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             </div>
           </Card>
         )}
@@ -408,7 +443,7 @@ export function CoachesClient({ programs, coaches }: { programs: Program[]; coac
       {selectedProgram && (
         <ProgramDetail
           program={selectedProgram}
-          coaches={coachesByProgram[selectedProgram.id] || []}
+          coaches={programCoaches}
           onBack={closeProgram}
           onSelectCoach={openCoachFromProgram}
         />
@@ -421,6 +456,16 @@ export function CoachesClient({ programs, coaches }: { programs: Program[]; coac
           program={coachProgram}
           onClose={closeCoach}
         />
+      )}
+
+      {/* Loading overlay for program coaches */}
+      {loadingCoaches && selectedProgram && (
+        <div className="fixed inset-0 z-[59] flex items-center justify-center bg-background/80">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <span className="text-sm font-medium text-foreground">Loading coaching staff...</span>
+          </div>
+        </div>
       )}
     </>
   )
