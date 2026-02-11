@@ -135,7 +135,6 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
     const { data, count, error } = await q
     if (error) {
       console.error("Coach search error:", error)
-      alert(`Coach search error: ${error.message}`)
       setCoachResults([])
       setCoachTotal(0)
     } else {
