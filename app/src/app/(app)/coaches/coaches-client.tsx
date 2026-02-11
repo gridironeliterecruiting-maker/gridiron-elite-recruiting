@@ -142,7 +142,17 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
       setCoachPage(0)
       fetchCoaches(0)
     }
-  }, [viewMode, searchQuery, activeDivision, fetchCoaches])
+  }, [viewMode, activeDivision, fetchCoaches])
+
+  // Debounced search for coaches tab
+  useEffect(() => {
+    if (viewMode !== "coaches") return
+    const timer = setTimeout(() => {
+      setCoachPage(0)
+      fetchCoaches(0)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   // Drill-down handlers
   const openProgram = (program: Program) => {
