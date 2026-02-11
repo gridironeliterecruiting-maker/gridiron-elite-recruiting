@@ -92,7 +92,9 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
   const [coachPage, setCoachPage] = useState(0)
   const [coachLoading, setCoachLoading] = useState(false)
   const COACH_PAGE_SIZE = 50
-  const supabase = useRef(createClient()).current
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
+  if (!supabaseRef.current) supabaseRef.current = createClient()
+  const supabase = supabaseRef.current
 
   const programMap = useMemo(() => {
     const map: Record<string, Program> = {}
@@ -133,6 +135,7 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
     const { data, count, error } = await q
     if (error) {
       console.error("Coach search error:", error)
+      alert(`Coach search error: ${error.message}`)
       setCoachResults([])
       setCoachTotal(0)
     } else {
@@ -140,6 +143,9 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
       let filtered = data || []
       if (division && division !== "ALL") {
         filtered = filtered.filter((c: any) => c.programs?.division === division)
+      }
+      if (filtered.length === 0 && !query) {
+        console.error("No coaches returned even without search. Count:", count, "Data:", data?.length)
       }
       setCoachResults(filtered)
       setCoachTotal(division && division !== "ALL" ? filtered.length : (count || 0))
