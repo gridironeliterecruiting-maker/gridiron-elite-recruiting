@@ -318,7 +318,7 @@ export function PipelineClient({
                         <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/30 transition-colors group-hover:text-muted-foreground" />
                         <button
                           type="button"
-                          className="flex min-w-0 flex-1 items-start gap-2.5 text-left"
+                          className="group/prog flex min-w-0 flex-1 items-start gap-2.5 text-left rounded-md -m-1.5 p-1.5 transition-all hover:bg-primary/5 hover:ring-1 hover:ring-primary/20"
                           onClick={(e) => {
                             e.stopPropagation()
                             if (program) {
@@ -326,14 +326,15 @@ export function PipelineClient({
                               openProgramDetail(fullProgram)
                             }
                           }}
+                          title={program ? `View ${program.school_name} details` : undefined}
                         >
                         <ProgramLogo program={program} />
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-foreground truncate hover:text-primary transition-colors">
+                          <p className="text-sm font-semibold text-foreground truncate transition-colors group-hover/prog:text-primary">
                             {program?.school_name || "Unknown"}
                           </p>
                           {program?.division && (
-                            <p className="text-[11px] text-muted-foreground">
+                            <p className="text-[11px] text-muted-foreground transition-colors group-hover/prog:text-primary/70">
                               {program.division}{program.conference ? ` - ${program.conference}` : ""}
                             </p>
                           )}
