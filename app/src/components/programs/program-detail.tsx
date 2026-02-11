@@ -1,15 +1,19 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import {
   ArrowLeft,
   Globe,
   MapPin,
-  Trophy,
   Users,
   Mail,
   ExternalLink,
+  Newspaper,
+  Trophy,
+  Calendar,
+  BarChart3,
+  Loader2,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
@@ -32,6 +36,7 @@ interface Program {
   city?: string
   logo_url: string | null
   website?: string | null
+  espn_id?: number | null
 }
 
 interface Coach {
@@ -44,6 +49,23 @@ interface Coach {
   phone?: string | null
   twitter_handle: string | null
   twitter_dm_open: boolean
+}
+
+interface ESPNData {
+  color?: string
+  alternateColor?: string
+  standingSummary?: string
+  links?: { text: string; href: string }[]
+  news?: { headline: string; description: string; published: string; link: string; image?: string }[]
+  record?: {
+    overall?: string
+    home?: string
+    away?: string
+    conference?: string
+    streak?: string
+    apTop25?: string
+    season?: string
+  }
 }
 
 interface ProgramDetailProps {
@@ -75,20 +97,51 @@ function SchoolLogo({ school, logoUrl, size = 40 }: { school: string; logoUrl: s
   )
 }
 
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const days = Math.floor(diff / 86400000)
+  if (days === 0) return "Today"
+  if (days === 1) return "Yesterday"
+  if (days < 7) return `${days}d ago`
+  if (days < 30) return `${Math.floor(days / 7)}w ago`
+  return `${Math.floor(days / 30)}mo ago`
+}
+
 export function ProgramDetail({ program, coaches, onBack, onSelectCoach }: ProgramDetailProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [espn, setEspn] = useState<ESPNData | null>(null)
+  const [espnLoading, setEspnLoading] = useState(false)
 
   useEffect(() => {
     containerRef.current?.scrollTo(0, 0)
   }, [program.id])
+
+  // Fetch ESPN data
+  useEffect(() => {
+    const espnId = program.espn_id || extractEspnId(program.logo_url)
+    if (!espnId) return
+
+    setEspnLoading(true)
+    setEspn(null)
+    fetch(`/api/espn/team?id=${espnId}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setEspn(data) })
+      .catch(() => {})
+      .finally(() => setEspnLoading(false))
+  }, [program.id, program.espn_id, program.logo_url])
+
+  const teamColor = espn?.color ? `#${espn.color}` : undefined
 
   return (
     <div
       ref={containerRef}
       className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[60] overflow-y-auto bg-background duration-300"
     >
-      {/* Sticky header */}
+      {/* Sticky header with optional team color accent */}
       <div className="sticky top-0 z-10 border-b border-border bg-card shadow-sm">
+        {teamColor && (
+          <div className="h-1" style={{ background: `linear-gradient(90deg, ${teamColor}, ${espn?.alternateColor ? `#${espn.alternateColor}` : teamColor})` }} />
+        )}
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 lg:px-8">
           <button
             type="button"
@@ -112,6 +165,12 @@ export function ProgramDetail({ program, coaches, onBack, onSelectCoach }: Progr
                   {program.division}
                 </Badge>
                 <span className="text-xs text-muted-foreground">{program.conference}</span>
+                {espn?.standingSummary && (
+                  <>
+                    <span className="text-xs text-muted-foreground/40">·</span>
+                    <span className="text-xs font-medium text-primary">{espn.standingSummary}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -134,6 +193,22 @@ export function ProgramDetail({ program, coaches, onBack, onSelectCoach }: Progr
                 </div>
               </Card>
             )}
+            {espn?.record?.overall && (
+              <Card className="flex items-center gap-3 p-4">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Trophy className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {espn.record.season === "2024" ? "2024 Record" : "Record"}
+                  </p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {espn.record.overall}
+                    {espn.record.conference && <span className="text-muted-foreground font-normal"> ({espn.record.conference} conf)</span>}
+                  </p>
+                </div>
+              </Card>
+            )}
             {program.website && (
               <Card className="flex items-center gap-3 p-4">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -142,7 +217,7 @@ export function ProgramDetail({ program, coaches, onBack, onSelectCoach }: Progr
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Website</p>
                   <a href={program.website} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-primary hover:underline truncate block max-w-[180px]">
-                    {program.website.replace(/^https?:\/\//, '')}
+                    {program.website.replace(/^https?:\/\//, "")}
                   </a>
                 </div>
               </Card>
@@ -157,6 +232,82 @@ export function ProgramDetail({ program, coaches, onBack, onSelectCoach }: Progr
               </div>
             </Card>
           </div>
+
+          {/* ESPN Quick Links */}
+          {espn?.links && espn.links.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {espn.links.map((link) => (
+                <a
+                  key={link.text}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
+                >
+                  {link.text === "Roster" && <Users className="h-3 w-3" />}
+                  {link.text === "Schedule" && <Calendar className="h-3 w-3" />}
+                  {link.text === "Statistics" && <BarChart3 className="h-3 w-3" />}
+                  {link.text === "Clubhouse" && <Globe className="h-3 w-3" />}
+                  ESPN {link.text}
+                  <ExternalLink className="h-2.5 w-2.5" />
+                </a>
+              ))}
+            </div>
+          )}
+
+          {/* Recent News */}
+          {espnLoading && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading program intel...
+            </div>
+          )}
+
+          {espn?.news && espn.news.length > 0 && (
+            <div>
+              <h2 className="mb-4 font-display text-base font-bold uppercase tracking-wider text-foreground">
+                Recent News
+              </h2>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {espn.news.map((article, i) => (
+                  <a
+                    key={i}
+                    href={article.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group"
+                  >
+                    <Card className="h-full overflow-hidden transition-all group-hover:border-primary/30 group-hover:shadow-md">
+                      {article.image && (
+                        <div className="relative h-32 w-full overflow-hidden bg-secondary">
+                          <Image
+                            src={article.image}
+                            alt={article.headline}
+                            fill
+                            className="object-cover transition-transform group-hover:scale-105"
+                          />
+                        </div>
+                      )}
+                      <div className="p-3">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Newspaper className="h-3 w-3 shrink-0 text-primary" />
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            {timeAgo(article.published)}
+                          </span>
+                        </div>
+                        <p className="text-sm font-semibold text-foreground line-clamp-2 transition-colors group-hover:text-primary">
+                          {article.headline}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                          {article.description}
+                        </p>
+                      </div>
+                    </Card>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Coaching Staff */}
           <div>
@@ -206,4 +357,10 @@ export function ProgramDetail({ program, coaches, onBack, onSelectCoach }: Progr
       </div>
     </div>
   )
+}
+
+function extractEspnId(logoUrl: string | null): number | null {
+  if (!logoUrl) return null
+  const match = logoUrl.match(/ncaa\/500\/(\d+)\.png/)
+  return match ? parseInt(match[1]) : null
 }

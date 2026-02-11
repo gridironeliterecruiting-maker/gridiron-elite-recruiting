@@ -29,6 +29,7 @@ interface Program {
   city: string
   logo_url: string | null
   website?: string | null
+  espn_id?: number | null
 }
 
 interface Coach {

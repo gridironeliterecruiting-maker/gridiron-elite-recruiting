@@ -6,7 +6,7 @@ export default async function CoachesPage() {
 
   const { data: programs } = await supabase
     .from("programs")
-    .select("id, school_name, division, conference, state, city, logo_url, website")
+    .select("id, school_name, division, conference, state, city, logo_url, website, espn_id")
     .order("school_name")
 
   const { data: coaches } = await supabase
