@@ -11,18 +11,24 @@ export default async function PipelinePage() {
 
   const { data: entries } = await supabase
     .from("pipeline_entries")
-    .select("id, program_id, stage_id, status, notes, programs(id, school_name, division, conference, logo_url)")
+    .select("id, program_id, stage_id, status, notes, programs(id, school_name, division, conference, logo_url, website, state, city)")
 
   const { data: programs } = await supabase
     .from("programs")
-    .select("id, school_name, division, conference, logo_url")
+    .select("id, school_name, division, conference, logo_url, website, state, city")
     .order("school_name")
+
+  const { data: coaches } = await supabase
+    .from("coaches")
+    .select("id, program_id, first_name, last_name, title, email, phone, twitter_handle, twitter_dm_open")
+    .order("last_name")
 
   return (
     <PipelineClient
       stages={stages || []}
       entries={entries || []}
       allPrograms={programs || []}
+      allCoaches={coaches || []}
     />
   )
 }

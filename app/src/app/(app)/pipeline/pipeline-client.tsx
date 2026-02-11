@@ -21,6 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Plus, GripVertical, X, ArrowRight } from "lucide-react"
+import { ProgramDetail } from "@/components/programs/program-detail"
+import { CoachDetail } from "@/components/programs/coach-detail"
 
 const STAGE_COLORS = [
   "bg-primary/10 border-primary/30 text-primary",
@@ -43,6 +45,21 @@ interface ProgramData {
   division: string
   conference: string
   logo_url: string | null
+  website?: string | null
+  state?: string
+  city?: string
+}
+
+interface CoachData {
+  id: string
+  program_id: string
+  first_name: string
+  last_name: string
+  title: string
+  email: string
+  phone?: string | null
+  twitter_handle: string | null
+  twitter_dm_open: boolean
 }
 
 interface PipelineEntry {
@@ -80,10 +97,12 @@ export function PipelineClient({
   stages,
   entries: initialEntries,
   allPrograms,
+  allCoaches,
 }: {
   stages: Stage[]
   entries: PipelineEntry[]
   allPrograms: ProgramData[]
+  allCoaches: CoachData[]
 }) {
   const [entries, setEntries] = useState(initialEntries)
   const [draggedCard, setDraggedCard] = useState<string | null>(null)
@@ -91,6 +110,47 @@ export function PipelineClient({
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [selectedProgram, setSelectedProgram] = useState("")
   const [selectedStage, setSelectedStage] = useState(stages[0]?.id || "")
+
+  // Drill-down state
+  const [detailProgram, setDetailProgram] = useState<ProgramData | null>(null)
+  const [detailCoach, setDetailCoach] = useState<CoachData | null>(null)
+  const [coachProgram, setCoachProgram] = useState<ProgramData | null>(null)
+
+  const coachesByProgram = React.useMemo(() => {
+    const map: Record<string, CoachData[]> = {}
+    for (const c of allCoaches) {
+      if (!map[c.program_id]) map[c.program_id] = []
+      map[c.program_id].push(c)
+    }
+    return map
+  }, [allCoaches])
+
+  const programMap = React.useMemo(() => {
+    const map: Record<string, ProgramData> = {}
+    for (const p of allPrograms) map[p.id] = p
+    return map
+  }, [allPrograms])
+
+  const openProgramDetail = (program: ProgramData) => {
+    setDetailProgram(program)
+    setDetailCoach(null)
+  }
+
+  const openCoachFromProgram = (coach: CoachData) => {
+    setDetailCoach(coach)
+    setCoachProgram(detailProgram)
+  }
+
+  const closeProgramDetail = () => {
+    setDetailProgram(null)
+    setDetailCoach(null)
+    setCoachProgram(null)
+  }
+
+  const closeCoachDetail = () => {
+    setDetailCoach(null)
+    setCoachProgram(null)
+  }
 
   const supabase = createClient()
 
@@ -256,9 +316,20 @@ export function PipelineClient({
                     >
                       <div className="flex items-start gap-2.5">
                         <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/30 transition-colors group-hover:text-muted-foreground" />
+                        <button
+                          type="button"
+                          className="flex min-w-0 flex-1 items-start gap-2.5 text-left"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (program) {
+                              const fullProgram = programMap[program.id] || program
+                              openProgramDetail(fullProgram)
+                            }
+                          }}
+                        >
                         <ProgramLogo program={program} />
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-foreground truncate">
+                          <p className="text-sm font-semibold text-foreground truncate hover:text-primary transition-colors">
                             {program?.school_name || "Unknown"}
                           </p>
                           {program?.division && (
@@ -272,6 +343,7 @@ export function PipelineClient({
                             </p>
                           )}
                         </div>
+                        </button>
                         <button
                           type="button"
                           onClick={() => removeEntry(entry.id)}
@@ -317,6 +389,25 @@ export function PipelineClient({
           )
         })}
       </div>
+
+      {/* Program Detail Overlay */}
+      {detailProgram && (
+        <ProgramDetail
+          program={detailProgram}
+          coaches={coachesByProgram[detailProgram.id] || []}
+          onBack={closeProgramDetail}
+          onSelectCoach={openCoachFromProgram}
+        />
+      )}
+
+      {/* Coach Detail Panel */}
+      {detailCoach && coachProgram && (
+        <CoachDetail
+          coach={detailCoach}
+          program={coachProgram}
+          onClose={closeCoachDetail}
+        />
+      )}
     </div>
   )
 }

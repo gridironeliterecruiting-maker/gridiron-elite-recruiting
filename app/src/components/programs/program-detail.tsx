@@ -28,8 +28,8 @@ interface Program {
   school_name: string
   division: string
   conference: string
-  state: string
-  city: string
+  state?: string
+  city?: string
   logo_url: string | null
   website?: string | null
 }
