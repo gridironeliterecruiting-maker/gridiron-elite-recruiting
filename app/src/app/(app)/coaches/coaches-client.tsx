@@ -1,7 +1,8 @@
 "use client"
 
-import React, { useState, useMemo, useEffect, useCallback } from "react"
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import Image from "next/image"
+import { createClient } from "@/lib/supabase/client"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -91,6 +92,7 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
   const [coachPage, setCoachPage] = useState(0)
   const [coachLoading, setCoachLoading] = useState(false)
   const COACH_PAGE_SIZE = 50
+  const supabase = useRef(createClient()).current
 
   const programMap = useMemo(() => {
     const map: Record<string, Program> = {}
@@ -103,49 +105,54 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
     else { setSortField(field); setSortAsc(true) }
   }
 
-  // Fetch coaches for a specific program
+  // Fetch coaches for a specific program (direct Supabase query)
   const fetchProgramCoaches = useCallback(async (programId: string) => {
     setLoadingCoaches(true)
-    try {
-      const res = await fetch(`/api/programs/${programId}/coaches`)
-      if (res.ok) {
-        const data = await res.json()
-        setProgramCoaches(data)
-      }
-    } catch { /* ignore */ }
+    const { data } = await supabase
+      .from("coaches")
+      .select("id, program_id, first_name, last_name, title, email, phone, twitter_handle, twitter_dm_open")
+      .eq("program_id", programId)
+      .order("last_name")
+    setProgramCoaches(data || [])
     setLoadingCoaches(false)
-  }, [])
+  }, [supabase])
 
-  // Fetch coaches for coaches tab
-  const fetchCoaches = useCallback(async (page: number) => {
+  // Fetch coaches for coaches tab (direct Supabase query)
+  const fetchCoaches = useCallback(async (page: number, query: string, division: string) => {
     setCoachLoading(true)
-    try {
-      const params = new URLSearchParams({
-        offset: String(page * COACH_PAGE_SIZE),
-        limit: String(COACH_PAGE_SIZE),
-      })
-      if (searchQuery) params.set("q", searchQuery)
-      if (activeDivision !== "ALL") params.set("division", activeDivision)
-      const res = await fetch(`/api/coaches/search?${params}`)
-      if (res.ok) {
-        const data = await res.json()
-        setCoachResults(data.coaches || [])
-        setCoachTotal(data.total || 0)
-      } else {
-        console.error("Coach search failed:", res.status, await res.text().catch(() => ""))
-        setCoachResults([])
-        setCoachTotal(0)
+    let q = supabase
+      .from("coaches")
+      .select("id, program_id, first_name, last_name, title, email, phone, twitter_handle, twitter_dm_open, programs(id, school_name, division, conference, logo_url)", { count: "exact" })
+      .order("last_name")
+      .range(page * COACH_PAGE_SIZE, (page + 1) * COACH_PAGE_SIZE - 1)
+
+    if (query) {
+      q = q.or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,title.ilike.%${query}%`)
+    }
+
+    const { data, count, error } = await q
+    if (error) {
+      console.error("Coach search error:", error)
+      setCoachResults([])
+      setCoachTotal(0)
+    } else {
+      // If division filter, filter client-side (inner join filter doesn't work well with or())
+      let filtered = data || []
+      if (division && division !== "ALL") {
+        filtered = filtered.filter((c: any) => c.programs?.division === division)
       }
-    } catch (e) { console.error("Coach search error:", e) }
+      setCoachResults(filtered)
+      setCoachTotal(division && division !== "ALL" ? filtered.length : (count || 0))
+    }
     setCoachLoading(false)
-  }, [searchQuery, activeDivision])
+  }, [supabase])
 
   // Fetch coaches whenever view/filters/search change (debounced)
   useEffect(() => {
     if (viewMode !== "coaches") return
     const timer = setTimeout(() => {
       setCoachPage(0)
-      fetchCoaches(0)
+      fetchCoaches(0, searchQuery, activeDivision)
     }, 300)
     return () => clearTimeout(timer)
   }, [viewMode, searchQuery, activeDivision, fetchCoaches])
@@ -422,7 +429,7 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
                   <button
                     type="button"
                     disabled={coachPage === 0}
-                    onClick={() => { const p = coachPage - 1; setCoachPage(p); fetchCoaches(p) }}
+                    onClick={() => { const p = coachPage - 1; setCoachPage(p); fetchCoaches(p, searchQuery, activeDivision) }}
                     className="flex h-8 w-8 items-center justify-center rounded-md border border-input bg-card text-muted-foreground transition-colors hover:bg-secondary disabled:opacity-30"
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -433,7 +440,7 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
                   <button
                     type="button"
                     disabled={coachPage >= coachTotalPages - 1}
-                    onClick={() => { const p = coachPage + 1; setCoachPage(p); fetchCoaches(p) }}
+                    onClick={() => { const p = coachPage + 1; setCoachPage(p); fetchCoaches(p, searchQuery, activeDivision) }}
                     className="flex h-8 w-8 items-center justify-center rounded-md border border-input bg-card text-muted-foreground transition-colors hover:bg-secondary disabled:opacity-30"
                   >
                     <ChevronRight className="h-4 w-4" />
