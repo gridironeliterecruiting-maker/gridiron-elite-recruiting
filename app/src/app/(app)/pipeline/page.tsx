@@ -11,11 +11,11 @@ export default async function PipelinePage() {
 
   const { data: entries } = await supabase
     .from("pipeline_entries")
-    .select("id, program_id, stage_id, status, notes, programs(id, school_name, division, conference, logo_url, website, state, city)")
+    .select("id, program_id, stage_id, status, notes, programs(id, school_name, division, conference, logo_url, website, state, city, espn_id)")
 
   const { data: programs } = await supabase
     .from("programs")
-    .select("id, school_name, division, conference, logo_url, website, state, city")
+    .select("id, school_name, division, conference, logo_url, website, state, city, espn_id")
     .order("school_name")
 
   const { data: coaches } = await supabase

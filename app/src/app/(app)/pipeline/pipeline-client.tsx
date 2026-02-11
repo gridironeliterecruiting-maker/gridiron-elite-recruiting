@@ -48,6 +48,7 @@ interface ProgramData {
   website?: string | null
   state?: string
   city?: string
+  espn_id?: number | null
 }
 
 interface CoachData {
