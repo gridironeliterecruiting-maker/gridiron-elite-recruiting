@@ -98,12 +98,10 @@ export function PipelineClient({
   stages,
   entries: initialEntries,
   allPrograms,
-  allCoaches,
 }: {
   stages: Stage[]
   entries: PipelineEntry[]
   allPrograms: ProgramData[]
-  allCoaches: CoachData[]
 }) {
   const [entries, setEntries] = useState(initialEntries)
   const [draggedCard, setDraggedCard] = useState<string | null>(null)
@@ -116,15 +114,18 @@ export function PipelineClient({
   const [detailProgram, setDetailProgram] = useState<ProgramData | null>(null)
   const [detailCoach, setDetailCoach] = useState<CoachData | null>(null)
   const [coachProgram, setCoachProgram] = useState<ProgramData | null>(null)
+  const [programCoaches, setProgramCoaches] = useState<CoachData[]>([])
 
-  const coachesByProgram = React.useMemo(() => {
-    const map: Record<string, CoachData[]> = {}
-    for (const c of allCoaches) {
-      if (!map[c.program_id]) map[c.program_id] = []
-      map[c.program_id].push(c)
-    }
-    return map
-  }, [allCoaches])
+  // Fetch coaches on demand when a program is opened
+  const fetchCoachesForProgram = React.useCallback(async (programId: string) => {
+    try {
+      const res = await fetch(`/api/programs/${programId}/coaches`)
+      if (res.ok) {
+        const data = await res.json()
+        setProgramCoaches(data)
+      }
+    } catch { /* ignore */ }
+  }, [])
 
   const programMap = React.useMemo(() => {
     const map: Record<string, ProgramData> = {}
@@ -135,6 +136,8 @@ export function PipelineClient({
   const openProgramDetail = (program: ProgramData) => {
     setDetailProgram(program)
     setDetailCoach(null)
+    setProgramCoaches([])
+    fetchCoachesForProgram(program.id)
   }
 
   const openCoachFromProgram = (coach: CoachData) => {
@@ -396,7 +399,7 @@ export function PipelineClient({
       {detailProgram && (
         <ProgramDetail
           program={detailProgram}
-          coaches={coachesByProgram[detailProgram.id] || []}
+          coaches={programCoaches}
           onBack={closeProgramDetail}
           onSelectCoach={openCoachFromProgram}
         />
