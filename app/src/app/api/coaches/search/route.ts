@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createServerClient } from "@supabase/ssr"
+import { cookies } from "next/headers"
 
 export async function GET(req: NextRequest) {
-  const supabase = await createClient()
+  const cookieStore = await cookies()
+  
+  // Use service role for reliable data access (auth checked by middleware)
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll() {},
+      },
+    }
+  )
+
   const q = req.nextUrl.searchParams.get("q") || ""
   const division = req.nextUrl.searchParams.get("division") || ""
   const offset = parseInt(req.nextUrl.searchParams.get("offset") || "0")
@@ -10,7 +24,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("coaches")
-    .select("id, program_id, first_name, last_name, title, email, phone, twitter_handle, twitter_dm_open, programs!inner(id, school_name, division, conference, logo_url)", { count: "exact" })
+    .select("id, program_id, first_name, last_name, title, email, phone, twitter_handle, twitter_dm_open, programs(id, school_name, division, conference, logo_url)", { count: "exact" })
     .order("last_name")
     .range(offset, offset + limit - 1)
 
@@ -19,7 +33,6 @@ export async function GET(req: NextRequest) {
   }
 
   if (q) {
-    // Search across coach name, email, title, or school name
     query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%,title.ilike.%${q}%`)
   }
 
