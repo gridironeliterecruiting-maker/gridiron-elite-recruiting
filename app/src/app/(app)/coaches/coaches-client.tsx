@@ -129,7 +129,14 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
       .range(page * COACH_PAGE_SIZE, (page + 1) * COACH_PAGE_SIZE - 1)
 
     if (query) {
-      q = q.or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,title.ilike.%${query}%`)
+      // Split query into words so "Kirk Ferentz" matches first_name=Kirk AND last_name=Ferentz
+      const words = query.trim().split(/\s+/)
+      if (words.length >= 2) {
+        // Multi-word: search as first+last name combo, or full string in title/email
+        q = q.or(`and(first_name.ilike.%${words[0]}%,last_name.ilike.%${words.slice(1).join(" ")}%),title.ilike.%${query}%,email.ilike.%${query}%`)
+      } else {
+        q = q.or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,title.ilike.%${query}%`)
+      }
     }
 
     const { data, count, error } = await q
