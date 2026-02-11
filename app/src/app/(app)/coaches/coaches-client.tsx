@@ -129,22 +129,18 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
       const res = await fetch(`/api/coaches/search?${params}`)
       if (res.ok) {
         const data = await res.json()
-        setCoachResults(data.coaches)
-        setCoachTotal(data.total)
+        setCoachResults(data.coaches || [])
+        setCoachTotal(data.total || 0)
+      } else {
+        console.error("Coach search failed:", res.status, await res.text().catch(() => ""))
+        setCoachResults([])
+        setCoachTotal(0)
       }
-    } catch { /* ignore */ }
+    } catch (e) { console.error("Coach search error:", e) }
     setCoachLoading(false)
   }, [searchQuery, activeDivision])
 
-  // When switching to coaches view or filters change, fetch
-  useEffect(() => {
-    if (viewMode === "coaches") {
-      setCoachPage(0)
-      fetchCoaches(0)
-    }
-  }, [viewMode, activeDivision, fetchCoaches])
-
-  // Debounced search for coaches tab
+  // Fetch coaches whenever view/filters/search change (debounced)
   useEffect(() => {
     if (viewMode !== "coaches") return
     const timer = setTimeout(() => {
@@ -152,7 +148,7 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
       fetchCoaches(0)
     }, 300)
     return () => clearTimeout(timer)
-  }, [searchQuery])
+  }, [viewMode, searchQuery, activeDivision, fetchCoaches])
 
   // Drill-down handlers
   const openProgram = (program: Program) => {
