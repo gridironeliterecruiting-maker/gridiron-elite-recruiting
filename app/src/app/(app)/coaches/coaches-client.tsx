@@ -87,7 +87,7 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
   const [loadingCoaches, setLoadingCoaches] = useState(false)
 
   // Coach search state (for coaches tab)
-  const [coachResults, setCoachResults] = useState<(Coach & { programs?: Program })[]>([])
+  const [coachResults, setCoachResults] = useState<any[]>([])
   const [coachTotal, setCoachTotal] = useState(0)
   const [coachPage, setCoachPage] = useState(0)
   const [coachLoading, setCoachLoading] = useState(false)
