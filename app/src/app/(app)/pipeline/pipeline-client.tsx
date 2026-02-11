@@ -145,9 +145,11 @@ export function PipelineClient({
 
   const addProgram = async () => {
     if (!selectedProgram || !selectedStage) return
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
     const { data, error } = await supabase
       .from("pipeline_entries")
-      .insert({ program_id: selectedProgram, stage_id: selectedStage })
+      .insert({ program_id: selectedProgram, stage_id: selectedStage, athlete_id: user.id })
       .select("id, program_id, stage_id, status, notes, programs(id, school_name, division, conference, logo_url)")
       .single()
     if (data && !error) {
@@ -212,7 +214,7 @@ export function PipelineClient({
       </div>
 
       {/* Kanban Board */}
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="grid grid-cols-5 gap-3 pb-4">
         {stages.map((stage, idx) => {
           const stageEntries = getStageEntries(stage.id)
           const isOver = dragOverStage === stage.id
@@ -221,7 +223,7 @@ export function PipelineClient({
           return (
             <div
               key={stage.id}
-              className="flex w-[280px] shrink-0 flex-col"
+              className="flex min-w-0 flex-col"
               onDragOver={(e) => handleDragOver(e, stage.id)}
               onDragLeave={() => setDragOverStage(null)}
               onDrop={(e) => handleDrop(e, stage.id)}

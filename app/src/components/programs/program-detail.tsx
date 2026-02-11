@@ -1,0 +1,209 @@
+"use client"
+
+import { useEffect, useRef } from "react"
+import Image from "next/image"
+import {
+  ArrowLeft,
+  Globe,
+  MapPin,
+  Trophy,
+  Users,
+  Mail,
+  ExternalLink,
+} from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Card } from "@/components/ui/card"
+
+const divisionColorMap: Record<string, string> = {
+  FBS: "bg-primary text-primary-foreground",
+  FCS: "bg-primary/70 text-primary-foreground",
+  DII: "bg-primary/50 text-primary-foreground",
+  DIII: "bg-muted-foreground/70 text-card",
+  JUCO: "bg-muted-foreground/50 text-card",
+  NAIA: "bg-accent/80 text-accent-foreground",
+}
+
+interface Program {
+  id: string
+  school_name: string
+  division: string
+  conference: string
+  state: string
+  city: string
+  logo_url: string | null
+  website?: string | null
+}
+
+interface Coach {
+  id: string
+  program_id: string
+  first_name: string
+  last_name: string
+  title: string
+  email: string
+  phone?: string | null
+  twitter_handle: string | null
+  twitter_dm_open: boolean
+}
+
+interface ProgramDetailProps {
+  program: Program
+  coaches: Coach[]
+  onBack: () => void
+  onSelectCoach: (coach: Coach) => void
+}
+
+function SchoolLogo({ school, logoUrl, size = 40 }: { school: string; logoUrl: string | null; size?: number }) {
+  if (logoUrl) {
+    return (
+      <div
+        className="flex shrink-0 items-center justify-center rounded-lg bg-white ring-1 ring-primary/20 overflow-hidden"
+        style={{ width: size, height: size }}
+      >
+        <Image src={logoUrl} alt={school} width={size - 8} height={size - 8} className="object-contain" />
+      </div>
+    )
+  }
+  const initials = school.slice(0, 3).toUpperCase()
+  return (
+    <div
+      className="flex shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary ring-1 ring-primary/20"
+      style={{ width: size, height: size }}
+    >
+      {initials}
+    </div>
+  )
+}
+
+export function ProgramDetail({ program, coaches, onBack, onSelectCoach }: ProgramDetailProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    containerRef.current?.scrollTo(0, 0)
+  }, [program.id])
+
+  return (
+    <div
+      ref={containerRef}
+      className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[60] overflow-y-auto bg-background duration-300"
+    >
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 border-b border-border bg-card shadow-sm">
+        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 lg:px-8">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+
+          <div className="flex items-center gap-3">
+            <SchoolLogo school={program.school_name} logoUrl={program.logo_url} />
+            <div>
+              <h1 className="font-display text-lg font-bold uppercase tracking-tight text-foreground sm:text-xl">
+                {program.school_name}
+              </h1>
+              <div className="flex items-center gap-2">
+                <Badge
+                  className={`${divisionColorMap[program.division] || "bg-secondary text-secondary-foreground"} rounded-md text-[9px] font-bold uppercase tracking-wider`}
+                >
+                  {program.division}
+                </Badge>
+                <span className="text-xs text-muted-foreground">{program.conference}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
+        <div className="flex flex-col gap-6">
+          {/* Program Info Cards */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {program.city && (
+              <Card className="flex items-center gap-3 p-4">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <MapPin className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Location</p>
+                  <p className="text-sm font-semibold text-foreground">{program.city}, {program.state}</p>
+                </div>
+              </Card>
+            )}
+            {program.website && (
+              <Card className="flex items-center gap-3 p-4">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Globe className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Website</p>
+                  <a href={program.website} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-primary hover:underline truncate block max-w-[180px]">
+                    {program.website.replace(/^https?:\/\//, '')}
+                  </a>
+                </div>
+              </Card>
+            )}
+            <Card className="flex items-center gap-3 p-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Users className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Coaches in DB</p>
+                <p className="text-sm font-semibold text-foreground">{coaches.length}</p>
+              </div>
+            </Card>
+          </div>
+
+          {/* Coaching Staff */}
+          <div>
+            <h2 className="mb-4 font-display text-base font-bold uppercase tracking-wider text-foreground">
+              Coaching Staff
+            </h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {coaches.map((coach) => (
+                <button
+                  key={coach.id}
+                  type="button"
+                  onClick={() => onSelectCoach(coach)}
+                  className="group text-left"
+                >
+                  <Card className="h-full p-4 transition-all group-hover:border-primary/30 group-hover:shadow-md">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground ring-2 ring-primary/20">
+                        {coach.first_name[0]}{coach.last_name[0]}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
+                          {coach.first_name} {coach.last_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{coach.title}</p>
+                        {coach.email && (
+                          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-primary">
+                            <Mail className="h-3 w-3" />
+                            <span className="truncate">{coach.email}</span>
+                          </div>
+                        )}
+                      </div>
+                      <ExternalLink className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground/0 transition-colors group-hover:text-primary" />
+                    </div>
+                  </Card>
+                </button>
+              ))}
+
+              {coaches.length === 0 && (
+                <Card className="col-span-full flex flex-col items-center justify-center p-8">
+                  <Users className="mb-2 h-8 w-8 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground">No coaches in database yet.</p>
+                </Card>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

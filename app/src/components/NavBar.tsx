@@ -10,6 +10,7 @@ import {
   Users,
   GitBranch,
   Mail,
+  User,
   LogOut,
   Menu,
   X,
@@ -29,6 +30,7 @@ const navItems = [
   { label: "Programs", icon: Users, href: "/coaches" },
   { label: "Pipeline", icon: GitBranch, href: "/pipeline" },
   { label: "Outreach", icon: Mail, href: "/outreach" },
+  { label: "Profile", icon: User, href: "/profile" },
 ]
 
 interface Profile {
@@ -84,8 +86,8 @@ export default function NavBar({ profile }: { profile: Profile | null }) {
               </div>
             </Link>
 
-            {/* Desktop Nav */}
-            <div className="hidden items-center gap-1 md:flex">
+            {/* Desktop Nav — centered */}
+            <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex">
               {navItems.map((item) => {
                 const isActive = pathname === item.href
                 return (
