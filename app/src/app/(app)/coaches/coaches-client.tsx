@@ -343,8 +343,8 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
               <TableHeader>
                 <TableRow className="bg-secondary/50 hover:bg-secondary/50">
                   <TableHead className="w-[300px]"><SortButton field="school_name">School</SortButton></TableHead>
-                  <TableHead><SortButton field="state">State</SortButton></TableHead>
                   <TableHead><SortButton field="division">Division</SortButton></TableHead>
+                  <TableHead><SortButton field="state">State</SortButton></TableHead>
                   <TableHead><SortButton field="conference">Conference</SortButton></TableHead>
                   <TableHead className="w-[140px]"></TableHead>
                 </TableRow>
@@ -366,12 +366,12 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell><span className="text-sm text-muted-foreground">{program.state}</span></TableCell>
                       <TableCell>
                         <Badge className={`${divisionColorMap[program.division] || "bg-secondary text-secondary-foreground"} rounded-md text-[10px] font-bold uppercase tracking-wider`}>
                           {program.division}
                         </Badge>
                       </TableCell>
+                      <TableCell><span className="text-sm text-muted-foreground">{program.state}</span></TableCell>
                       <TableCell><span className="text-sm text-foreground">{program.conference}</span></TableCell>
                       <TableCell className="text-right">
                         {!inPipeline && (
