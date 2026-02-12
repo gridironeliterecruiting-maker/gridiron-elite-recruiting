@@ -380,7 +380,7 @@ export function ProgramDetail({ program, coaches, onBack, onSelectCoach, pipelin
         </div>
       </div>
 
-      {showAddButton && pipelineStages && (
+      {pipelineStages && pipelineStages.length > 0 && (
         <AddToPipelineDialog
           open={addDialogOpen}
           onOpenChange={setAddDialogOpen}
