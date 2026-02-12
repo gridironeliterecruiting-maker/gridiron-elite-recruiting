@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Plus, GripVertical, X, ArrowRight } from "lucide-react"
+import { useRef as useRefTouch } from "react"
 import { ProgramDetail } from "@/components/programs/program-detail"
 import { CoachDetail } from "@/components/programs/coach-detail"
 
@@ -115,6 +116,9 @@ export function PipelineClient({
   const [detailCoach, setDetailCoach] = useState<CoachData | null>(null)
   const [coachProgram, setCoachProgram] = useState<ProgramData | null>(null)
   const [programCoaches, setProgramCoaches] = useState<CoachData[]>([])
+  const [touchDragging, setTouchDragging] = useState<string | null>(null)
+  const touchTimerRef = useRefTouch<ReturnType<typeof setTimeout> | null>(null)
+  const touchStartPos = useRefTouch<{ x: number; y: number } | null>(null)
 
   // Fetch coaches on demand when a program is opened
   const fetchCoachesForProgram = React.useCallback(async (programId: string) => {
@@ -278,7 +282,7 @@ export function PipelineClient({
       </div>
 
       {/* Kanban Board */}
-      <div className="grid grid-cols-5 gap-3 pb-4">
+      <div className="grid grid-cols-5 gap-1.5 md:gap-3 pb-4">
         {stages.map((stage, idx) => {
           const stageEntries = getStageEntries(stage.id)
           const isOver = dragOverStage === stage.id
@@ -287,20 +291,24 @@ export function PipelineClient({
           return (
             <div
               key={stage.id}
+              data-stage-id={stage.id}
               className="flex min-w-0 flex-col"
               onDragOver={(e) => handleDragOver(e, stage.id)}
               onDragLeave={() => setDragOverStage(null)}
               onDrop={(e) => handleDrop(e, stage.id)}
             >
-              <div className={`mb-3 flex items-center justify-between rounded-lg border px-3 py-2.5 ${color}`}>
-                <span className="text-xs font-bold uppercase tracking-wider">{stage.name}</span>
-                <Badge variant="secondary" className="h-5 min-w-[20px] justify-center rounded-md px-1.5 text-[10px] font-bold">
+              <div className={`mb-2 md:mb-3 flex items-center justify-between rounded-lg border px-1.5 md:px-3 py-1.5 md:py-2.5 ${color}`}>
+                <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">
+                  <span className="hidden md:inline">{stage.name}</span>
+                  <span className="md:hidden">{idx + 1}</span>
+                </span>
+                <Badge variant="secondary" className="h-4 md:h-5 min-w-[16px] md:min-w-[20px] justify-center rounded-md px-1 md:px-1.5 text-[8px] md:text-[10px] font-bold">
                   {stageEntries.length}
                 </Badge>
               </div>
 
               <div
-                className={`flex min-h-[400px] flex-1 flex-col gap-2.5 rounded-lg border-2 border-dashed p-2.5 transition-colors ${
+                className={`flex min-h-[200px] md:min-h-[400px] flex-1 flex-col gap-1.5 md:gap-2.5 rounded-lg border-2 border-dashed p-1 md:p-2.5 transition-colors ${
                   isOver ? "border-primary/40 bg-primary/5" : "border-transparent bg-secondary/30"
                 }`}
               >
@@ -308,77 +316,155 @@ export function PipelineClient({
                   const program = getProgram(entry)
                   const stageIdx = stages.findIndex((s) => s.id === entry.stage_id)
 
+                  const handleTouchStart = (e: React.TouchEvent) => {
+                    const touch = e.touches[0]
+                    touchStartPos.current = { x: touch.clientX, y: touch.clientY }
+                    touchTimerRef.current = setTimeout(() => {
+                      setTouchDragging(entry.id)
+                      setDraggedCard(entry.id)
+                    }, 500)
+                  }
+
+                  const handleTouchMove = (e: React.TouchEvent) => {
+                    if (touchTimerRef.current && touchStartPos.current) {
+                      const touch = e.touches[0]
+                      const dx = Math.abs(touch.clientX - touchStartPos.current.x)
+                      const dy = Math.abs(touch.clientY - touchStartPos.current.y)
+                      if (dx > 10 || dy > 10) {
+                        clearTimeout(touchTimerRef.current)
+                        touchTimerRef.current = null
+                      }
+                    }
+                    if (touchDragging === entry.id) {
+                      e.preventDefault()
+                      // Find which stage column we're over
+                      const touch = e.touches[0]
+                      const el = document.elementFromPoint(touch.clientX, touch.clientY)
+                      const stageCol = el?.closest("[data-stage-id]")
+                      if (stageCol) {
+                        const sid = stageCol.getAttribute("data-stage-id")
+                        if (sid) setDragOverStage(sid)
+                      }
+                    }
+                  }
+
+                  const handleTouchEnd = () => {
+                    if (touchTimerRef.current) {
+                      clearTimeout(touchTimerRef.current)
+                      touchTimerRef.current = null
+                      // It was a tap, open program detail
+                      if (program) {
+                        const fullProgram = programMap[program.id] || program
+                        openProgramDetail(fullProgram)
+                      }
+                    }
+                    if (touchDragging === entry.id && dragOverStage) {
+                      moveEntry(entry.id, dragOverStage)
+                    }
+                    setTouchDragging(null)
+                    setDraggedCard(null)
+                    setDragOverStage(null)
+                    touchStartPos.current = null
+                  }
+
                   return (
                     <div
                       key={entry.id}
                       draggable
                       onDragStart={(e) => handleDragStart(e, entry.id)}
                       onDragEnd={handleDragEnd}
-                      className={`group cursor-grab rounded-lg border bg-card p-3 shadow-sm transition-all hover:shadow-md active:cursor-grabbing ${
-                        draggedCard === entry.id ? "opacity-50" : ""
+                      onTouchStart={handleTouchStart}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
+                      className={`group cursor-grab rounded-lg border bg-card shadow-sm transition-all hover:shadow-md active:cursor-grabbing ${
+                        draggedCard === entry.id ? "opacity-50 ring-2 ring-primary" : ""
                       }`}
                     >
-                      <div className="flex items-start gap-2.5">
-                        <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/30 transition-colors group-hover:text-muted-foreground" />
-                        <button
-                          type="button"
-                          className="group/prog flex min-w-0 flex-1 items-start gap-2.5 text-left rounded-md -m-1.5 p-1.5 transition-all hover:bg-primary/5 hover:ring-1 hover:ring-primary/20"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (program) {
-                              const fullProgram = programMap[program.id] || program
-                              openProgramDetail(fullProgram)
-                            }
-                          }}
-                          title={program ? `View ${program.school_name} details` : undefined}
-                        >
-                        <ProgramLogo program={program} />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-foreground truncate transition-colors group-hover/prog:text-primary">
-                            {program?.school_name || "Unknown"}
-                          </p>
-                          {program?.division && (
-                            <p className="text-[11px] text-muted-foreground transition-colors group-hover/prog:text-primary/70">
-                              {program.division}{program.conference ? ` - ${program.conference}` : ""}
-                            </p>
-                          )}
-                          {entry.notes && (
-                            <p className="mt-1.5 rounded bg-secondary/80 px-2 py-1 text-[10px] text-muted-foreground">
-                              {entry.notes}
-                            </p>
+                      {/* Mobile: logo-only square */}
+                      <div
+                        className="flex md:hidden items-center justify-center p-1"
+                        onClick={() => {
+                          if (program) {
+                            const fullProgram = programMap[program.id] || program
+                            openProgramDetail(fullProgram)
+                          }
+                        }}
+                      >
+                        <div className="flex h-14 w-14 items-center justify-center">
+                          {program?.logo_url ? (
+                            <Image src={program.logo_url} alt={program.school_name || ""} width={44} height={44} className="object-contain" />
+                          ) : (
+                            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">
+                              {program?.school_name?.slice(0, 3).toUpperCase() || "???"}
+                            </div>
                           )}
                         </div>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeEntry(entry.id)}
-                          className="shrink-0 rounded p-0.5 text-muted-foreground/0 transition-colors hover:text-accent group-hover:text-muted-foreground/50"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
                       </div>
 
-                      <div className="mt-2 flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                        {stageIdx > 0 && (
+                      {/* Desktop: full card */}
+                      <div className="hidden md:block p-3">
+                        <div className="flex items-start gap-2.5">
+                          <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/30 transition-colors group-hover:text-muted-foreground" />
                           <button
                             type="button"
-                            onClick={() => moveCardDirection(entry.id, "left")}
-                            className="flex items-center rounded bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                            className="group/prog flex min-w-0 flex-1 items-start gap-2.5 text-left rounded-md -m-1.5 p-1.5 transition-all hover:bg-primary/5 hover:ring-1 hover:ring-primary/20"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (program) {
+                                const fullProgram = programMap[program.id] || program
+                                openProgramDetail(fullProgram)
+                              }
+                            }}
+                            title={program ? `View ${program.school_name} details` : undefined}
                           >
-                            <ArrowRight className="mr-0.5 h-3 w-3 rotate-180" />
-                            Back
+                          <ProgramLogo program={program} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-foreground truncate transition-colors group-hover/prog:text-primary">
+                              {program?.school_name || "Unknown"}
+                            </p>
+                            {program?.division && (
+                              <p className="text-[11px] text-muted-foreground transition-colors group-hover/prog:text-primary/70">
+                                {program.division}{program.conference ? ` - ${program.conference}` : ""}
+                              </p>
+                            )}
+                            {entry.notes && (
+                              <p className="mt-1.5 rounded bg-secondary/80 px-2 py-1 text-[10px] text-muted-foreground">
+                                {entry.notes}
+                              </p>
+                            )}
+                          </div>
                           </button>
-                        )}
-                        {stageIdx < stages.length - 1 && (
                           <button
                             type="button"
-                            onClick={() => moveCardDirection(entry.id, "right")}
-                            className="flex items-center rounded bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary transition-colors hover:bg-primary/20"
+                            onClick={() => removeEntry(entry.id)}
+                            className="shrink-0 rounded p-0.5 text-muted-foreground/0 transition-colors hover:text-accent group-hover:text-muted-foreground/50"
                           >
-                            Advance
-                            <ArrowRight className="ml-0.5 h-3 w-3" />
+                            <X className="h-3.5 w-3.5" />
                           </button>
-                        )}
+                        </div>
+
+                        <div className="mt-2 flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                          {stageIdx > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => moveCardDirection(entry.id, "left")}
+                              className="flex items-center rounded bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                            >
+                              <ArrowRight className="mr-0.5 h-3 w-3 rotate-180" />
+                              Back
+                            </button>
+                          )}
+                          {stageIdx < stages.length - 1 && (
+                            <button
+                              type="button"
+                              onClick={() => moveCardDirection(entry.id, "right")}
+                              className="flex items-center rounded bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary transition-colors hover:bg-primary/20"
+                            >
+                              Advance
+                              <ArrowRight className="ml-0.5 h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )
@@ -402,6 +488,8 @@ export function PipelineClient({
           coaches={programCoaches}
           onBack={closeProgramDetail}
           onSelectCoach={openCoachFromProgram}
+          pipelineProgramIds={entries.map(e => e.program_id)}
+          pipelineStages={stages}
         />
       )}
 

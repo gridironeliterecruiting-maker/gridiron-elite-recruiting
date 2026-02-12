@@ -14,9 +14,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Search, ArrowUpDown, Users, Building2, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, ArrowUpDown, Users, Building2, Loader2, ChevronLeft, ChevronRight, Plus } from "lucide-react"
 import { ProgramDetail } from "@/components/programs/program-detail"
 import { CoachDetail } from "@/components/programs/coach-detail"
+import { AddToPipelineDialog } from "@/components/programs/add-to-pipeline-dialog"
 
 const divisions = ["ALL", "FBS", "FCS", "DII", "DIII", "JUCO", "NAIA"] as const
 type Division = (typeof divisions)[number]
@@ -43,6 +44,12 @@ interface Coach {
   phone?: string | null
   twitter_handle: string | null
   twitter_dm_open: boolean
+}
+
+interface Stage {
+  id: string
+  name: string
+  display_order: number
 }
 
 type SortField = "school_name" | "division" | "conference" | "state"
@@ -91,10 +98,35 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
   const [coachTotal, setCoachTotal] = useState(0)
   const [coachPage, setCoachPage] = useState(0)
   const [coachLoading, setCoachLoading] = useState(false)
+
+  // Pipeline stages & entries for Add to Pipeline
+  const [pipelineStages, setPipelineStages] = useState<Stage[]>([])
+  const [pipelineProgramIds, setPipelineProgramIds] = useState<string[]>([])
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [addDialogProgram, setAddDialogProgram] = useState<Program | null>(null)
+
   const COACH_PAGE_SIZE = 50
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
   if (!supabaseRef.current) supabaseRef.current = createClient()
   const supabase = supabaseRef.current
+
+  // Fetch pipeline stages and existing pipeline program IDs
+  useEffect(() => {
+    const fetchPipelineData = async () => {
+      const [stagesRes, entriesRes] = await Promise.all([
+        supabase.from("pipeline_stages").select("id, name, display_order").order("display_order"),
+        supabase.from("pipeline_entries").select("program_id"),
+      ])
+      if (stagesRes.data) setPipelineStages(stagesRes.data)
+      if (entriesRes.data) setPipelineProgramIds(entriesRes.data.map((e: any) => e.program_id))
+    }
+    fetchPipelineData()
+  }, [supabase])
+
+  const refreshPipelineEntries = useCallback(async () => {
+    const { data } = await supabase.from("pipeline_entries").select("program_id")
+    if (data) setPipelineProgramIds(data.map((e: any) => e.program_id))
+  }, [supabase])
 
   const programMap = useMemo(() => {
     const map: Record<string, Program> = {}
@@ -129,10 +161,8 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
       .range(page * COACH_PAGE_SIZE, (page + 1) * COACH_PAGE_SIZE - 1)
 
     if (query) {
-      // Split query into words so "Kirk Ferentz" matches first_name=Kirk AND last_name=Ferentz
       const words = query.trim().split(/\s+/)
       if (words.length >= 2) {
-        // Multi-word: search as first+last name combo, or full string in title/email
         q = q.or(`and(first_name.ilike.%${words[0]}%,last_name.ilike.%${words.slice(1).join(" ")}%),title.ilike.%${query}%,email.ilike.%${query}%`)
       } else {
         q = q.or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,title.ilike.%${query}%`)
@@ -145,13 +175,9 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
       setCoachResults([])
       setCoachTotal(0)
     } else {
-      // If division filter, filter client-side (inner join filter doesn't work well with or())
       let filtered = data || []
       if (division && division !== "ALL") {
         filtered = filtered.filter((c: any) => c.programs?.division === division)
-      }
-      if (filtered.length === 0 && !query) {
-        console.error("No coaches returned even without search. Count:", count, "Data:", data?.length)
       }
       setCoachResults(filtered)
       setCoachTotal(division && division !== "ALL" ? filtered.length : (count || 0))
@@ -159,7 +185,6 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
     setCoachLoading(false)
   }, [supabase])
 
-  // Fetch coaches whenever view/filters/search change (debounced)
   useEffect(() => {
     if (viewMode !== "coaches") return
     const timer = setTimeout(() => {
@@ -201,6 +226,12 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
     setSelectedCoach(null)
     setCoachProgram(null)
     setProgramCoaches([])
+  }
+
+  const openAddDialog = (program: Program, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setAddDialogProgram(program)
+    setAddDialogOpen(true)
   }
 
   const filteredPrograms = useMemo(() => {
@@ -312,38 +343,54 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
               <TableHeader>
                 <TableRow className="bg-secondary/50 hover:bg-secondary/50">
                   <TableHead className="w-[300px]"><SortButton field="school_name">School</SortButton></TableHead>
+                  <TableHead><SortButton field="state">State</SortButton></TableHead>
                   <TableHead><SortButton field="division">Division</SortButton></TableHead>
                   <TableHead><SortButton field="conference">Conference</SortButton></TableHead>
-                  <TableHead><SortButton field="state">State</SortButton></TableHead>
+                  <TableHead className="w-[140px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPrograms.map((program) => (
-                  <TableRow
-                    key={program.id}
-                    className="group cursor-pointer transition-colors hover:bg-primary/[0.03]"
-                    onClick={() => openProgram(program)}
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <SchoolLogo school={program.school_name} logoUrl={program.logo_url} />
-                        <span className="text-sm font-semibold text-foreground group-hover:text-primary">
-                          {program.school_name}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={`${divisionColorMap[program.division] || "bg-secondary text-secondary-foreground"} rounded-md text-[10px] font-bold uppercase tracking-wider`}>
-                        {program.division}
-                      </Badge>
-                    </TableCell>
-                    <TableCell><span className="text-sm text-foreground">{program.conference}</span></TableCell>
-                    <TableCell><span className="text-sm text-muted-foreground">{program.state}</span></TableCell>
-                  </TableRow>
-                ))}
+                {filteredPrograms.map((program) => {
+                  const inPipeline = pipelineProgramIds.includes(program.id)
+                  return (
+                    <TableRow
+                      key={program.id}
+                      className="group cursor-pointer transition-colors hover:bg-primary/[0.03]"
+                      onClick={() => openProgram(program)}
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <SchoolLogo school={program.school_name} logoUrl={program.logo_url} />
+                          <span className="text-sm font-semibold text-foreground group-hover:text-primary">
+                            {program.school_name}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell><span className="text-sm text-muted-foreground">{program.state}</span></TableCell>
+                      <TableCell>
+                        <Badge className={`${divisionColorMap[program.division] || "bg-secondary text-secondary-foreground"} rounded-md text-[10px] font-bold uppercase tracking-wider`}>
+                          {program.division}
+                        </Badge>
+                      </TableCell>
+                      <TableCell><span className="text-sm text-foreground">{program.conference}</span></TableCell>
+                      <TableCell className="text-right">
+                        {!inPipeline && (
+                          <button
+                            type="button"
+                            onClick={(e) => openAddDialog(program, e)}
+                            className="invisible inline-flex items-center gap-1 rounded-md bg-accent px-2.5 py-1 text-[11px] font-semibold text-accent-foreground transition-all hover:bg-accent/90 group-hover:visible"
+                          >
+                            <Plus className="h-3 w-3" />
+                            Add Program
+                          </button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
                 {filteredPrograms.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-32 text-center">
+                    <TableCell colSpan={5} className="h-32 text-center">
                       <p className="text-sm text-muted-foreground">No programs found matching your filters.</p>
                     </TableCell>
                   </TableRow>
@@ -471,6 +518,9 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
           coaches={programCoaches}
           onBack={closeProgram}
           onSelectCoach={openCoachFromProgram}
+          pipelineProgramIds={pipelineProgramIds}
+          pipelineStages={pipelineStages}
+          onPipelineAdded={refreshPipelineEntries}
         />
       )}
 
@@ -491,6 +541,18 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
             <span className="text-sm font-medium text-foreground">Loading coaching staff...</span>
           </div>
         </div>
+      )}
+
+      {/* Add to Pipeline Dialog */}
+      {addDialogProgram && (
+        <AddToPipelineDialog
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          programId={addDialogProgram.id}
+          programName={addDialogProgram.school_name}
+          stages={pipelineStages}
+          onAdded={refreshPipelineEntries}
+        />
       )}
     </>
   )
