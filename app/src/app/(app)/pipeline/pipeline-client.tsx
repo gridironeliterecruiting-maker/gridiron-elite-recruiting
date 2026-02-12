@@ -299,8 +299,7 @@ export function PipelineClient({
             >
               <div className={`mb-2 md:mb-3 flex items-center justify-center md:justify-between rounded-lg border px-1.5 md:px-3 py-1.5 md:py-2.5 ${color}`}>
                 <span className="text-[8px] md:text-xs font-bold uppercase tracking-wider text-center md:text-left">
-                  <span className="hidden md:inline">{stage.name}</span>
-                  <span className="md:hidden">{["Contact", "Evaluation", "Interest", "Visit", "Offer"][idx] || stage.name}</span>
+                  {["Contact", "Evaluation", "Interest", "Visit", "Offer"][idx] || stage.name}
                 </span>
                 <Badge variant="secondary" className="hidden md:flex h-5 min-w-[20px] justify-center rounded-md px-1.5 text-[10px] font-bold">
                   {stageEntries.length}
