@@ -297,8 +297,8 @@ export function PipelineClient({
               onDragLeave={() => setDragOverStage(null)}
               onDrop={(e) => handleDrop(e, stage.id)}
             >
-              <div className={`mb-2 md:mb-3 flex items-center justify-between rounded-lg border px-1.5 md:px-3 py-1.5 md:py-2.5 ${color}`}>
-                <span className="text-[8px] md:text-xs font-bold uppercase tracking-wider">
+              <div className={`mb-2 md:mb-3 flex items-center justify-center md:justify-between rounded-lg border px-1.5 md:px-3 py-1.5 md:py-2.5 ${color}`}>
+                <span className="text-[8px] md:text-xs font-bold uppercase tracking-wider text-center md:text-left">
                   <span className="hidden md:inline">{stage.name}</span>
                   <span className="md:hidden">{["Contact", "Evaluation", "Interest", "Visit", "Offer"][idx] || stage.name}</span>
                 </span>
