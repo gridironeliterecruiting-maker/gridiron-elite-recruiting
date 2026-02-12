@@ -14,7 +14,9 @@ import {
   Calendar,
   BarChart3,
   Loader2,
+  Plus,
 } from "lucide-react"
+import { AddToPipelineDialog } from "@/components/programs/add-to-pipeline-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 
@@ -68,11 +70,20 @@ interface ESPNData {
   }
 }
 
+interface Stage {
+  id: string
+  name: string
+  display_order: number
+}
+
 interface ProgramDetailProps {
   program: Program
   coaches: Coach[]
   onBack: () => void
   onSelectCoach: (coach: Coach) => void
+  pipelineProgramIds?: string[]
+  pipelineStages?: Stage[]
+  onPipelineAdded?: () => void
 }
 
 function SchoolLogo({ school, logoUrl, size = 40 }: { school: string; logoUrl: string | null; size?: number }) {
@@ -107,10 +118,12 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(days / 30)}mo ago`
 }
 
-export function ProgramDetail({ program, coaches, onBack, onSelectCoach }: ProgramDetailProps) {
+export function ProgramDetail({ program, coaches, onBack, onSelectCoach, pipelineProgramIds, pipelineStages, onPipelineAdded }: ProgramDetailProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [espn, setEspn] = useState<ESPNData | null>(null)
   const [espnLoading, setEspnLoading] = useState(false)
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const showAddButton = pipelineProgramIds && pipelineStages && pipelineStages.length > 0 && !pipelineProgramIds.includes(program.id)
 
   useEffect(() => {
     containerRef.current?.scrollTo(0, 0)
@@ -152,7 +165,7 @@ export function ProgramDetail({ program, coaches, onBack, onSelectCoach }: Progr
             <ArrowLeft className="h-4 w-4" />
           </button>
 
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             <SchoolLogo school={program.school_name} logoUrl={program.logo_url} />
             <div>
               <h1 className="font-display text-lg font-bold uppercase tracking-tight text-foreground sm:text-xl">
@@ -174,6 +187,17 @@ export function ProgramDetail({ program, coaches, onBack, onSelectCoach }: Progr
               </div>
             </div>
           </div>
+
+          {showAddButton && (
+            <button
+              type="button"
+              onClick={() => setAddDialogOpen(true)}
+              className="inline-flex shrink-0 items-center gap-1 rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground transition-all hover:bg-accent/90"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add Program
+            </button>
+          )}
         </div>
       </div>
 
@@ -355,6 +379,17 @@ export function ProgramDetail({ program, coaches, onBack, onSelectCoach }: Progr
           </div>
         </div>
       </div>
+
+      {showAddButton && pipelineStages && (
+        <AddToPipelineDialog
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          programId={program.id}
+          programName={program.school_name}
+          stages={pipelineStages}
+          onAdded={onPipelineAdded}
+        />
+      )}
     </div>
   )
 }

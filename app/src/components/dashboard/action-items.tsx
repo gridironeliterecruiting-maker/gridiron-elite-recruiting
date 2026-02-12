@@ -39,7 +39,7 @@ export function ActionItems() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
             <ClipboardList className="h-4 w-4 text-primary" />
           </div>
-          <CardTitle className="text-base font-bold">Recent Action Items</CardTitle>
+          <CardTitle className="text-base font-bold">Action Items</CardTitle>
         </div>
         <Badge variant="secondary" className="text-xs font-medium">
           {emptyState ? "0" : sampleActions.length} pending
