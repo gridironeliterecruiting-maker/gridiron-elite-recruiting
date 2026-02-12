@@ -298,11 +298,11 @@ export function PipelineClient({
               onDrop={(e) => handleDrop(e, stage.id)}
             >
               <div className={`mb-2 md:mb-3 flex items-center justify-between rounded-lg border px-1.5 md:px-3 py-1.5 md:py-2.5 ${color}`}>
-                <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">
+                <span className="text-[8px] md:text-xs font-bold uppercase tracking-wider">
                   <span className="hidden md:inline">{stage.name}</span>
-                  <span className="md:hidden">{idx + 1}</span>
+                  <span className="md:hidden">{["Contact", "Eval", "Interest", "Visit", "Offer"][idx] || stage.name}</span>
                 </span>
-                <Badge variant="secondary" className="h-4 md:h-5 min-w-[16px] md:min-w-[20px] justify-center rounded-md px-1 md:px-1.5 text-[8px] md:text-[10px] font-bold">
+                <Badge variant="secondary" className="hidden md:flex h-5 min-w-[20px] justify-center rounded-md px-1.5 text-[10px] font-bold">
                   {stageEntries.length}
                 </Badge>
               </div>
