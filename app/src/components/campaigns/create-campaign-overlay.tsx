@@ -35,7 +35,7 @@ export function CreateCampaignOverlay({ onClose }: CreateCampaignOverlayProps) {
     <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[60] overflow-y-auto bg-background duration-300">
       {/* Header */}
       <div className="sticky top-0 z-10 border-b border-border bg-card shadow-sm">
-        <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-3 lg:px-8">
+        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 lg:px-8">
           <button
             type="button"
             onClick={onClose}
@@ -56,7 +56,7 @@ export function CreateCampaignOverlay({ onClose }: CreateCampaignOverlayProps) {
         </div>
 
         {/* Progress Tracker */}
-        <div className="mx-auto max-w-5xl px-4 pb-4 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 pb-4 lg:px-8">
           <div className="flex items-center gap-0">
             {STEPS.map((step, i) => (
               <div key={step.number} className="flex flex-1 items-center">
@@ -94,7 +94,7 @@ export function CreateCampaignOverlay({ onClose }: CreateCampaignOverlayProps) {
       </div>
 
       {/* Step Content */}
-      <div className="mx-auto max-w-5xl px-4 py-8 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
         {currentStep === 1 && (
           <GoalStep onSelect={handleGoalSelect} selected={draft.goal} />
         )}
