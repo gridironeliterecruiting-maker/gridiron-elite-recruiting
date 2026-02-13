@@ -12,7 +12,9 @@ import {
   Eye,
   Send,
   Inbox,
+  Plus,
 } from "lucide-react"
+import { CreateCampaignOverlay } from "@/components/campaigns/create-campaign-overlay"
 
 interface EmailTemplate {
   id: string
@@ -40,15 +42,30 @@ const categoryLabels: Record<string, string> = {
 
 export function OutreachClient({ templates }: { templates: EmailTemplate[] }) {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
+  const [showCreateCampaign, setShowCreateCampaign] = useState(false)
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
-          Outreach Center
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage templates and track your outreach</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
+            Outreach Center
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage templates and track your outreach</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowCreateCampaign(true)}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-all hover:bg-accent/90"
+        >
+          <Plus className="h-4 w-4" />
+          Create Campaign
+        </button>
       </div>
+
+      {showCreateCampaign && (
+        <CreateCampaignOverlay onClose={() => setShowCreateCampaign(false)} />
+      )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
