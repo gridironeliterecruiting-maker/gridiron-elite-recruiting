@@ -540,17 +540,19 @@ function CoachSelectionOverlay({
   onToggleCoach: (coach: Coach) => void
   onClose: () => void
 }) {
-  // Sort: selected coaches first, then auto-recommended, then rest
-  const sortedCoaches = useMemo(() => {
+  // Sort only once when overlay opens (snapshot of selections at open time)
+  const [initialSort] = useState(() => {
+    const selectedIds = new Set(selectedCoaches.map((sc) => sc.coachId))
     return [...coaches].sort((a, b) => {
-      const aSelected = selectedCoaches.some((sc) => sc.coachId === a.id) ? 0 : 1
-      const bSelected = selectedCoaches.some((sc) => sc.coachId === b.id) ? 0 : 1
+      const aSelected = selectedIds.has(a.id) ? 0 : 1
+      const bSelected = selectedIds.has(b.id) ? 0 : 1
       if (aSelected !== bSelected) return aSelected - bSelected
       const aRec = shouldAutoSelect(a.title, playerPosition) ? 0 : 1
       const bRec = shouldAutoSelect(b.title, playerPosition) ? 0 : 1
       return aRec - bRec
     })
-  }, [coaches, selectedCoaches, playerPosition])
+  })
+  const sortedCoaches = initialSort
 
   return (
     <div className="animate-in slide-in-from-right-8 fade-in fixed inset-y-0 right-0 z-[70] w-full max-w-md overflow-y-auto border-l border-border bg-background shadow-2xl duration-200">
