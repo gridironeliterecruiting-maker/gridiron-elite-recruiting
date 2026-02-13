@@ -320,7 +320,7 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
               onClick={() => setEditingIndex(index)}
               className="w-full text-left"
             >
-              <Card className="overflow-hidden transition-all group-hover:border-primary/30 group-hover:shadow-md">
+              <Card className="overflow-hidden transition-all group-hover:ring-1 group-hover:ring-primary/20 group-hover:shadow-sm">
                 <div className="flex items-start gap-4 p-4">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                     {index + 1}
@@ -330,13 +330,13 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold text-foreground">{template.name}</p>
                       {template.delayDays !== null && (
-                        <Badge className="border-0 bg-secondary text-[10px] font-semibold text-muted-foreground">
+                        <Badge className="border border-border bg-secondary text-[10px] font-semibold text-muted-foreground">
                           <Clock className="mr-1 h-2.5 w-2.5" />
                           after {template.delayDays} days
                         </Badge>
                       )}
                       {template.delayDays === null && index === 0 && (
-                        <Badge className="border-0 bg-primary/10 text-[10px] font-semibold text-primary">
+                        <Badge className="border border-primary/20 bg-primary/10 text-[10px] font-semibold text-primary">
                           First Email
                         </Badge>
                       )}
