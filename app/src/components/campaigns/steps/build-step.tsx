@@ -320,9 +320,10 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
         </button>
       </div>
 
-      {/* Template Editor Overlay */}
+      {/* Template Editor Overlay — key forces remount on index change */}
       {editingIndex !== null && (
         <TemplateEditorOverlay
+          key={editingIndex}
           template={templates[editingIndex]}
           index={editingIndex}
           onUpdate={(updates) => updateTemplate(editingIndex, updates)}
