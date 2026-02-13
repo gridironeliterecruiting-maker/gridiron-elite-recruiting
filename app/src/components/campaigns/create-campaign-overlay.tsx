@@ -4,6 +4,8 @@ import { useState } from "react"
 import { ArrowLeft, Mail, Check } from "lucide-react"
 import { GoalStep } from "./steps/goal-step"
 import { TargetStep } from "./steps/target-step"
+import { BuildStep } from "./steps/build-step"
+import type { EmailTemplate } from "./steps/build-step"
 
 export type CampaignGoal = "get_response" | "evaluate_film" | "build_interest" | "secure_visit"
 
@@ -19,6 +21,7 @@ interface SelectedCoach {
 export interface CampaignDraft {
   goal: CampaignGoal | null
   selectedCoaches: SelectedCoach[]
+  templates: EmailTemplate[]
 }
 
 interface Program {
@@ -44,7 +47,7 @@ interface CreateCampaignOverlayProps {
 
 export function CreateCampaignOverlay({ programs, playerPosition, onClose }: CreateCampaignOverlayProps) {
   const [currentStep, setCurrentStep] = useState(1)
-  const [draft, setDraft] = useState<CampaignDraft>({ goal: null, selectedCoaches: [] })
+  const [draft, setDraft] = useState<CampaignDraft>({ goal: null, selectedCoaches: [], templates: [] })
 
   const handleGoalSelect = (goal: CampaignGoal) => {
     setDraft((prev) => ({ ...prev, goal }))
@@ -130,15 +133,25 @@ export function CreateCampaignOverlay({ programs, playerPosition, onClose }: Cre
           />
         )}
 
-        {currentStep === 3 && (
+        {currentStep === 3 && draft.goal && (
+          <BuildStep
+            goal={draft.goal}
+            templates={draft.templates}
+            onTemplatesChange={(templates) => setDraft((prev) => ({ ...prev, templates }))}
+            onNext={() => setCurrentStep(4)}
+            onBack={() => setCurrentStep(2)}
+          />
+        )}
+
+        {currentStep === 4 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-sm text-muted-foreground">Step 3 — Build (coming soon)</p>
+            <p className="text-sm text-muted-foreground">Step 4 — Launch (coming next)</p>
             <button
               type="button"
-              onClick={() => setCurrentStep(2)}
+              onClick={() => setCurrentStep(3)}
               className="mt-4 rounded-md bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary/80"
             >
-              Back to Target
+              Back to Build
             </button>
           </div>
         )}
