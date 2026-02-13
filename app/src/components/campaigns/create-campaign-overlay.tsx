@@ -5,6 +5,7 @@ import { ArrowLeft, Mail, Check } from "lucide-react"
 import { GoalStep } from "./steps/goal-step"
 import { TargetStep } from "./steps/target-step"
 import { BuildStep } from "./steps/build-step"
+import { LaunchStep } from "./steps/launch-step"
 import type { EmailTemplate } from "./steps/build-step"
 
 export type CampaignGoal = "get_response" | "evaluate_film" | "build_interest" | "secure_visit"
@@ -153,17 +154,15 @@ export function CreateCampaignOverlay({ programs, playerPosition, onClose }: Cre
           />
         )}
 
-        {currentStep === 4 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-sm text-muted-foreground">Step 4 — Launch (coming next)</p>
-            <button
-              type="button"
-              onClick={() => setCurrentStep(3)}
-              className="mt-4 rounded-md bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary/80"
-            >
-              Back to Build
-            </button>
-          </div>
+        {currentStep === 4 && draft.goal && (
+          <LaunchStep
+            goal={draft.goal}
+            selectedCoaches={draft.selectedCoaches}
+            templates={draft.templates}
+            onEditTarget={() => setCurrentStep(2)}
+            onEditBuild={() => setCurrentStep(3)}
+            onBack={() => setCurrentStep(3)}
+          />
         )}
       </div>
     </div>
