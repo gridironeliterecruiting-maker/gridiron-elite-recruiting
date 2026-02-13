@@ -61,9 +61,9 @@ export function CreateCampaignOverlay({ programs, playerPosition, onClose }: Cre
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 lg:px-8">
           <button
             type="button"
-            onClick={currentStep === 1 ? onClose : () => setCurrentStep((s) => s - 1)}
+            onClick={onClose}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
-            aria-label={currentStep === 1 ? "Close" : "Back"}
+            aria-label="Close"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
@@ -81,37 +81,47 @@ export function CreateCampaignOverlay({ programs, playerPosition, onClose }: Cre
         {/* Progress Tracker */}
         <div className="mx-auto max-w-7xl px-4 pb-4 lg:px-8">
           <div className="flex items-center gap-0">
-            {STEPS.map((step, i) => (
-              <div key={step.number} className="flex flex-1 items-center">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${
-                      currentStep > step.number
-                        ? "bg-primary text-primary-foreground"
-                        : currentStep === step.number
-                          ? "bg-primary text-primary-foreground ring-2 ring-primary/30"
-                          : "bg-secondary text-muted-foreground"
+            {STEPS.map((step, i) => {
+              const canNavigate = step.number <= currentStep
+              return (
+                <div key={step.number} className="flex flex-1 items-center">
+                  <button
+                    type="button"
+                    disabled={!canNavigate}
+                    onClick={() => canNavigate && setCurrentStep(step.number)}
+                    className={`flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors ${
+                      canNavigate ? "cursor-pointer hover:bg-secondary/80" : "cursor-default"
                     }`}
                   >
-                    {currentStep > step.number ? <Check className="h-3.5 w-3.5" /> : step.number}
-                  </div>
-                  <span
-                    className={`text-xs font-semibold uppercase tracking-wider ${
-                      currentStep >= step.number ? "text-foreground" : "text-muted-foreground"
-                    }`}
-                  >
-                    {step.label}
-                  </span>
+                    <div
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                        currentStep > step.number
+                          ? "bg-primary text-primary-foreground"
+                          : currentStep === step.number
+                            ? "bg-primary text-primary-foreground ring-2 ring-primary/30"
+                            : "bg-secondary text-muted-foreground"
+                      }`}
+                    >
+                      {currentStep > step.number ? <Check className="h-3.5 w-3.5" /> : step.number}
+                    </div>
+                    <span
+                      className={`text-xs font-semibold uppercase tracking-wider ${
+                        currentStep >= step.number ? "text-foreground" : "text-muted-foreground"
+                      }`}
+                    >
+                      {step.label}
+                    </span>
+                  </button>
+                  {i < STEPS.length - 1 && (
+                    <div
+                      className={`mx-3 h-0.5 flex-1 rounded-full transition-colors ${
+                        currentStep > step.number ? "bg-primary" : "bg-border"
+                      }`}
+                    />
+                  )}
                 </div>
-                {i < STEPS.length - 1 && (
-                  <div
-                    className={`mx-3 h-0.5 flex-1 rounded-full transition-colors ${
-                      currentStep > step.number ? "bg-primary" : "bg-border"
-                    }`}
-                  />
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>
