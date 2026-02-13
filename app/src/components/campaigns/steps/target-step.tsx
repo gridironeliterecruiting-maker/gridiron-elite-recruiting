@@ -329,9 +329,10 @@ export function TargetStep({
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => {
-                    autoSelectProgram(p)
+                  onClick={async () => {
+                    await autoSelectProgram(p)
                     setSearchQuery("")
+                    openCoachOverlay(p)
                   }}
                   className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50"
                 >
