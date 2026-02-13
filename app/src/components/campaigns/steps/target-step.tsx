@@ -394,7 +394,7 @@ export function TargetStep({
                 {/* Show short name if available */}
                 {conf.match(/\(([^)]+)\)/)?.[1] || conf}
                 {count > 0 && (
-                  <Badge className="ml-1 h-4 min-w-[16px] rounded-full bg-primary px-1 text-[9px] text-primary-foreground">
+                  <Badge variant="outline" className="ml-1 h-4 min-w-[16px] rounded-full bg-primary px-1 text-[9px] text-primary-foreground">
                     {count}
                   </Badge>
                 )}
@@ -464,7 +464,7 @@ export function TargetStep({
                       </p>
                     </div>
                     {coachCount > 0 && (
-                      <Badge className="h-5 min-w-[20px] rounded-full bg-primary/10 px-1.5 text-[10px] font-bold text-primary">
+                      <Badge variant="outline" className="h-5 min-w-[20px] rounded-full bg-primary/10 px-1.5 text-[10px] font-bold text-primary">
                         {coachCount}
                       </Badge>
                     )}
@@ -630,7 +630,7 @@ function CoachSelectionOverlay({
                         {coach.first_name} {coach.last_name}
                       </p>
                       {isRecommended && (
-                        <Badge className="border-0 bg-primary/10 text-[9px] font-semibold text-primary">
+                        <Badge variant="outline" className="border-0 bg-primary/10 text-[9px] font-semibold text-primary">
                           Recommended
                         </Badge>
                       )}
