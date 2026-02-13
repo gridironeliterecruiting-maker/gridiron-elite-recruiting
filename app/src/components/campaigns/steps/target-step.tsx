@@ -488,11 +488,11 @@ export function TargetStep({
       )}
 
       {/* Navigation */}
-      <div className="mt-8 flex items-center justify-end gap-3 border-t border-border pt-6">
+      <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
         <button
           type="button"
           onClick={onBack}
-          className="text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+          className="rounded-md bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary/80"
         >
           Back
         </button>
