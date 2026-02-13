@@ -203,7 +203,7 @@ export function ProgramDetail({ program, coaches, onBack, onSelectCoach, pipelin
 
       {/* Content */}
       <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4">
           {/* Program Info Cards */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {program.city && (
@@ -257,76 +257,52 @@ export function ProgramDetail({ program, coaches, onBack, onSelectCoach, pipelin
             </Card>
           </div>
 
-          {/* ESPN Links + News Sidebar (desktop) */}
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
-            <div className="flex flex-col gap-4 lg:flex-1">
-              {/* ESPN Quick Links */}
-              {espn?.links && espn.links.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {espn.links.map((link) => (
-                    <a
-                      key={link.text}
-                      href={link.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
-                    >
-                      {link.text === "Roster" && <Users className="h-3 w-3" />}
-                      {link.text === "Schedule" && <Calendar className="h-3 w-3" />}
-                      {link.text === "Statistics" && <BarChart3 className="h-3 w-3" />}
-                      {link.text === "Clubhouse" && <Globe className="h-3 w-3" />}
-                      ESPN {link.text}
-                      <ExternalLink className="h-2.5 w-2.5" />
-                    </a>
-                  ))}
-                </div>
-              )}
+          {/* ESPN Quick Links + Inline News */}
+          <div className="flex flex-wrap items-center gap-2">
+            {espn?.links && espn.links.length > 0 && (
+              <>
+                {espn.links.map((link) => (
+                  <a
+                    key={link.text}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
+                  >
+                    {link.text === "Roster" && <Users className="h-3 w-3" />}
+                    {link.text === "Schedule" && <Calendar className="h-3 w-3" />}
+                    {link.text === "Statistics" && <BarChart3 className="h-3 w-3" />}
+                    {link.text === "Clubhouse" && <Globe className="h-3 w-3" />}
+                    ESPN {link.text}
+                    <ExternalLink className="h-2.5 w-2.5" />
+                  </a>
+                ))}
+              </>
+            )}
 
-              {espnLoading && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading program intel...
-                </div>
-              )}
-            </div>
-
-            {/* Compact News sidebar — desktop only */}
+            {/* Inline news links — desktop only, single line */}
             {espn?.news && espn.news.length > 0 && (
-              <div className="hidden lg:block lg:w-80 lg:shrink-0">
-                <h3 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <Newspaper className="h-3 w-3 text-primary" />
-                  Recent News
-                </h3>
-                <div className="flex flex-col gap-2">
-                  {espn.news.map((article, i) => (
-                    <a
-                      key={i}
-                      href={article.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex gap-3 rounded-lg border border-border bg-card p-2.5 transition-all hover:border-primary/30 hover:shadow-sm"
-                    >
-                      {article.image && (
-                        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-secondary">
-                          <Image
-                            src={article.image}
-                            alt={article.headline}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-foreground line-clamp-2 transition-colors group-hover:text-primary">
-                          {article.headline}
-                        </p>
-                        <span className="text-[10px] text-muted-foreground">
-                          {timeAgo(article.published)}
-                        </span>
-                      </div>
-                    </a>
-                  ))}
-                </div>
+              <>
+                <span className="hidden lg:inline text-muted-foreground/30">|</span>
+                {espn.news.slice(0, 2).map((article, i) => (
+                  <a
+                    key={i}
+                    href={article.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hidden lg:inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary max-w-[280px]"
+                  >
+                    <Newspaper className="h-3 w-3 shrink-0 text-primary" />
+                    <span className="truncate">{article.headline}</span>
+                  </a>
+                ))}
+              </>
+            )}
+
+            {espnLoading && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading...
               </div>
             )}
           </div>
