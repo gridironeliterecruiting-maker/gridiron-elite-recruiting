@@ -48,11 +48,17 @@ interface CreateCampaignOverlayProps {
 
 export function CreateCampaignOverlay({ programs, playerPosition, onClose }: CreateCampaignOverlayProps) {
   const [currentStep, setCurrentStep] = useState(1)
+  const [maxStepReached, setMaxStepReached] = useState(1)
   const [draft, setDraft] = useState<CampaignDraft>({ goal: null, selectedCoaches: [], templates: [] })
+
+  const goToStep = (step: number) => {
+    setCurrentStep(step)
+    setMaxStepReached((prev) => Math.max(prev, step))
+  }
 
   const handleGoalSelect = (goal: CampaignGoal) => {
     setDraft((prev) => ({ ...prev, goal }))
-    setCurrentStep(2)
+    goToStep(2)
   }
 
   return (
@@ -83,13 +89,13 @@ export function CreateCampaignOverlay({ programs, playerPosition, onClose }: Cre
         <div className="mx-auto max-w-7xl px-4 pb-4 lg:px-8">
           <div className="flex items-center gap-0">
             {STEPS.map((step, i) => {
-              const canNavigate = step.number <= currentStep
+              const canNavigate = step.number <= maxStepReached
               return (
                 <div key={step.number} className="flex flex-1 items-center">
                   <button
                     type="button"
                     disabled={!canNavigate}
-                    onClick={() => canNavigate && setCurrentStep(step.number)}
+                    onClick={() => canNavigate && goToStep(step.number)}
                     className={`flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors ${
                       canNavigate ? "cursor-pointer hover:bg-secondary/80" : "cursor-default"
                     }`}
@@ -139,8 +145,8 @@ export function CreateCampaignOverlay({ programs, playerPosition, onClose }: Cre
             playerPosition={playerPosition}
             selectedCoaches={draft.selectedCoaches}
             onCoachesChange={(coaches) => setDraft((prev) => ({ ...prev, selectedCoaches: coaches }))}
-            onNext={() => setCurrentStep(3)}
-            onBack={() => setCurrentStep(1)}
+            onNext={() => goToStep(3)}
+            onBack={() => goToStep(1)}
           />
         )}
 
@@ -149,8 +155,8 @@ export function CreateCampaignOverlay({ programs, playerPosition, onClose }: Cre
             goal={draft.goal}
             templates={draft.templates}
             onTemplatesChange={(templates) => setDraft((prev) => ({ ...prev, templates }))}
-            onNext={() => setCurrentStep(4)}
-            onBack={() => setCurrentStep(2)}
+            onNext={() => goToStep(4)}
+            onBack={() => goToStep(2)}
           />
         )}
 
@@ -159,9 +165,9 @@ export function CreateCampaignOverlay({ programs, playerPosition, onClose }: Cre
             goal={draft.goal}
             selectedCoaches={draft.selectedCoaches}
             templates={draft.templates}
-            onEditTarget={() => setCurrentStep(2)}
-            onEditBuild={() => setCurrentStep(3)}
-            onBack={() => setCurrentStep(3)}
+            onEditTarget={() => goToStep(2)}
+            onEditBuild={() => goToStep(3)}
+            onBack={() => goToStep(3)}
           />
         )}
       </div>
