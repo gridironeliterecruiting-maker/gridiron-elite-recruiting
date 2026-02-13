@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -46,21 +47,20 @@ export function OutreachClient({ templates }: { templates: EmailTemplate[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
             Outreach Center
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">Manage templates and track your outreach</p>
         </div>
-        <button
-          type="button"
+        <Button
           onClick={() => setShowCreateCampaign(true)}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-all hover:bg-accent/90"
+          className="bg-accent text-accent-foreground hover:bg-accent/90"
         >
           <Plus className="h-4 w-4" />
           Create Campaign
-        </button>
+        </Button>
       </div>
 
       {showCreateCampaign && (
