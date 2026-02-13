@@ -188,26 +188,50 @@ export function TargetStep({
     }
   }
 
-  // Auto-select coaches for a program
+  // Auto-select coaches for a single program
   const autoSelectProgram = async (program: Program) => {
     const coaches = await fetchCoaches(program.id)
     const autoSelected = coaches.filter((c) => shouldAutoSelect(c.title, playerPosition))
-    // If no auto-matches, select all coaches
     const toSelect = autoSelected.length > 0 ? autoSelected : coaches
 
-    const newSelections = toSelect
-      .filter((c) => !selectedCoaches.some((sc) => sc.coachId === c.id))
-      .map((c) => ({
-        coachId: c.id,
-        programId: program.id,
-        programName: program.school_name,
-        coachName: `${c.first_name} ${c.last_name}`,
-        title: c.title,
-        email: c.email,
-      }))
+    const newSelections = toSelect.map((c) => ({
+      coachId: c.id,
+      programId: program.id,
+      programName: program.school_name,
+      coachName: `${c.first_name} ${c.last_name}`,
+      title: c.title,
+      email: c.email,
+    }))
 
-    if (newSelections.length > 0) {
-      onCoachesChange([...selectedCoaches, ...newSelections])
+    // Use functional update to avoid stale closure
+    onCoachesChange([...selectedCoaches.filter((sc) => sc.programId !== program.id), ...newSelections])
+  }
+
+  // Batch auto-select for multiple programs (used by Select All)
+  const autoSelectPrograms = async (progs: Program[]) => {
+    const allNewSelections: SelectedCoach[] = []
+    const alreadySelectedProgramIds = new Set(selectedCoaches.map((sc) => sc.programId))
+
+    for (const p of progs) {
+      if (alreadySelectedProgramIds.has(p.id)) continue
+      const coaches = await fetchCoaches(p.id)
+      const autoSelected = coaches.filter((c) => shouldAutoSelect(c.title, playerPosition))
+      const toSelect = autoSelected.length > 0 ? autoSelected : coaches
+
+      for (const c of toSelect) {
+        allNewSelections.push({
+          coachId: c.id,
+          programId: p.id,
+          programName: p.school_name,
+          coachName: `${c.first_name} ${c.last_name}`,
+          title: c.title,
+          email: c.email,
+        })
+      }
+    }
+
+    if (allNewSelections.length > 0) {
+      onCoachesChange([...selectedCoaches, ...allNewSelections])
     }
   }
 
@@ -240,11 +264,7 @@ export function TargetStep({
   const selectAllConference = async (conference: string) => {
     if (!activeDivision) return
     const progs = divisionMap[activeDivision]?.[conference] || []
-    for (const p of progs) {
-      if (!programHasSelections(p.id)) {
-        await autoSelectProgram(p)
-      }
-    }
+    await autoSelectPrograms(progs)
   }
 
   // Open coach overlay for a program
@@ -281,6 +301,7 @@ export function TargetStep({
             onClick={() => {
               setActiveDivision(activeDivision === div ? null : div)
               setExpandedConference(null)
+              setCoachOverlayProgram(null)
             }}
             className={`rounded-md px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all ${
               activeDivision === div
@@ -342,8 +363,10 @@ export function TargetStep({
         <div className="mb-4 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => {
-              conferences.forEach((conf) => selectAllConference(conf))
+            onClick={async () => {
+              if (!activeDivision) return
+              const allProgs = conferences.flatMap((conf) => divisionMap[activeDivision]?.[conf] || [])
+              await autoSelectPrograms(allProgs)
             }}
             className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
           >
@@ -357,7 +380,10 @@ export function TargetStep({
               <button
                 key={conf}
                 type="button"
-                onClick={() => setExpandedConference(isExpanded ? null : conf)}
+                onClick={() => {
+                  setExpandedConference(isExpanded ? null : conf)
+                  setCoachOverlayProgram(null)
+                }}
                 className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition-all ${
                   isExpanded
                     ? "border-primary/30 bg-primary/5 text-primary"
