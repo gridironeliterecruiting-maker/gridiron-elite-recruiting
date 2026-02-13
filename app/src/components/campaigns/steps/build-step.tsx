@@ -330,13 +330,13 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold text-foreground">{template.name}</p>
                       {template.delayDays !== null && (
-                        <Badge className="border border-border bg-secondary text-[10px] font-semibold text-muted-foreground">
+                        <Badge variant="outline" className="border border-border bg-secondary text-[10px] font-semibold text-muted-foreground">
                           <Clock className="mr-1 h-2.5 w-2.5" />
                           after {template.delayDays} days
                         </Badge>
                       )}
                       {template.delayDays === null && index === 0 && (
-                        <Badge className="border border-primary/20 bg-primary/10 text-[10px] font-semibold text-primary">
+                        <Badge variant="outline" className="border border-primary/20 bg-primary/10 text-[10px] font-semibold text-primary">
                           First Email
                         </Badge>
                       )}
@@ -516,7 +516,7 @@ function AddTemplateOverlay({
                   </p>
                 </div>
                 {alreadyInSequence && (
-                  <Badge className="border-0 bg-secondary text-[9px] text-muted-foreground">
+                  <Badge variant="outline" className="border-0 bg-secondary text-[9px] text-muted-foreground">
                     Already added
                   </Badge>
                 )}
