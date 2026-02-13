@@ -3,12 +3,30 @@
 import { useState } from "react"
 import { ArrowLeft, Mail, Check } from "lucide-react"
 import { GoalStep } from "./steps/goal-step"
+import { TargetStep } from "./steps/target-step"
 
 export type CampaignGoal = "get_response" | "evaluate_film" | "build_interest" | "secure_visit"
 
+interface SelectedCoach {
+  coachId: string
+  programId: string
+  programName: string
+  coachName: string
+  title: string
+  email: string
+}
+
 export interface CampaignDraft {
   goal: CampaignGoal | null
-  // Future steps will add more fields here
+  selectedCoaches: SelectedCoach[]
+}
+
+interface Program {
+  id: string
+  school_name: string
+  division: string
+  conference: string
+  logo_url: string | null
 }
 
 const STEPS = [
@@ -19,12 +37,14 @@ const STEPS = [
 ] as const
 
 interface CreateCampaignOverlayProps {
+  programs: Program[]
+  playerPosition: string
   onClose: () => void
 }
 
-export function CreateCampaignOverlay({ onClose }: CreateCampaignOverlayProps) {
+export function CreateCampaignOverlay({ programs, playerPosition, onClose }: CreateCampaignOverlayProps) {
   const [currentStep, setCurrentStep] = useState(1)
-  const [draft, setDraft] = useState<CampaignDraft>({ goal: null })
+  const [draft, setDraft] = useState<CampaignDraft>({ goal: null, selectedCoaches: [] })
 
   const handleGoalSelect = (goal: CampaignGoal) => {
     setDraft((prev) => ({ ...prev, goal }))
@@ -38,9 +58,9 @@ export function CreateCampaignOverlay({ onClose }: CreateCampaignOverlayProps) {
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 lg:px-8">
           <button
             type="button"
-            onClick={onClose}
+            onClick={currentStep === 1 ? onClose : () => setCurrentStep((s) => s - 1)}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
-            aria-label="Close"
+            aria-label={currentStep === 1 ? "Close" : "Back"}
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
@@ -100,14 +120,25 @@ export function CreateCampaignOverlay({ onClose }: CreateCampaignOverlayProps) {
         )}
 
         {currentStep === 2 && (
+          <TargetStep
+            programs={programs}
+            playerPosition={playerPosition}
+            selectedCoaches={draft.selectedCoaches}
+            onCoachesChange={(coaches) => setDraft((prev) => ({ ...prev, selectedCoaches: coaches }))}
+            onNext={() => setCurrentStep(3)}
+            onBack={() => setCurrentStep(1)}
+          />
+        )}
+
+        {currentStep === 3 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-sm text-muted-foreground">Step 2 — Target (coming soon)</p>
+            <p className="text-sm text-muted-foreground">Step 3 — Build (coming soon)</p>
             <button
               type="button"
-              onClick={() => setCurrentStep(1)}
+              onClick={() => setCurrentStep(2)}
               className="mt-4 rounded-md bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary/80"
             >
-              Back to Goal
+              Back to Target
             </button>
           </div>
         )}
