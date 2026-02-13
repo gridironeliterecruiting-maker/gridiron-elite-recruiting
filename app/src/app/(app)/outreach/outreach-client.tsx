@@ -41,7 +41,15 @@ const categoryLabels: Record<string, string> = {
   "thank-you": "Thank You",
 }
 
-export function OutreachClient({ templates }: { templates: EmailTemplate[] }) {
+interface Program {
+  id: string
+  school_name: string
+  division: string
+  conference: string
+  logo_url: string | null
+}
+
+export function OutreachClient({ templates, programs, playerPosition }: { templates: EmailTemplate[]; programs: Program[]; playerPosition: string }) {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [showCreateCampaign, setShowCreateCampaign] = useState(false)
 
@@ -64,7 +72,11 @@ export function OutreachClient({ templates }: { templates: EmailTemplate[] }) {
       </div>
 
       {showCreateCampaign && (
-        <CreateCampaignOverlay onClose={() => setShowCreateCampaign(false)} />
+        <CreateCampaignOverlay
+          programs={programs}
+          playerPosition={playerPosition}
+          onClose={() => setShowCreateCampaign(false)}
+        />
       )}
 
       {/* Quick Stats */}
