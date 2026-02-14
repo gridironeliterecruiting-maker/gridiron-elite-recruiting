@@ -33,9 +33,17 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // IMPORTANT: Skip getUser() for /auth/callback to preserve PKCE code_verifier cookie.
+  // When stale session cookies exist, getUser() → _getSession() → refresh fails → catch block
+  // deletes the code_verifier cookie, causing exchangeCodeForSession to fail.
+  // This is the root cause of the "first login attempt fails, second works" bug.
+  const isAuthCallback = request.nextUrl.pathname.startsWith('/auth/callback')
+  
+  let user = null
+  if (!isAuthCallback) {
+    const { data: { user: sessionUser } } = await supabase.auth.getUser()
+    user = sessionUser
+  }
 
   // Helper: create a redirect that preserves Supabase auth cookies
   const redirectWithCookies = (pathname: string) => {
