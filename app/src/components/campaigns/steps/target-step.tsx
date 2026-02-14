@@ -532,8 +532,10 @@ export function TargetStep({
         </button>
       </div>
 
-      {/* Coach Overlay */}
+      {/* Coach Overlay with backdrop blur */}
       {coachOverlayProgram && (
+        <>
+        <div className="fixed inset-0 z-[65] bg-foreground/20 backdrop-blur-sm" onClick={() => setCoachOverlayProgram(null)} />
         <CoachSelectionOverlay
           program={coachOverlayProgram}
           coaches={programCoaches[coachOverlayProgram.id] || []}
@@ -543,6 +545,7 @@ export function TargetStep({
           onToggleCoach={(coach) => toggleCoach(coach, coachOverlayProgram)}
           onClose={() => setCoachOverlayProgram(null)}
         />
+        </>
       )}
     </div>
   )

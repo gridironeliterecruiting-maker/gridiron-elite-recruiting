@@ -406,8 +406,10 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
         </button>
       </div>
 
-      {/* Template Editor Overlay — key forces remount on index change */}
+      {/* Template Editor Overlay */}
       {editingIndex !== null && (
+        <>
+        <div className="fixed inset-0 z-[65] bg-foreground/20 backdrop-blur-sm" onClick={() => setEditingIndex(null)} />
         <TemplateEditorOverlay
           key={editingIndex}
           template={templates[editingIndex]}
@@ -415,15 +417,19 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
           onUpdate={(updates) => updateTemplate(editingIndex, updates)}
           onClose={() => setEditingIndex(null)}
         />
+        </>
       )}
 
       {/* Add Template Overlay */}
       {showAddOverlay && (
+        <>
+        <div className="fixed inset-0 z-[65] bg-foreground/20 backdrop-blur-sm" onClick={() => setShowAddOverlay(false)} />
         <AddTemplateOverlay
           existingNames={templates.map((t) => t.name)}
           onAdd={addTemplates}
           onClose={() => setShowAddOverlay(false)}
         />
+        </>
       )}
     </div>
   )
