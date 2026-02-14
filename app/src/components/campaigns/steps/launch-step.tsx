@@ -288,10 +288,14 @@ export function LaunchStep({
         <div className="mt-4 flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 p-4">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
           <div>
-            <p className="text-sm font-semibold text-green-800">Campaign Launched! 🚀</p>
-            <p className="mt-1 text-xs text-green-600">
-              Your emails are being scheduled and will be sent according to your account&apos;s pacing limits.
+            <p className="text-sm font-semibold text-green-800">
+              {launchNow ? "Your campaign is live! 🚀" : "Your campaign is scheduled! 🚀"}
             </p>
+            {selectedCoaches.length > 20 && (
+              <p className="mt-1 text-xs text-green-600">
+                Due to the number of recipients, emails will be paced according to your account&apos;s daily sending limits.
+              </p>
+            )}
           </div>
         </div>
       )}

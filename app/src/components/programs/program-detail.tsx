@@ -125,6 +125,14 @@ export function ProgramDetail({ program, coaches, onBack, onSelectCoach, pipelin
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const showAddButton = pipelineProgramIds && pipelineStages && pipelineStages.length > 0 && !pipelineProgramIds.includes(program.id)
 
+  // Lock body scroll when overlay is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [])
+
   useEffect(() => {
     containerRef.current?.scrollTo(0, 0)
   }, [program.id])
