@@ -26,12 +26,11 @@ import { ProgramDetail } from "@/components/programs/program-detail"
 import { CoachDetail } from "@/components/programs/coach-detail"
 
 const STAGE_COLORS = [
-  "bg-primary/10 border-primary/30 text-primary",
-  "bg-blue-50 border-blue-300 text-blue-700",
-  "bg-amber-50 border-amber-300 text-amber-700",
-  "bg-emerald-50 border-emerald-300 text-emerald-700",
-  "bg-purple-50 border-purple-300 text-purple-700",
-  "bg-accent/10 border-accent/30 text-accent",
+  "bg-[#0047AB]/10 border-[#0047AB]/30 text-[#0047AB]",
+  "bg-gray-100 border-gray-400 text-gray-700",
+  "bg-green-50 border-green-400 text-green-700",
+  "bg-orange-50 border-orange-400 text-orange-700",
+  "bg-red-50 border-red-400 text-red-700",
 ]
 
 interface Stage {
