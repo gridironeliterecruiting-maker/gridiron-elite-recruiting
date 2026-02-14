@@ -40,21 +40,23 @@ export default async function OutreachPage() {
       .select("id, campaign_id, status")
       .in("campaign_id", campaignIds)
 
-    // Get email events per campaign
+    // Get email events per campaign (include recipient_id for unique counting)
     const { data: events } = await supabase
       .from("email_events")
-      .select("campaign_id, event_type")
+      .select("campaign_id, recipient_id, event_type")
       .in("campaign_id", campaignIds)
 
     for (const cid of campaignIds) {
       const cRecipients = (recipients || []).filter((r) => r.campaign_id === cid)
       const cEvents = (events || []).filter((e) => e.campaign_id === cid)
 
-      // Count unique recipients per event type
+      // Count recipients by status
       const sentCount = cRecipients.filter((r) => ['sent', 'replied'].includes(r.status)).length
-      const openedCount = new Set(cEvents.filter((e) => e.event_type === 'opened').map((e) => e.campaign_id)).size > 0
-        ? cEvents.filter((e) => e.event_type === 'opened').length
-        : 0
+      // Count unique recipients who opened (not total open events)
+      const openedRecipientIds = new Set(
+        cEvents.filter((e) => e.event_type === 'opened').map((e) => e.recipient_id)
+      )
+      const openedCount = openedRecipientIds.size
       const repliedCount = cRecipients.filter((r) => r.status === 'replied').length
       const errorCount = cRecipients.filter((r) => ['bounced', 'error'].includes(r.status)).length
 

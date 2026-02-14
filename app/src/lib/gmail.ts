@@ -124,16 +124,32 @@ export async function getGmailAddress(accessToken: string): Promise<string> {
 
 /**
  * Replace merge tags in email templates
- * Tags use ((tag_name)) format
+ * Tags use ((tag_name)) format - also handles {{ }} for backwards compat
+ * Empty values are replaced with empty string (caller's template should handle gracefully)
  */
 export function resolveEmailMergeTags(
   template: string,
   data: Record<string, string>
 ): string {
-  return template.replace(/\(\(([^)]+)\)\)/g, (match, tag) => {
+  // Handle (( )) format (primary)
+  let result = template.replace(/\(\(([^)]+)\)\)/g, (_match, tag) => {
     const key = tag.trim().replace(/\s+/g, '_')
-    return data[key] ?? match
+    return data[key] ?? ''
   })
+
+  // Handle {{ }} format (backwards compat)
+  result = result.replace(/\{\{([^}]+)\}\}/g, (_match, tag) => {
+    const key = tag.trim().replace(/\s+/g, '_')
+    return data[key] ?? ''
+  })
+
+  // Clean up lines that are just a label with no value (e.g., "• GPA: \n")
+  result = result.replace(/^[•\-]\s*[A-Za-z\s]+:\s*$/gm, '')
+
+  // Clean up empty bullet points and double blank lines
+  result = result.replace(/\n{3,}/g, '\n\n')
+
+  return result
 }
 
 /**
