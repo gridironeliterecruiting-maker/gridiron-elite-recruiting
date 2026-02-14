@@ -46,7 +46,7 @@ const GOAL_TEMPLATES: Record<string, EmailTemplate[]> = {
   get_response: [
     {
       name: "Introduction Email",
-      subject: "((grad_year)) ((position)) – ((first_name)) ((last_name)), ((high_school)) ((city_state))",
+      subject: "((grad_year)) ((position)) - ((first_name)) ((last_name)), ((high_school)) ((city_state))",
       body: `Dear ((coach_name)),
 
 My name is ((first_name)) ((last_name)), and I'm a ((grad_year)) ((position)) at ((high_school)) in ((city_state)). I'm reaching out because I have a genuine interest in ((school_name)) and your football program.
@@ -68,7 +68,7 @@ Sincerely,
     },
     {
       name: "Follow Up 1",
-      subject: "Following Up – ((first_name)) ((last_name)), ((grad_year)) ((position))",
+      subject: "Following Up - ((first_name)) ((last_name)), ((grad_year)) ((position))",
       body: `Dear ((coach_name)),
 
 I wanted to follow up on my previous email. I'm still very interested in ((school_name)) and would welcome any opportunity to connect with you about your program.
@@ -85,7 +85,7 @@ Best regards,
     },
     {
       name: "Follow Up 2",
-      subject: "Quick Update – ((first_name)) ((last_name)), ((grad_year)) ((position))",
+      subject: "Quick Update - ((first_name)) ((last_name)), ((grad_year)) ((position))",
       body: `Dear ((coach_name)),
 
 I hope your season preparation is going well. I wanted to send a quick update and reiterate my interest in ((school_name)).
@@ -100,7 +100,7 @@ Thank you,
     },
     {
       name: "Final Follow Up",
-      subject: "Last Check-In – ((first_name)) ((last_name)), ((grad_year)) ((position))",
+      subject: "Last Check-In - ((first_name)) ((last_name)), ((grad_year)) ((position))",
       body: `Dear ((coach_name)),
 
 I know your inbox is full, so I'll keep this brief. I remain very interested in ((school_name)) and wanted to reach out one final time.
@@ -122,7 +122,7 @@ Respectfully,
   evaluate_film: [
     {
       name: "Film Review Request",
-      subject: "Film for Review – ((first_name)) ((last_name)), ((grad_year)) ((position))",
+      subject: "Film for Review - ((first_name)) ((last_name)), ((grad_year)) ((position))",
       body: `Dear ((coach_name)),
 
 Thank you for your previous communication. I've put together my latest highlight film and would be grateful if you could take a few minutes to evaluate it.
@@ -140,7 +140,7 @@ Thank you for your time,
     },
     {
       name: "Film Follow Up",
-      subject: "Following Up on Film – ((first_name)) ((last_name))",
+      subject: "Following Up on Film - ((first_name)) ((last_name))",
       body: `Dear ((coach_name)),
 
 I wanted to check in to see if you've had a chance to review my film: ((hudl_url))
@@ -157,7 +157,7 @@ Best,
   build_interest: [
     {
       name: "My Story",
-      subject: "More About Me – ((first_name)) ((last_name)), ((grad_year)) ((position))",
+      subject: "More About Me - ((first_name)) ((last_name)), ((grad_year)) ((position))",
       body: `Dear ((coach_name)),
 
 I wanted to share a bit more about who I am beyond the stats and film.
@@ -174,7 +174,7 @@ Thank you,
     },
     {
       name: "Interest Builder Follow Up",
-      subject: "Continued Interest in ((school_name)) – ((first_name)) ((last_name))",
+      subject: "Continued Interest in ((school_name)) - ((first_name)) ((last_name))",
       body: `Dear ((coach_name)),
 
 I continue to be very impressed with ((school_name)) and your program's direction. I'd love any opportunity to connect — whether a phone call, video chat, or an upcoming camp or visit.
@@ -189,7 +189,7 @@ Best regards,
   secure_visit: [
     {
       name: "Visit Request",
-      subject: "Visit Inquiry – ((first_name)) ((last_name)), ((grad_year)) ((position))",
+      subject: "Visit Inquiry - ((first_name)) ((last_name)), ((grad_year)) ((position))",
       body: `Dear ((coach_name)),
 
 I've really enjoyed getting to know more about ((school_name)) and your program. I'd love to take the next step and visit campus if possible.
@@ -206,7 +206,7 @@ Best,
     },
     {
       name: "Visit Follow Up",
-      subject: "Following Up on Visit – ((first_name)) ((last_name))",
+      subject: "Following Up on Visit - ((first_name)) ((last_name))",
       body: `Dear ((coach_name)),
 
 I wanted to follow up on my visit request. I'm flexible on dates and happy to work around your schedule. Visiting ((school_name)) is a priority for me and my family.
