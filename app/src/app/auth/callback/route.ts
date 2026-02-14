@@ -40,6 +40,19 @@ export async function GET(request: Request) {
       }
       return response
     }
+    
+    // Debug: log the error so we can see what's failing
+    console.error('[auth/callback] exchangeCodeForSession error:', error.message, error)
+    
+    // Debug: check what cookies were available
+    const allCookies = cookieStore.getAll()
+    const codeVerifierCookie = allCookies.find(c => c.name.includes('code-verifier') || c.name.includes('code_verifier'))
+    console.error('[auth/callback] code_verifier cookie present:', !!codeVerifierCookie, 'all cookies:', allCookies.map(c => c.name))
+  }
+
+  // Debug: log if no code was present
+  if (!code) {
+    console.error('[auth/callback] No code in URL params. searchParams:', Object.fromEntries(searchParams.entries()))
   }
 
   return NextResponse.redirect(new URL('/login', appUrl).toString())
