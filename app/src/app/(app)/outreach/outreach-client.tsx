@@ -1,19 +1,28 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
   Mail,
   FileText,
-  Clock,
   ChevronRight,
   Copy,
   Eye,
   Send,
   Inbox,
   Plus,
+  CheckCircle2,
+  AlertCircle,
+  Play,
+  Pause,
+  Users,
+  MailOpen,
+  Reply,
+  XCircle,
+  Loader2,
 } from "lucide-react"
 import { CreateCampaignOverlay } from "@/components/campaigns/create-campaign-overlay"
 
@@ -23,6 +32,32 @@ interface EmailTemplate {
   subject: string
   category: string
   body?: string
+}
+
+interface Program {
+  id: string
+  school_name: string
+  division: string
+  conference: string
+  logo_url: string | null
+}
+
+interface CampaignStats {
+  total: number
+  sent: number
+  opened: number
+  replied: number
+  error: number
+}
+
+interface Campaign {
+  id: string
+  name: string
+  goal: string
+  status: string
+  scheduled_at: string | null
+  created_at: string
+  stats: CampaignStats
 }
 
 const categoryColors: Record<string, string> = {
@@ -41,26 +76,93 @@ const categoryLabels: Record<string, string> = {
   "thank-you": "Thank You",
 }
 
-interface Program {
-  id: string
-  school_name: string
-  division: string
-  conference: string
-  logo_url: string | null
+const statusColors: Record<string, string> = {
+  draft: "bg-gray-100 text-gray-700",
+  active: "bg-emerald-100 text-emerald-700",
+  paused: "bg-amber-100 text-amber-700",
+  completed: "bg-blue-100 text-blue-700",
+  cancelled: "bg-red-100 text-red-700",
 }
 
-export function OutreachClient({ templates, programs, playerPosition }: { templates: EmailTemplate[]; programs: Program[]; playerPosition: string }) {
+const goalLabels: Record<string, string> = {
+  get_response: "Get Response",
+  evaluate_film: "Film Evaluation",
+  build_interest: "Build Interest",
+  secure_visit: "Secure Visit",
+}
+
+interface OutreachClientProps {
+  templates: EmailTemplate[]
+  programs: Program[]
+  playerPosition: string
+  gmailConnected: boolean
+  gmailEmail: string | null
+  gmailTier: string | null
+  campaigns: Campaign[]
+}
+
+export function OutreachClient({
+  templates,
+  programs,
+  playerPosition,
+  gmailConnected,
+  gmailEmail,
+  gmailTier,
+  campaigns,
+}: OutreachClientProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [showCreateCampaign, setShowCreateCampaign] = useState(false)
+  const [connectingGmail, setConnectingGmail] = useState(false)
+  const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+  const gmailStatus = searchParams.get("gmail")
+
+  const handleConnectGmail = async () => {
+    setConnectingGmail(true)
+    try {
+      const res = await fetch("/api/gmail/authorize")
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      }
+    } catch (err) {
+      console.error("Failed to start Gmail auth:", err)
+      setConnectingGmail(false)
+    }
+  }
+
+  const handleToggleCampaign = async (campaignId: string, newStatus: string) => {
+    setTogglingCampaign(campaignId)
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (res.ok) {
+        window.location.reload()
+      }
+    } catch (err) {
+      console.error("Failed to toggle campaign:", err)
+    } finally {
+      setTogglingCampaign(null)
+    }
+  }
+
+  // Aggregate stats
+  const totalSent = campaigns.reduce((sum, c) => sum + c.stats.sent, 0)
+  const totalOpened = campaigns.reduce((sum, c) => sum + c.stats.opened, 0)
+  const totalReplied = campaigns.reduce((sum, c) => sum + c.stats.replied, 0)
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
             Outreach Center
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage templates and track your outreach</p>
+          <p className="mt-1 text-sm text-muted-foreground">Manage campaigns, templates, and track your outreach</p>
         </div>
         <Button
           onClick={() => setShowCreateCampaign(true)}
@@ -79,13 +181,65 @@ export function OutreachClient({ templates, programs, playerPosition }: { templa
         />
       )}
 
+      {/* Gmail Connection Status */}
+      {gmailConnected ? (
+        <Card className="border-emerald-200 bg-emerald-50/50">
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-emerald-900">Gmail Connected</p>
+              <p className="text-xs text-emerald-700">{gmailEmail} · {gmailTier ? `${gmailTier} tier` : "connected"}</p>
+            </div>
+            {gmailStatus === "connected" && (
+              <Badge className="bg-emerald-100 text-emerald-700 border-0">Just connected ✓</Badge>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-amber-200 bg-amber-50/50">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+              <AlertCircle className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900">Connect Gmail to Send Emails</p>
+              <p className="text-xs text-amber-700">
+                Link your Gmail account to start sending outreach campaigns to coaches.
+              </p>
+            </div>
+            <Button
+              onClick={handleConnectGmail}
+              disabled={connectingGmail}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {connectingGmail ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4" />
+                  Connect Gmail
+                </>
+              )}
+            </Button>
+            {gmailStatus === "error" && (
+              <p className="text-xs text-red-600">Connection failed. Please try again.</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Quick Stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
           { label: "Templates", value: templates.length, icon: FileText, color: "primary" },
-          { label: "Total Sent", value: 0, icon: Send, color: "accent" },
-          { label: "Opened", value: 0, icon: Eye, color: "primary" },
-          { label: "Replied", value: 0, icon: Mail, color: "primary" },
+          { label: "Total Sent", value: totalSent, icon: Send, color: "accent" },
+          { label: "Opened", value: totalOpened, icon: MailOpen, color: "primary" },
+          { label: "Replied", value: totalReplied, icon: Reply, color: "primary" },
         ].map((stat) => (
           <Card key={stat.label} className="relative overflow-hidden">
             <div className={`absolute inset-x-0 top-0 h-0.5 ${stat.color === "accent" ? "bg-accent" : "bg-primary"}`} />
@@ -102,9 +256,121 @@ export function OutreachClient({ templates, programs, playerPosition }: { templa
         ))}
       </div>
 
-      {/* Main Content */}
+      {/* Campaigns Section */}
+      <Card>
+        <CardHeader className="flex-row items-center justify-between pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10">
+              <Send className="h-4 w-4 text-accent" />
+            </div>
+            <CardTitle className="text-base font-bold">Campaigns</CardTitle>
+            <Badge variant="secondary" className="text-xs">
+              {campaigns.length} total
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {campaigns.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary">
+                <Inbox className="h-7 w-7 text-muted-foreground/40" />
+              </div>
+              <p className="mt-4 text-sm font-semibold text-foreground">No campaigns yet</p>
+              <p className="mt-1 max-w-[280px] text-xs text-muted-foreground">
+                Create your first email campaign to start reaching out to college coaches.
+              </p>
+              <Button
+                onClick={() => setShowCreateCampaign(true)}
+                className="mt-4 bg-accent text-accent-foreground hover:bg-accent/90"
+                size="sm"
+              >
+                <Plus className="h-4 w-4" />
+                Create First Campaign
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {campaigns.map((campaign) => (
+                <div
+                  key={campaign.id}
+                  className="rounded-lg border border-border bg-secondary/30 p-4 transition-all hover:bg-secondary/50 hover:shadow-sm"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-sm font-semibold text-foreground">{campaign.name}</h3>
+                        <Badge className={`${statusColors[campaign.status] || statusColors.draft} border-0 text-[10px] font-semibold`}>
+                          {campaign.status}
+                        </Badge>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {goalLabels[campaign.goal] || campaign.goal} · Created {new Date(campaign.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </p>
+                    </div>
+                    {(campaign.status === "active" || campaign.status === "paused") && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={togglingCampaign === campaign.id}
+                        onClick={() =>
+                          handleToggleCampaign(
+                            campaign.id,
+                            campaign.status === "active" ? "paused" : "active"
+                          )
+                        }
+                        className="shrink-0"
+                      >
+                        {togglingCampaign === campaign.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : campaign.status === "active" ? (
+                          <>
+                            <Pause className="h-3.5 w-3.5" />
+                            Pause
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-3.5 w-3.5" />
+                            Resume
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Stats row */}
+                  <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-border/50 pt-3">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Users className="h-3.5 w-3.5" />
+                      <span className="font-medium">{campaign.stats.total}</span> recipients
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Send className="h-3.5 w-3.5" />
+                      <span className="font-medium">{campaign.stats.sent}</span> sent
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <MailOpen className="h-3.5 w-3.5" />
+                      <span className="font-medium">{campaign.stats.opened}</span> opened
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Reply className="h-3.5 w-3.5" />
+                      <span className="font-medium">{campaign.stats.replied}</span> replied
+                    </div>
+                    {campaign.stats.error > 0 && (
+                      <div className="flex items-center gap-1.5 text-xs text-red-500">
+                        <XCircle className="h-3.5 w-3.5" />
+                        <span className="font-medium">{campaign.stats.error}</span> errors
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Email Templates */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-        {/* Email Templates */}
         <div className="lg:col-span-3">
           <Card>
             <CardHeader className="flex-row items-center gap-2.5 pb-4">
@@ -191,7 +457,7 @@ export function OutreachClient({ templates, programs, playerPosition }: { templa
           </Card>
         </div>
 
-        {/* Recent Sends */}
+        {/* Recent Activity */}
         <div className="lg:col-span-2">
           <Card className="flex flex-col">
             <CardHeader className="flex-row items-center gap-2.5 pb-4">
@@ -201,15 +467,23 @@ export function OutreachClient({ templates, programs, playerPosition }: { templa
               <CardTitle className="text-base font-bold">Recent Sends</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 pt-0">
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary">
-                  <Inbox className="h-7 w-7 text-muted-foreground/40" />
+              {totalSent > 0 ? (
+                <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                  <p>{totalSent} emails sent across {campaigns.filter(c => c.stats.sent > 0).length} campaigns</p>
                 </div>
-                <p className="mt-4 text-sm font-semibold text-foreground">No outreach sent yet</p>
-                <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">
-                  Start sending outreach to coaches using your templates.
-                </p>
-              </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary">
+                    <Inbox className="h-7 w-7 text-muted-foreground/40" />
+                  </div>
+                  <p className="mt-4 text-sm font-semibold text-foreground">No outreach sent yet</p>
+                  <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">
+                    {gmailConnected
+                      ? "Create a campaign to start sending outreach."
+                      : "Connect Gmail first, then create a campaign."}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
