@@ -10,6 +10,7 @@ export async function GET(request: Request) {
 
   if (code) {
     const cookieStore = await cookies()
+    const allCookiesBefore = cookieStore.getAll()
     const pendingCookies: { name: string; value: string; options: Record<string, unknown> }[] = []
 
     const supabase = createServerClient(
@@ -41,19 +42,21 @@ export async function GET(request: Request) {
       return response
     }
     
-    // Debug: log the error so we can see what's failing
-    console.error('[auth/callback] exchangeCodeForSession error:', error.message, error)
-    
-    // Debug: check what cookies were available
-    const allCookies = cookieStore.getAll()
-    const codeVerifierCookie = allCookies.find(c => c.name.includes('code-verifier') || c.name.includes('code_verifier'))
-    console.error('[auth/callback] code_verifier cookie present:', !!codeVerifierCookie, 'all cookies:', allCookies.map(c => c.name))
+    // DEBUG: redirect to login with error details visible in URL
+    const debugUrl = new URL('/login', appUrl)
+    debugUrl.searchParams.set('auth_debug', 'true')
+    debugUrl.searchParams.set('error', error.message || 'unknown')
+    debugUrl.searchParams.set('error_code', error.code || 'none')
+    debugUrl.searchParams.set('has_code', 'true')
+    debugUrl.searchParams.set('cookies', allCookiesBefore.map(c => c.name).join(','))
+    debugUrl.searchParams.set('has_verifier', String(allCookiesBefore.some(c => c.name.includes('code-verifier') || c.name.includes('code_verifier'))))
+    return NextResponse.redirect(debugUrl.toString())
   }
 
-  // Debug: log if no code was present
-  if (!code) {
-    console.error('[auth/callback] No code in URL params. searchParams:', Object.fromEntries(searchParams.entries()))
-  }
-
-  return NextResponse.redirect(new URL('/login', appUrl).toString())
+  // No code — redirect with debug info
+  const debugUrl = new URL('/login', appUrl)
+  debugUrl.searchParams.set('auth_debug', 'true')
+  debugUrl.searchParams.set('error', 'no_code')
+  debugUrl.searchParams.set('params', [...searchParams.keys()].join(','))
+  return NextResponse.redirect(debugUrl.toString())
 }
