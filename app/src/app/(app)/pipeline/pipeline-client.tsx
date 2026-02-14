@@ -254,7 +254,7 @@ export function PipelineClient({
                 <label className="text-sm font-medium text-foreground">Program</label>
                 <Select value={selectedProgram} onValueChange={setSelectedProgram}>
                   <SelectTrigger><SelectValue placeholder="Select a program" /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[200] max-h-60">
                     {allPrograms.map((p) => (
                       <SelectItem key={p.id} value={p.id}>{p.school_name}</SelectItem>
                     ))}
@@ -265,7 +265,7 @@ export function PipelineClient({
                 <label className="text-sm font-medium text-foreground">Starting Stage</label>
                 <Select value={selectedStage} onValueChange={setSelectedStage}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[200]">
                     {stages.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
