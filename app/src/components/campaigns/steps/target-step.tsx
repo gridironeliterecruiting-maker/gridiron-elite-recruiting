@@ -279,10 +279,16 @@ export function TargetStep({
   }
 
   // Select all programs in a conference
+  const [confSelectLoading, setConfSelectLoading] = useState(false)
   const selectAllConference = async (conference: string) => {
     if (!activeDivision) return
-    const progs = divisionMap[activeDivision]?.[conference] || []
-    await autoSelectPrograms(progs)
+    setConfSelectLoading(true)
+    try {
+      const progs = divisionMap[activeDivision]?.[conference] || []
+      await autoSelectPrograms(progs)
+    } finally {
+      setConfSelectLoading(false)
+    }
   }
 
   // Open coach overlay for a program
@@ -439,10 +445,12 @@ export function TargetStep({
             </span>
             <button
               type="button"
+              disabled={confSelectLoading}
               onClick={() => selectAllConference(expandedConference)}
-              className="text-[10px] font-semibold text-primary hover:underline"
+              className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary hover:underline disabled:opacity-60"
             >
-              Select All
+              {confSelectLoading && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
+              {confSelectLoading ? "Selecting..." : "Select All"}
             </button>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
