@@ -255,7 +255,7 @@ export async function GET(request: Request) {
             .join('\n')
 
           // Add tracking
-          htmlBody = addUnsubscribeFooter(htmlBody, recipient.coach_email, recipient.campaign_id)
+          // Unsubscribe footer removed — these are personal recruiting emails, not marketing
           htmlBody = wrapLinksForTracking(htmlBody, recipient.id, recipient.campaign_id)
           htmlBody = addTrackingPixel(htmlBody, recipient.id, recipient.campaign_id)
 
