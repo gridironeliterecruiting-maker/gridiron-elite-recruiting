@@ -93,6 +93,11 @@ const divisionColorMap: Record<string, string> = {
   NAIA: "bg-accent/80 text-accent-foreground",
 }
 
+interface NavState {
+  activeDivision: string | null
+  expandedConference: string | null
+}
+
 interface TargetStepProps {
   programs: Program[]
   playerPosition: string
@@ -100,6 +105,8 @@ interface TargetStepProps {
   onCoachesChange: (coaches: SelectedCoach[]) => void
   onNext: () => void
   onBack: () => void
+  initialNavState?: NavState
+  onNavStateChange?: (state: NavState) => void
 }
 
 export function TargetStep({
@@ -109,13 +116,26 @@ export function TargetStep({
   onCoachesChange,
   onNext,
   onBack,
+  initialNavState,
+  onNavStateChange,
 }: TargetStepProps) {
-  const [activeDivision, setActiveDivision] = useState<string | null>(null)
-  const [expandedConference, setExpandedConference] = useState<string | null>(null)
+  const [activeDivision, setActiveDivisionRaw] = useState<string | null>(initialNavState?.activeDivision ?? null)
+  const [expandedConference, setExpandedConferenceRaw] = useState<string | null>(initialNavState?.expandedConference ?? null)
   const [coachOverlayProgram, setCoachOverlayProgram] = useState<Program | null>(null)
   const [programCoaches, setProgramCoaches] = useState<Record<string, Coach[]>>({})
   const [loadingCoaches, setLoadingCoaches] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectAllLoading, setSelectAllLoading] = useState(false)
+
+  // Wrappers that also persist nav state to parent
+  const setActiveDivision = (val: string | null) => {
+    setActiveDivisionRaw(val)
+    onNavStateChange?.({ activeDivision: val, expandedConference: null })
+  }
+  const setExpandedConference = (val: string | null) => {
+    setExpandedConferenceRaw(val)
+    onNavStateChange?.({ activeDivision, expandedConference: val })
+  }
 
   // Group programs by division → conference
   const divisionMap = useMemo(() => {
@@ -188,13 +208,12 @@ export function TargetStep({
     }
   }
 
-  // Auto-select coaches for a single program
+  // Auto-select coaches for a single program (recruiting coordinators + position coaches only)
   const autoSelectProgram = async (program: Program) => {
     const coaches = await fetchCoaches(program.id)
     const autoSelected = coaches.filter((c) => shouldAutoSelect(c.title, playerPosition))
-    const toSelect = autoSelected.length > 0 ? autoSelected : coaches
 
-    const newSelections = toSelect.map((c) => ({
+    const newSelections = autoSelected.map((c) => ({
       coachId: c.id,
       programId: program.id,
       programName: program.school_name,
@@ -216,9 +235,8 @@ export function TargetStep({
       if (alreadySelectedProgramIds.has(p.id)) continue
       const coaches = await fetchCoaches(p.id)
       const autoSelected = coaches.filter((c) => shouldAutoSelect(c.title, playerPosition))
-      const toSelect = autoSelected.length > 0 ? autoSelected : coaches
 
-      for (const c of toSelect) {
+      for (const c of autoSelected) {
         allNewSelections.push({
           coachId: c.id,
           programId: p.id,
@@ -364,14 +382,21 @@ export function TargetStep({
         <div className="mb-4 flex flex-wrap gap-2">
           <button
             type="button"
+            disabled={selectAllLoading}
             onClick={async () => {
               if (!activeDivision) return
-              const allProgs = conferences.flatMap((conf) => divisionMap[activeDivision]?.[conf] || [])
-              await autoSelectPrograms(allProgs)
+              setSelectAllLoading(true)
+              try {
+                const allProgs = conferences.flatMap((conf) => divisionMap[activeDivision]?.[conf] || [])
+                await autoSelectPrograms(allProgs)
+              } finally {
+                setSelectAllLoading(false)
+              }
             }}
-            className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
+            className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-60"
           >
-            Select All
+            {selectAllLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+            {selectAllLoading ? "Selecting..." : "Select All"}
           </button>
           {conferences.map((conf) => {
             const countKey = `${activeDivision}:${conf}`

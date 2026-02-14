@@ -51,6 +51,17 @@ export function CreateCampaignOverlay({ programs, playerPosition, onClose }: Cre
   const [maxStepReached, setMaxStepReached] = useState(1)
   const [draft, setDraft] = useState<CampaignDraft>({ goal: null, selectedCoaches: [], templates: [] })
 
+  // Target step navigation state persistence
+  const [targetNavState, setTargetNavState] = useState<{
+    activeDivision: string | null
+    expandedConference: string | null
+  }>({ activeDivision: null, expandedConference: null })
+
+  const handleClose = () => {
+    window.scrollTo(0, 0)
+    onClose()
+  }
+
   const goToStep = (step: number) => {
     setCurrentStep(step)
     setMaxStepReached((prev) => Math.max(prev, step))
@@ -66,8 +77,8 @@ export function CreateCampaignOverlay({ programs, playerPosition, onClose }: Cre
       {/* Dimmed backdrop */}
       <div
         className="absolute inset-0 bg-foreground/20 backdrop-blur-sm"
-        onClick={onClose}
-        onKeyDown={(e) => e.key === "Escape" && onClose()}
+        onClick={handleClose}
+        onKeyDown={(e) => e.key === "Escape" && handleClose()}
         role="button"
         tabIndex={0}
         aria-label="Close campaign builder"
@@ -80,7 +91,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, onClose }: Cre
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 lg:px-8">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
             aria-label="Close"
           >
@@ -159,6 +170,8 @@ export function CreateCampaignOverlay({ programs, playerPosition, onClose }: Cre
             onCoachesChange={(coaches) => setDraft((prev) => ({ ...prev, selectedCoaches: coaches }))}
             onNext={() => goToStep(3)}
             onBack={() => goToStep(1)}
+            initialNavState={targetNavState}
+            onNavStateChange={setTargetNavState}
           />
         )}
 
