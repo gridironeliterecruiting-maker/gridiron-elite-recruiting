@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, GripVertical, X, ArrowRight } from "lucide-react"
+import { Plus, GripVertical, X, ArrowRight, Search, Check as CheckIcon } from "lucide-react"
 import { useRef as useRefTouch } from "react"
 import { ProgramDetail } from "@/components/programs/program-detail"
 import { CoachDetail } from "@/components/programs/coach-detail"
@@ -108,6 +108,8 @@ export function PipelineClient({
   const [dragOverStage, setDragOverStage] = useState<string | null>(null)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [selectedProgram, setSelectedProgram] = useState("")
+  const [programSearch, setProgramSearch] = useState("")
+  const [programDropdownOpen, setProgramDropdownOpen] = useState(false)
   const [selectedStage, setSelectedStage] = useState(stages[0]?.id || "")
 
   // Drill-down state
@@ -223,6 +225,7 @@ export function PipelineClient({
       setEntries((prev) => [...prev, data as PipelineEntry])
     }
     setSelectedProgram("")
+    setProgramSearch("")
     setSelectedStage(stages[0]?.id || "")
     setAddDialogOpen(false)
   }
@@ -252,14 +255,58 @@ export function PipelineClient({
             <div className="flex flex-col gap-4 pt-4">
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium text-foreground">Program</label>
-                <Select value={selectedProgram} onValueChange={setSelectedProgram}>
-                  <SelectTrigger><SelectValue placeholder="Select a program" /></SelectTrigger>
-                  <SelectContent className="z-[200] max-h-60">
-                    {allPrograms.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.school_name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Search programs..."
+                      value={programSearch}
+                      onChange={(e) => {
+                        setProgramSearch(e.target.value)
+                        setProgramDropdownOpen(true)
+                        if (!e.target.value) setSelectedProgram("")
+                      }}
+                      onFocus={() => setProgramDropdownOpen(true)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    />
+                  </div>
+                  {programDropdownOpen && programSearch.length > 0 && (
+                    <div className="absolute z-[200] mt-1 max-h-48 w-full overflow-y-auto rounded-md border bg-popover shadow-md">
+                      {allPrograms
+                        .filter((p) => p.school_name.toLowerCase().includes(programSearch.toLowerCase()))
+                        .slice(0, 50)
+                        .map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedProgram(p.id)
+                              setProgramSearch(p.school_name)
+                              setProgramDropdownOpen(false)
+                            }}
+                            className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-secondary ${
+                              selectedProgram === p.id ? "bg-primary/5 text-primary" : "text-foreground"
+                            }`}
+                          >
+                            {p.logo_url ? (
+                              <Image src={p.logo_url} alt={p.school_name} width={20} height={20} className="shrink-0 rounded object-contain" />
+                            ) : (
+                              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary/10 text-[8px] font-bold text-primary">
+                                {p.school_name.slice(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                            <span className="truncate">{p.school_name}</span>
+                            <Badge className="ml-auto shrink-0 rounded-md bg-primary/10 text-[9px] font-bold text-primary">{p.division}</Badge>
+                            {selectedProgram === p.id && <CheckIcon className="h-3.5 w-3.5 shrink-0 text-primary" />}
+                          </button>
+                        ))}
+                      {allPrograms.filter((p) => p.school_name.toLowerCase().includes(programSearch.toLowerCase())).length === 0 && (
+                        <div className="px-3 py-4 text-center text-sm text-muted-foreground">No programs found</div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium text-foreground">Starting Stage</label>
