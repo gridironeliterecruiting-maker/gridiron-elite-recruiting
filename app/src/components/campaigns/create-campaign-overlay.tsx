@@ -62,7 +62,19 @@ export function CreateCampaignOverlay({ programs, playerPosition, onClose }: Cre
   }
 
   return (
-    <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[60] overflow-y-auto bg-background duration-300">
+    <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[60] overflow-y-auto duration-300">
+      {/* Dimmed backdrop */}
+      <div
+        className="absolute inset-0 bg-foreground/20 backdrop-blur-sm"
+        onClick={onClose}
+        onKeyDown={(e) => e.key === "Escape" && onClose()}
+        role="button"
+        tabIndex={0}
+        aria-label="Close campaign builder"
+      />
+
+      {/* Slide-in panel */}
+      <div className="absolute inset-y-0 right-0 flex w-full max-w-5xl flex-col bg-background shadow-2xl sm:rounded-l-2xl overflow-y-auto">
       {/* Header */}
       <div className="sticky top-0 z-10 border-b border-border bg-card shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 lg:px-8">
@@ -170,6 +182,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, onClose }: Cre
             onBack={() => goToStep(3)}
           />
         )}
+      </div>
       </div>
     </div>
   )
