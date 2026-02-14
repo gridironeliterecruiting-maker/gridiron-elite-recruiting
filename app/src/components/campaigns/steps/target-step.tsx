@@ -584,15 +584,15 @@ function CoachSelectionOverlay({
   const sortedCoaches = initialSort
 
   return (
-    <div className="animate-in slide-in-from-right-8 fade-in fixed inset-y-0 right-0 z-[70] w-full max-w-md overflow-y-auto border-l border-border bg-background shadow-2xl duration-200">
-      <div className="sticky top-0 z-10 border-b border-border bg-card px-4 py-3">
+    <div className="animate-in slide-in-from-right-8 fade-in fixed inset-y-0 right-0 z-[70] flex w-full max-w-lg flex-col bg-card shadow-2xl sm:rounded-l-2xl duration-200 overflow-y-auto">
+      <div className="sticky top-0 z-10 border-b border-border bg-card px-5 py-4">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-4 w-4" />
           </button>
           {program.logo_url ? (
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white overflow-hidden ring-1 ring-primary/20">

@@ -76,7 +76,15 @@ export function CoachDetail({ coach, program, onClose }: CoachDetailProps) {
       {/* Slide-in panel */}
       <div className="absolute inset-y-0 right-0 flex w-full max-w-lg flex-col bg-card shadow-2xl sm:rounded-l-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <div className="flex items-center gap-3 border-b border-border px-5 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground ring-2 ring-primary/20">
               {coach.first_name[0]}{coach.last_name[0]}
@@ -92,14 +100,6 @@ export function CoachDetail({ coach, program, onClose }: CoachDetailProps) {
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
         </div>
 
         {/* Content */}
