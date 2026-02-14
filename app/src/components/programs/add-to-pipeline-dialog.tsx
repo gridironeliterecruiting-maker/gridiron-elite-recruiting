@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import {
@@ -40,8 +40,16 @@ export function AddToPipelineDialog({
   stages,
   onAdded,
 }: AddToPipelineDialogProps) {
-  const [selectedStage, setSelectedStage] = useState(stages[0]?.id || "")
+  const initialStage = stages.find(s => s.name === "Initial Contact")?.id || stages[0]?.id || ""
+  const [selectedStage, setSelectedStage] = useState(initialStage)
   const [loading, setLoading] = useState(false)
+
+  // Reset to Initial Contact every time dialog opens
+  useEffect(() => {
+    if (open) {
+      setSelectedStage(stages.find(s => s.name === "Initial Contact")?.id || stages[0]?.id || "")
+    }
+  }, [open, stages])
 
   const handleAdd = async () => {
     if (!selectedStage) return
