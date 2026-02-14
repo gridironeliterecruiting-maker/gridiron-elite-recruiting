@@ -535,7 +535,6 @@ export function TargetStep({
       {/* Coach Overlay with backdrop blur */}
       {coachOverlayProgram && (
         <>
-        <div className="fixed inset-0 z-[65] bg-foreground/20 backdrop-blur-sm" onClick={() => setCoachOverlayProgram(null)} />
         <CoachSelectionOverlay
           program={coachOverlayProgram}
           coaches={programCoaches[coachOverlayProgram.id] || []}
@@ -584,32 +583,46 @@ function CoachSelectionOverlay({
   const sortedCoaches = initialSort
 
   return (
-    <div className="animate-in slide-in-from-right-8 fade-in fixed inset-y-0 right-0 z-[70] flex w-full max-w-lg flex-col bg-card shadow-2xl sm:rounded-l-2xl duration-200 overflow-y-auto">
-      <div className="sticky top-0 z-10 border-b border-border bg-card px-5 py-4">
-        <div className="flex items-center gap-3">
+    <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[70] overflow-y-auto duration-200">
+      {/* Dimmed backdrop */}
+      <div
+        className="absolute inset-0 bg-foreground/20 backdrop-blur-sm"
+        onClick={onClose}
+        onKeyDown={(e) => e.key === "Escape" && onClose()}
+        role="button"
+        tabIndex={0}
+        aria-label="Close coach selection"
+      />
+
+      {/* Slide-in panel */}
+      <div className="absolute inset-y-0 right-0 flex w-full max-w-lg flex-col bg-card shadow-2xl sm:rounded-l-2xl">
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b border-border px-5 py-4">
           <button
             type="button"
             onClick={onClose}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            aria-label="Close"
           >
             <X className="h-4 w-4" />
           </button>
-          {program.logo_url ? (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white overflow-hidden ring-1 ring-primary/20">
-              <Image src={program.logo_url} alt={program.school_name} width={28} height={28} className="object-contain" />
-            </div>
-          ) : (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary ring-1 ring-primary/20">
-              {program.school_name.slice(0, 3).toUpperCase()}
-            </div>
-          )}
-          <h3 className="font-display text-lg font-bold uppercase tracking-tight text-foreground truncate">
-            {program.school_name}
-          </h3>
+          <div className="flex items-center gap-3">
+            {program.logo_url ? (
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white overflow-hidden ring-1 ring-primary/20">
+                <Image src={program.logo_url} alt={program.school_name} width={32} height={32} className="object-contain" />
+              </div>
+            ) : (
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary ring-1 ring-primary/20">
+                {program.school_name.slice(0, 3).toUpperCase()}
+              </div>
+            )}
+            <h2 className="font-display text-lg font-bold uppercase tracking-tight text-foreground truncate">
+              {program.school_name}
+            </h2>
+          </div>
         </div>
-      </div>
 
-      <div className="px-4 py-4">
+      <div className="flex-1 overflow-y-auto p-5">
         <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-3">
           <p className="text-xs text-muted-foreground leading-relaxed">
             We recommend that initial emails to a program target <span className="font-semibold text-foreground">recruiting coaches</span> and your <span className="font-semibold text-foreground">position coach</span>.
@@ -650,7 +663,7 @@ function CoachSelectionOverlay({
                   >
                     {isSelected && <Check className="h-3 w-3" />}
                   </div>
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground ring-2 ring-primary/20">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground ring-2 ring-primary/20">
                     {coach.first_name[0]}{coach.last_name[0]}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -666,8 +679,8 @@ function CoachSelectionOverlay({
                     </div>
                     <p className="text-xs text-muted-foreground">{coach.title}</p>
                     {coach.email && (
-                      <div className="mt-1 flex items-center gap-1 text-[10px] text-primary">
-                        <Mail className="h-2.5 w-2.5" />
+                      <div className="mt-2 flex items-center gap-1.5 text-[11px] text-primary">
+                        <Mail className="h-3 w-3" />
                         <span className="truncate">{coach.email}</span>
                       </div>
                     )}
@@ -677,6 +690,7 @@ function CoachSelectionOverlay({
             })}
           </div>
         )}
+      </div>
       </div>
     </div>
   )
