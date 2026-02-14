@@ -8,6 +8,9 @@ import {
   Calendar,
   Rocket,
   Edit2,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import type { CampaignGoal } from "../create-campaign-overlay"
@@ -36,6 +39,7 @@ interface LaunchStepProps {
   onEditTarget: () => void
   onEditBuild: () => void
   onBack: () => void
+  onLaunched?: () => void
 }
 
 export function LaunchStep({
@@ -45,8 +49,12 @@ export function LaunchStep({
   onEditTarget,
   onEditBuild,
   onBack,
+  onLaunched,
 }: LaunchStepProps) {
   const [campaignName, setCampaignName] = useState("Initial Email 1")
+  const [launching, setLaunching] = useState(false)
+  const [launchError, setLaunchError] = useState<string | null>(null)
+  const [launchSuccess, setLaunchSuccess] = useState(false)
   
   // Default to now
   const getNowLocal = () => {
@@ -56,6 +64,62 @@ export function LaunchStep({
   }
   const [scheduledDate, setScheduledDate] = useState(getNowLocal)
   const [launchNow, setLaunchNow] = useState(true)
+
+  const handleLaunch = async () => {
+    setLaunching(true)
+    setLaunchError(null)
+
+    try {
+      // Step 1: Create the campaign
+      const createRes = await fetch('/api/campaigns/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: campaignName,
+          goal,
+          templates: templates.map((t, i) => ({
+            subject: t.subject,
+            body: t.body,
+            delayDays: t.delayDays,
+            name: t.name,
+          })),
+          recipients: selectedCoaches.map(c => ({
+            coachId: c.coachId,
+            coachName: c.coachName,
+            email: c.email,
+            programName: c.programName,
+          })),
+          scheduledAt: launchNow ? null : new Date(scheduledDate).toISOString(),
+        }),
+      })
+
+      const createData = await createRes.json()
+      if (!createRes.ok) {
+        throw new Error(createData.error || 'Failed to create campaign')
+      }
+
+      // Step 2: Launch the campaign
+      const launchRes = await fetch(`/api/campaigns/${createData.campaignId}/launch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scheduledAt: launchNow ? null : new Date(scheduledDate).toISOString(),
+        }),
+      })
+
+      const launchData = await launchRes.json()
+      if (!launchRes.ok) {
+        throw new Error(launchData.error || 'Failed to launch campaign')
+      }
+
+      setLaunchSuccess(true)
+      onLaunched?.()
+    } catch (error) {
+      setLaunchError(error instanceof Error ? error.message : 'Something went wrong')
+    } finally {
+      setLaunching(false)
+    }
+  }
 
   const goalLabel = GOAL_LABELS[goal]
   const programCount = new Set(selectedCoaches.map((sc) => sc.programId)).size
@@ -209,26 +273,61 @@ export function LaunchStep({
         </Card>
       </div>
 
+      {/* Status Messages */}
+      {launchError && (
+        <div className="mt-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+          <div>
+            <p className="text-sm font-semibold text-red-800">Launch Failed</p>
+            <p className="mt-1 text-xs text-red-600">{launchError}</p>
+          </div>
+        </div>
+      )}
+
+      {launchSuccess && (
+        <div className="mt-4 flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 p-4">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+          <div>
+            <p className="text-sm font-semibold text-green-800">Campaign Launched! 🚀</p>
+            <p className="mt-1 text-xs text-green-600">
+              Your emails are being scheduled and will be sent according to your account&apos;s pacing limits.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Navigation */}
       <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
         <button
           type="button"
           onClick={onBack}
-          className="rounded-md bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary/80"
+          disabled={launching || launchSuccess}
+          className="rounded-md bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary/80 disabled:opacity-50"
         >
           Back
         </button>
         <button
           type="button"
-          onClick={() => {
-            // TODO: Wire to Instantly API
-            const date = launchNow ? new Date() : new Date(scheduledDate)
-            console.log("Launch campaign:", { campaignName, date, launchNow })
-          }}
-          className="inline-flex items-center gap-2 rounded-md bg-accent px-6 py-2.5 text-sm font-semibold text-accent-foreground transition-all hover:bg-accent/90 shadow-sm"
+          onClick={handleLaunch}
+          disabled={launching || launchSuccess}
+          className="inline-flex items-center gap-2 rounded-md bg-accent px-6 py-2.5 text-sm font-semibold text-accent-foreground transition-all hover:bg-accent/90 shadow-sm disabled:opacity-50"
         >
-          <Rocket className="h-4 w-4" />
-          {launchNow ? "Launch Campaign" : `Schedule Campaign`}
+          {launching ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Launching...
+            </>
+          ) : launchSuccess ? (
+            <>
+              <CheckCircle2 className="h-4 w-4" />
+              Launched!
+            </>
+          ) : (
+            <>
+              <Rocket className="h-4 w-4" />
+              {launchNow ? "Launch Campaign" : "Schedule Campaign"}
+            </>
+          )}
         </button>
       </div>
     </div>

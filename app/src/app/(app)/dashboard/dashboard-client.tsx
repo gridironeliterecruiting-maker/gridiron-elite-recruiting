@@ -21,7 +21,9 @@ import {
   BarChart3,
 } from "lucide-react"
 import Link from "next/link"
+import { Suspense } from "react"
 import { RecruitingTicker } from "@/components/dashboard/recruiting-ticker"
+import { GmailTokenCaptureWrapper } from "@/components/gmail-token-capture-wrapper"
 
 interface DashboardClientProps {
   firstName: string
@@ -112,6 +114,10 @@ export function DashboardClient({
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Gmail token capture after OAuth redirect */}
+      <Suspense fallback={null}>
+        <GmailTokenCaptureWrapper />
+      </Suspense>
       {/* Welcome */}
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
