@@ -4,12 +4,15 @@ import { DashboardClient } from "./dashboard-client"
 export default async function DashboardPage() {
   const supabase = await createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+
   const [
     { count: programCount },
     { count: coachCount },
     { count: pipelineCount },
     { data: pipelineStages },
     { data: profile },
+    { data: gmailToken },
   ] = await Promise.all([
     supabase.from("programs").select("*", { count: "exact", head: true }),
     supabase.from("coaches").select("*", { count: "exact", head: true }),
@@ -18,14 +21,12 @@ export default async function DashboardPage() {
       .from("pipeline_stages")
       .select("id, name, display_order")
       .order("display_order"),
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return { data: null }
-      return supabase
-        .from("profiles")
-        .select("first_name")
-        .eq("id", user.id)
-        .single()
-    }),
+    user
+      ? supabase.from("profiles").select("first_name").eq("id", user.id).single()
+      : Promise.resolve({ data: null }),
+    user
+      ? supabase.from("gmail_tokens").select("email").eq("user_id", user.id).single()
+      : Promise.resolve({ data: null }),
   ])
 
   // Get pipeline entry counts per stage
@@ -52,6 +53,7 @@ export default async function DashboardPage() {
       coachCount={coachCount || 0}
       pipelineCount={pipelineCount || 0}
       stages={stagesWithCounts}
+      gmailConnected={!!gmailToken}
     />
   )
 }

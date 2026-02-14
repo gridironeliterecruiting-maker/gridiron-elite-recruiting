@@ -1,30 +1,46 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/dashboard'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://gridironeliterecruiting.com'
 
   if (code) {
-    const supabase = await createClient()
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error && data?.session) {
-      // If this was a Google OAuth login, we'll have provider tokens
-      // Pass them via URL params so the client-side hook can store them
-      const providerToken = data.session.provider_token
-      const providerRefreshToken = data.session.provider_refresh_token
+    const cookieStore = await cookies()
+    const pendingCookies: { name: string; value: string; options: Record<string, unknown> }[] = []
 
-      if (providerToken) {
-        // Redirect to dashboard with token flag so client captures them
-        const redirectUrl = new URL(`${origin}${next}`)
-        redirectUrl.searchParams.set('gmail_connected', 'true')
-        return NextResponse.redirect(redirectUrl.toString())
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookies) {
+            pendingCookies.push(...cookies)
+            cookies.forEach(({ name, value, options }) => {
+              try { cookieStore.set(name, value, options) } catch {}
+            })
+          },
+        },
       }
+    )
 
-      return NextResponse.redirect(`${origin}${next}`)
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (!error) {
+      const redirectUrl = new URL(next, appUrl)
+      const response = NextResponse.redirect(redirectUrl.toString())
+      for (const { name, value, options } of pendingCookies) {
+        response.cookies.set(name, value, options as Record<string, unknown>)
+      }
+      return response
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_error`)
+  return NextResponse.redirect(new URL('/login', appUrl).toString())
 }
