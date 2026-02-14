@@ -603,7 +603,7 @@ function CoachSelectionOverlay({
               {program.school_name.slice(0, 3).toUpperCase()}
             </div>
           )}
-          <h3 className="font-display text-sm font-bold uppercase tracking-tight text-foreground truncate">
+          <h3 className="font-display text-lg font-bold uppercase tracking-tight text-foreground truncate">
             {program.school_name}
           </h3>
         </div>
