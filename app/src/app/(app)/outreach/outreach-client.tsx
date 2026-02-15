@@ -181,57 +181,8 @@ export function OutreachClient({
         />
       )}
 
-      {/* Gmail Connection Status */}
-      {gmailConnected ? (
-        <Card className="border-emerald-200 bg-emerald-50/50">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-emerald-900">Gmail Connected</p>
-              <p className="text-xs text-emerald-700">{gmailEmail} · {gmailTier ? `${gmailTier} tier` : "connected"}</p>
-            </div>
-            {gmailStatus === "connected" && (
-              <Badge className="bg-emerald-100 text-emerald-700 border-0">Just connected ✓</Badge>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="border-amber-200 bg-amber-50/50">
-          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
-              <AlertCircle className="h-5 w-5" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-amber-900">Connect Gmail to Send Emails</p>
-              <p className="text-xs text-amber-700">
-                Link your Gmail account to start sending outreach campaigns to coaches.
-              </p>
-            </div>
-            <Button
-              onClick={handleConnectGmail}
-              disabled={connectingGmail}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              {connectingGmail ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <Mail className="h-4 w-4" />
-                  Connect Gmail
-                </>
-              )}
-            </Button>
-            {gmailStatus === "error" && (
-              <p className="text-xs text-red-600">Connection failed. Please try again.</p>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      {/* Gmail connection status removed — users already logged in with Google.
+         Gmail sending permissions will be requested just-in-time at campaign launch. */}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -478,9 +429,7 @@ export function OutreachClient({
                   </div>
                   <p className="mt-4 text-sm font-semibold text-foreground">No outreach sent yet</p>
                   <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">
-                    {gmailConnected
-                      ? "Create a campaign to start sending outreach."
-                      : "Connect Gmail first, then create a campaign."}
+                    Create a campaign to start sending outreach.
                   </p>
                 </div>
               )}
