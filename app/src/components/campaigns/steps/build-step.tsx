@@ -408,8 +408,6 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
 
       {/* Template Editor Overlay */}
       {editingIndex !== null && (
-        <>
-        <div className="fixed inset-0 z-[65] bg-foreground/20 backdrop-blur-sm" onClick={() => setEditingIndex(null)} />
         <TemplateEditorOverlay
           key={editingIndex}
           template={templates[editingIndex]}
@@ -417,19 +415,15 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
           onUpdate={(updates) => updateTemplate(editingIndex, updates)}
           onClose={() => setEditingIndex(null)}
         />
-        </>
       )}
 
       {/* Add Template Overlay */}
       {showAddOverlay && (
-        <>
-        <div className="fixed inset-0 z-[65] bg-foreground/20 backdrop-blur-sm" onClick={() => setShowAddOverlay(false)} />
         <AddTemplateOverlay
           existingNames={templates.map((t) => t.name)}
           onAdd={addTemplates}
           onClose={() => setShowAddOverlay(false)}
         />
-        </>
       )}
     </div>
   )
@@ -462,7 +456,9 @@ function AddTemplateOverlay({
   }
 
   return (
-    <div className="animate-in slide-in-from-right-8 fade-in fixed inset-y-0 right-0 z-[70] flex w-full max-w-lg flex-col bg-card shadow-2xl sm:rounded-l-2xl duration-200">
+    <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[70] overflow-y-auto duration-200">
+      <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-y-0 right-0 flex w-full max-w-lg flex-col bg-card shadow-2xl sm:rounded-l-2xl">
       <div className="flex items-center gap-4 border-b border-border bg-card px-4 py-3 shadow-sm lg:px-8">
         <button
           type="button"
@@ -532,6 +528,7 @@ function AddTemplateOverlay({
           })}
         </div>
       </div>
+      </div>
     </div>
   )
 }
@@ -587,7 +584,9 @@ function TemplateEditorOverlay({
   }
 
   return (
-    <div className="animate-in slide-in-from-right-8 fade-in fixed inset-y-0 right-0 z-[70] flex w-full max-w-lg flex-col bg-card shadow-2xl sm:rounded-l-2xl duration-200">
+    <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[70] overflow-y-auto duration-200">
+      <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-y-0 right-0 flex w-full max-w-lg flex-col bg-card shadow-2xl sm:rounded-l-2xl">
       {/* Header */}
       <div className="flex items-center gap-4 border-b border-border bg-card px-4 py-3 shadow-sm lg:px-8">
         <button
@@ -702,6 +701,7 @@ function TemplateEditorOverlay({
           className="min-h-[300px] rounded-b-md border border-border bg-card p-4 text-sm leading-relaxed text-foreground focus:border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/30 [&_.merge-tag]:inline-block [&_.merge-tag]:rounded [&_.merge-tag]:bg-primary/10 [&_.merge-tag]:px-1.5 [&_.merge-tag]:py-0.5 [&_.merge-tag]:text-xs [&_.merge-tag]:font-semibold [&_.merge-tag]:text-primary [&_.merge-tag]:cursor-default"
           style={{ whiteSpace: "pre-wrap" }}
         />
+      </div>
       </div>
     </div>
   )
