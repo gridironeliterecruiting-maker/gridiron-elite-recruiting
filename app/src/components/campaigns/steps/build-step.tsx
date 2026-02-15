@@ -463,22 +463,23 @@ function AddTemplateOverlay({
 
   return (
     <div className="animate-in slide-in-from-right-8 fade-in fixed inset-y-0 right-0 z-[70] flex w-full max-w-md flex-col border-l border-border bg-background shadow-2xl duration-200">
-      <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+      <div className="flex items-center gap-4 border-b border-border bg-card px-4 py-3 shadow-sm lg:px-8">
         <button
           type="button"
           onClick={onClose}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+          aria-label="Close"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-4 w-4" />
         </button>
-        <h3 className="flex-1 font-display text-sm font-bold uppercase tracking-tight text-foreground">
+        <h3 className="flex-1 font-display text-lg font-bold uppercase tracking-tight text-foreground">
           Template Library
         </h3>
         <button
           type="button"
           onClick={handleAdd}
           disabled={selected.size === 0}
-          className="rounded-md bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Add ({selected.size})
         </button>
@@ -588,26 +589,27 @@ function TemplateEditorOverlay({
   return (
     <div className="animate-in slide-in-from-right-8 fade-in fixed inset-y-0 right-0 z-[70] flex w-full max-w-lg flex-col border-l border-border bg-background shadow-2xl duration-200">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+      <div className="flex items-center gap-4 border-b border-border bg-card px-4 py-3 shadow-sm lg:px-8">
         <button
           type="button"
           onClick={onClose}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+          aria-label="Close"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-4 w-4" />
         </button>
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
             {index + 1}
           </div>
-          <h3 className="font-display text-sm font-bold uppercase tracking-tight text-foreground truncate">
+          <h3 className="font-display text-lg font-bold uppercase tracking-tight text-foreground truncate">
             {template.name}
           </h3>
         </div>
         <button
           type="button"
           onClick={handleSave}
-          className="rounded-md bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
           Save
         </button>
