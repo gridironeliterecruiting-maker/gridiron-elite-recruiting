@@ -31,6 +31,24 @@ export async function POST(
       return NextResponse.json({ error: 'Campaign cannot be launched from current status' }, { status: 400 })
     }
 
+    // ============================================================
+    // SAFETY CHECK: Per-user email sending permission
+    // Only users with can_send_emails = true can launch campaigns.
+    // This is the PRIMARY gate. DO NOT REMOVE without Paul's explicit OK.
+    // ============================================================
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('can_send_emails')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile?.can_send_emails) {
+      return NextResponse.json({ 
+        error: 'Email sending is not enabled for your account. Contact support to get approved.',
+        safety: 'user_not_approved'
+      }, { status: 403 })
+    }
+
     // Check if user has Gmail connected
     const { data: gmailToken } = await supabase
       .from('gmail_tokens')

@@ -90,6 +90,34 @@ export async function GET(request: Request) {
     let totalErrors = 0
 
     for (const [userId, recipients] of Object.entries(byUser)) {
+      // ============================================================
+      // SAFETY CHECK 3: Per-user email sending permission
+      // Even if a campaign somehow got to 'active' status,
+      // the queue processor will NOT send for unapproved users.
+      // This is the FINAL gate before any email leaves the system.
+      // DO NOT REMOVE without Paul's explicit OK.
+      // ============================================================
+      const { data: userProfile } = await admin
+        .from('profiles')
+        .select('can_send_emails')
+        .eq('id', userId)
+        .single()
+
+      if (!userProfile?.can_send_emails) {
+        console.log(`BLOCKED: User ${userId} does not have can_send_emails permission. Skipping ALL their emails.`)
+        for (const r of recipients) {
+          await admin.from('campaign_recipients').update({ status: 'error', updated_at: new Date().toISOString() }).eq('id', r.id)
+          await admin.from('email_events').insert({
+            campaign_id: r.campaign_id,
+            recipient_id: r.id,
+            event_type: 'bounced',
+            metadata: { reason: 'user_not_approved_to_send', user_id: userId },
+          })
+        }
+        totalErrors += recipients.length
+        continue
+      }
+
       // Get user's Gmail token
       const { data: gmailToken } = await admin
         .from('gmail_tokens')
