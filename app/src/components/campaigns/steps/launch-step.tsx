@@ -13,7 +13,7 @@ import {
   CheckCircle2,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
-import type { CampaignGoal, EmailTemplate } from "../campaigns/types"
+import type { CampaignGoal, EmailTemplate } from "../types"
 import { LaunchConfirmationOverlay } from "../launch-confirmation-overlay"
 
 const GOAL_LABELS: Record<CampaignGoal, { verb: string; highlight: string }> = {
