@@ -157,6 +157,8 @@ export function OutreachClient({
         <CreateCampaignOverlay
           programs={programs}
           playerPosition={playerPosition}
+          gmailEmail={gmailEmail}
+          gmailTier={gmailTier}
           onClose={() => setShowCreateCampaign(false)}
         />
       )}

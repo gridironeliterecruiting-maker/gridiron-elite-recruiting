@@ -43,10 +43,12 @@ const STEPS = [
 interface CreateCampaignOverlayProps {
   programs: Program[]
   playerPosition: string
+  gmailEmail: string | null
+  gmailTier: string | null
   onClose: () => void
 }
 
-export function CreateCampaignOverlay({ programs, playerPosition, onClose }: CreateCampaignOverlayProps) {
+export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gmailTier, onClose }: CreateCampaignOverlayProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [maxStepReached, setMaxStepReached] = useState(1)
   const [draft, setDraft] = useState<CampaignDraft>({ goal: null, selectedCoaches: [], templates: [] })
@@ -178,6 +180,8 @@ export function CreateCampaignOverlay({ programs, playerPosition, onClose }: Cre
             goal={draft.goal}
             selectedCoaches={draft.selectedCoaches}
             templates={draft.templates}
+            gmailEmail={gmailEmail}
+            gmailTier={gmailTier}
             onEditTarget={() => goToStep(2)}
             onEditBuild={() => goToStep(3)}
             onBack={() => goToStep(3)}
