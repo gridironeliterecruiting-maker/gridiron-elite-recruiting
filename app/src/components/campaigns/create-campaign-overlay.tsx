@@ -7,8 +7,7 @@ import { TargetStep } from "./steps/target-step"
 import { BuildStep } from "./steps/build-step"
 import { LaunchStep } from "./steps/launch-step"
 import type { EmailTemplate } from "./steps/build-step"
-
-export type CampaignGoal = "get_response" | "evaluate_film" | "build_interest" | "secure_visit"
+import type { CampaignGoal } from "./types"
 
 interface SelectedCoach {
   coachId: string
