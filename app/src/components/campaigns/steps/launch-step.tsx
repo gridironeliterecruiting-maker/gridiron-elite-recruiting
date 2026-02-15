@@ -15,6 +15,7 @@ import {
 import { Card } from "@/components/ui/card"
 import type { CampaignGoal } from "../create-campaign-overlay"
 import type { EmailTemplate } from "./build-step"
+import { LaunchConfirmationOverlay } from "../launch-confirmation-overlay"
 
 const GOAL_LABELS: Record<CampaignGoal, { verb: string; highlight: string }> = {
   get_response: { verb: "introduce yourself and", highlight: "GET A RESPONSE" },
@@ -36,6 +37,8 @@ interface LaunchStepProps {
   goal: CampaignGoal
   selectedCoaches: SelectedCoach[]
   templates: EmailTemplate[]
+  gmailEmail: string | null
+  gmailTier: string | null
   onEditTarget: () => void
   onEditBuild: () => void
   onBack: () => void
@@ -46,6 +49,8 @@ export function LaunchStep({
   goal,
   selectedCoaches,
   templates,
+  gmailEmail,
+  gmailTier,
   onEditTarget,
   onEditBuild,
   onBack,
@@ -55,6 +60,7 @@ export function LaunchStep({
   const [launching, setLaunching] = useState(false)
   const [launchError, setLaunchError] = useState<string | null>(null)
   const [launchSuccess, setLaunchSuccess] = useState(false)
+  const [showConfirmLaunch, setShowConfirmLaunch] = useState(false)
   
   // Default to now
   const getNowLocal = () => {
@@ -312,7 +318,7 @@ export function LaunchStep({
         </button>
         <button
           type="button"
-          onClick={handleLaunch}
+          onClick={() => setShowConfirmLaunch(true)}
           disabled={launching || launchSuccess}
           className="inline-flex items-center gap-2 rounded-md bg-accent px-6 py-2.5 text-sm font-semibold text-accent-foreground transition-all hover:bg-accent/90 shadow-sm disabled:opacity-50"
         >
@@ -334,6 +340,24 @@ export function LaunchStep({
           )}
         </button>
       </div>
+
+      {showConfirmLaunch && (
+        <LaunchConfirmationOverlay
+          goal={goal}
+          selectedCoaches={selectedCoaches}
+          templates={templates}
+          gmailEmail={gmailEmail}
+          gmailTier={gmailTier}
+          campaignName={campaignName}
+          scheduledAt={scheduledDate}
+          launchNow={launchNow}
+          onClose={() => setShowConfirmLaunch(false)}
+          onConfirmLaunch={handleLaunch} // Pass the original handleLaunch as the confirmation action
+          isLaunching={launching}
+          launchError={launchError}
+          launchSuccess={launchSuccess}
+        />
+      )}
     </div>
   )
 }
