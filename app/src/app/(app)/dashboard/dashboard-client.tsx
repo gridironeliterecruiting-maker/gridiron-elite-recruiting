@@ -31,7 +31,6 @@ interface DashboardClientProps {
   coachCount: number
   pipelineCount: number
   stages: { name: string; count: number }[]
-  gmailConnected: boolean
 }
 
 export function DashboardClient({
@@ -40,7 +39,6 @@ export function DashboardClient({
   coachCount,
   pipelineCount,
   stages,
-  gmailConnected,
 }: DashboardClientProps) {
   const now = new Date()
   const hour = now.getHours()
@@ -138,21 +136,6 @@ export function DashboardClient({
 
       {/* Ticker */}
       <RecruitingTicker />
-
-      {/* Gmail connection banner */}
-      {!gmailConnected && (
-        <Link
-          href="/outreach"
-          className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50/50 p-3 transition-colors hover:bg-amber-50"
-        >
-          <Mail className="h-5 w-5 text-amber-600 shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-amber-900">Connect Gmail to start sending outreach</p>
-            <p className="text-xs text-amber-700">Go to Outreach Center to link your Gmail account.</p>
-          </div>
-          <ArrowRight className="h-4 w-4 text-amber-600 shrink-0" />
-        </Link>
-      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

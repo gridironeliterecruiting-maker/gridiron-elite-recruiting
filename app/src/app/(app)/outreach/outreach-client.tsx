@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -95,7 +94,6 @@ interface OutreachClientProps {
   templates: EmailTemplate[]
   programs: Program[]
   playerPosition: string
-  gmailConnected: boolean
   gmailEmail: string | null
   gmailTier: string | null
   campaigns: Campaign[]
@@ -105,31 +103,13 @@ export function OutreachClient({
   templates,
   programs,
   playerPosition,
-  gmailConnected,
   gmailEmail,
   gmailTier,
   campaigns,
 }: OutreachClientProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [showCreateCampaign, setShowCreateCampaign] = useState(false)
-  const [connectingGmail, setConnectingGmail] = useState(false)
   const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null)
-  const searchParams = useSearchParams()
-  const gmailStatus = searchParams.get("gmail")
-
-  const handleConnectGmail = async () => {
-    setConnectingGmail(true)
-    try {
-      const res = await fetch("/api/gmail/authorize")
-      const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      }
-    } catch (err) {
-      console.error("Failed to start Gmail auth:", err)
-      setConnectingGmail(false)
-    }
-  }
 
   const handleToggleCampaign = async (campaignId: string, newStatus: string) => {
     setTogglingCampaign(campaignId)
