@@ -18,29 +18,8 @@ import {
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import type { CampaignGoal } from "../create-campaign-overlay"
-
-// ─── Merge Tags ─────────────────────────────────────────────────
-const MERGE_TAGS = [
-  { key: "coach_name", label: "Coach Name", example: "Coach Smith" },
-  { key: "school_name", label: "School Name", example: "Iowa" },
-  { key: "first_name", label: "Your First Name", example: "Cael" },
-  { key: "last_name", label: "Your Last Name", example: "Kongshaug" },
-  { key: "position", label: "Position", example: "Quarterback" },
-  { key: "grad_year", label: "Class Year", example: "2026" },
-  { key: "high_school", label: "High School", example: "Prairie HS" },
-  { key: "city_state", label: "City, State", example: "Cedar Rapids, IA" },
-  { key: "hudl_url", label: "Hudl Link", example: "https://hudl.com/..." },
-  { key: "gpa", label: "GPA", example: "3.8" },
-]
-
-// ─── Default Templates ──────────────────────────────────────────
-interface EmailTemplate {
-  name: string
-  subject: string
-  body: string
-  delayDays: number | null // null = first email (no delay)
-}
+import type { CampaignGoal } from "../campaigns/types"
+import type { EmailTemplate } from "../campaigns/types"
 
 const GOAL_TEMPLATES: Record<string, EmailTemplate[]> = {
   get_response: [
@@ -737,4 +716,3 @@ function extractPlainText(html: string): string {
 }
 
 export { GOAL_TEMPLATES }
-export type { EmailTemplate }
