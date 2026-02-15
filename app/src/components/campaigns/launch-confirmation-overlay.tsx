@@ -4,7 +4,7 @@ import { useState } from "react"
 import { ArrowLeft, Rocket, Mail, Users, AlertCircle, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import type { CampaignGoal } from "./create-campaign-overlay"
+import type { CampaignGoal } from "../campaigns/types"
 import type { EmailTemplate } from "./build-step"
 
 interface SelectedCoach {
