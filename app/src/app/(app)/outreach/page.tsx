@@ -75,7 +75,6 @@ export default async function OutreachPage() {
       templates={templates || []}
       programs={programs || []}
       playerPosition={playerPosition}
-      gmailConnected={!!gmailToken}
       gmailEmail={gmailToken?.email || null}
       gmailTier={gmailToken?.account_tier || null}
       campaigns={(campaigns || []).map((c) => ({

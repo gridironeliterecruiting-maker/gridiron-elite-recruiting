@@ -12,7 +12,6 @@ export default async function DashboardPage() {
     { count: pipelineCount },
     { data: pipelineStages },
     { data: profile },
-    { data: gmailToken },
   ] = await Promise.all([
     supabase.from("programs").select("*", { count: "exact", head: true }),
     supabase.from("coaches").select("*", { count: "exact", head: true }),
@@ -23,9 +22,6 @@ export default async function DashboardPage() {
       .order("display_order"),
     user
       ? supabase.from("profiles").select("first_name").eq("id", user.id).single()
-      : Promise.resolve({ data: null }),
-    user
-      ? supabase.from("gmail_tokens").select("email").eq("user_id", user.id).single()
       : Promise.resolve({ data: null }),
   ])
 
@@ -53,7 +49,6 @@ export default async function DashboardPage() {
       coachCount={coachCount || 0}
       pipelineCount={pipelineCount || 0}
       stages={stagesWithCounts}
-      gmailConnected={!!gmailToken}
     />
   )
 }
