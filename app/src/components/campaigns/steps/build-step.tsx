@@ -462,8 +462,8 @@ function AddTemplateOverlay({
   }
 
   return (
-    <div className="animate-in slide-in-from-right-8 fade-in fixed inset-y-4 right-4 z-[70] flex w-full max-w-md flex-col rounded-2xl border border-border bg-background shadow-2xl duration-200">
-      <div className="flex items-center gap-4 border-b border-border bg-card px-4 py-3 shadow-sm rounded-t-2xl lg:px-8">
+    <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[70] flex w-full flex-col bg-background duration-200">
+      <div className="flex items-center gap-4 sticky top-0 z-10 border-b border-border bg-card px-4 py-3 shadow-sm lg:px-8">
         <button
           type="button"
           onClick={onClose}
@@ -587,9 +587,9 @@ function TemplateEditorOverlay({
   }
 
   return (
-    <div className="animate-in slide-in-from-right-8 fade-in fixed inset-y-4 right-4 z-[70] flex w-full max-w-lg flex-col rounded-2xl border border-border bg-background shadow-2xl duration-200">
+    <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[70] flex w-full flex-col bg-background duration-200">
       {/* Header */}
-      <div className="flex items-center gap-4 border-b border-border bg-card px-4 py-3 shadow-sm rounded-t-2xl lg:px-8">
+      <div className="flex items-center gap-4 sticky top-0 z-10 border-b border-border bg-card px-4 py-3 shadow-sm lg:px-8">
         <button
           type="button"
           onClick={onClose}
