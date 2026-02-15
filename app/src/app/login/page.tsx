@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
-import { useSearchParams } from 'next/navigation'
 
 export default function LoginPage() {
   return (
@@ -16,34 +15,23 @@ export default function LoginPage() {
 function LoginContent() {
   const [error, setError] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
-  const [debugInfo, setDebugInfo] = useState('')
   const supabase = createClient()
-  const searchParams = useSearchParams()
 
-  // Check for debug info in URL and also check if we have a session already
+  // If user lands on /login but actually has a valid session, redirect to dashboard.
+  // This handles the case where OAuth completes successfully but the middleware
+  // doesn't detect the session cookies on the initial redirect.
   useEffect(() => {
-    const authDebug = searchParams.get('auth_debug')
-    const authError = searchParams.get('error')
-    if (authDebug) {
-      setDebugInfo(`Auth debug: error=${authError}, code=${searchParams.get('error_code')}, has_code=${searchParams.get('has_code')}, cookies=${searchParams.get('cookies')}, has_verifier=${searchParams.get('has_verifier')}`)
-    }
-    
-    // Check if we actually have a valid session (client-side check)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        // We have a session! The middleware should have caught this.
-        // This means the redirect after OAuth might have session but middleware didn't detect it
-        setDebugInfo(prev => prev + ` | CLIENT HAS SESSION: ${session.user.email}`)
-        // Try redirecting manually
         window.location.href = '/dashboard'
       }
     })
-  }, [searchParams, supabase.auth])
+  }, [supabase.auth])
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true)
     setError('')
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/callback`,
@@ -57,10 +45,6 @@ function LoginContent() {
       setError(error.message)
       setGoogleLoading(false)
     }
-    // Debug: if signInWithOAuth returned but no redirect happened
-    if (data?.url) {
-      setDebugInfo(`OAuth URL generated: ${data.url.substring(0, 80)}...`)
-    }
   }
 
   return (
@@ -73,7 +57,6 @@ function LoginContent() {
         <p className="text-gray-500 mb-8">Sign in to your recruiting dashboard</p>
 
         {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>}
-        {debugInfo && <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg text-xs mb-4 text-left break-all">{debugInfo}</div>}
 
         <button
           type="button"
