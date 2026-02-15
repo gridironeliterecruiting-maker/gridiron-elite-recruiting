@@ -6,7 +6,7 @@ import { GoalStep } from "./steps/goal-step"
 import { TargetStep } from "./steps/target-step"
 import { BuildStep } from "./steps/build-step"
 import { LaunchStep } from "./steps/launch-step"
-import type { EmailTemplate } from "./steps/build-step"
+import type { CampaignGoal, EmailTemplate } from "./types"
 import type { CampaignGoal } from "./types"
 
 interface SelectedCoach {
