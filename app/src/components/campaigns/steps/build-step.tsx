@@ -458,8 +458,8 @@ function AddTemplateOverlay({
   return (
     <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[70] overflow-y-auto duration-200">
       <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute inset-y-0 right-0 flex w-full max-w-lg flex-col bg-card shadow-2xl sm:rounded-l-2xl">
-      <div className="flex items-center gap-4 border-b border-border bg-card px-4 py-3 shadow-sm lg:px-8">
+      <div className="absolute inset-y-0 right-0 flex w-full max-w-lg flex-col overflow-hidden bg-card shadow-2xl sm:rounded-l-2xl">
+      <div className="flex items-center gap-4 border-b border-border px-5 py-4">
         <button
           type="button"
           onClick={onClose}
@@ -586,9 +586,9 @@ function TemplateEditorOverlay({
   return (
     <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[70] overflow-y-auto duration-200">
       <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute inset-y-0 right-0 flex w-full max-w-lg flex-col bg-card shadow-2xl sm:rounded-l-2xl">
+      <div className="absolute inset-y-0 right-0 flex w-full max-w-lg flex-col overflow-hidden bg-card shadow-2xl sm:rounded-l-2xl">
       {/* Header */}
-      <div className="flex items-center gap-4 border-b border-border bg-card px-4 py-3 shadow-sm lg:px-8">
+      <div className="flex items-center gap-4 border-b border-border px-5 py-4">
         <button
           type="button"
           onClick={onClose}
