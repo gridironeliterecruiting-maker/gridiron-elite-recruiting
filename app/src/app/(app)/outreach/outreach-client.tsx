@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -114,8 +115,14 @@ export function OutreachClient({
   resumeStep,
   gmailStatus,
 }: OutreachClientProps) {
+  const searchParams = useSearchParams()
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [showCreateCampaign, setShowCreateCampaign] = useState(false)
+  const [quickEmailData, setQuickEmailData] = useState<{
+    goal: string | null
+    coachId: string | null
+    programId: string | null
+  } | null>(null)
   const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null)
   const [resumingCampaign, setResumingCampaign] = useState(false)
   const [launchedCampaign, setLaunchedCampaign] = useState<{
@@ -183,6 +190,27 @@ export function OutreachClient({
     }
   }, [resumeCampaignId, gmailStatus, resumeStep])
 
+  // Handle quick email flow from URL params
+  useEffect(() => {
+    const goal = searchParams.get('goal')
+    const coachId = searchParams.get('coaches')
+    const programId = searchParams.get('program')
+    const isQuickEmail = searchParams.get('quickEmail') === 'true'
+
+    if (isQuickEmail && goal && coachId) {
+      setQuickEmailData({ goal, coachId, programId })
+      setShowCreateCampaign(true)
+      
+      // Clear URL params
+      const url = new URL(window.location.href)
+      url.searchParams.delete('goal')
+      url.searchParams.delete('coaches')
+      url.searchParams.delete('program')
+      url.searchParams.delete('quickEmail')
+      window.history.replaceState({}, '', url.pathname + url.search)
+    }
+  }, [searchParams])
+
   const handleToggleCampaign = async (campaignId: string, newStatus: string) => {
     setTogglingCampaign(campaignId)
     try {
@@ -231,7 +259,11 @@ export function OutreachClient({
           playerPosition={playerPosition}
           gmailEmail={gmailEmail}
           gmailTier={gmailTier}
-          onClose={() => setShowCreateCampaign(false)}
+          quickEmailData={quickEmailData}
+          onClose={() => {
+            setShowCreateCampaign(false)
+            setQuickEmailData(null)
+          }}
           onCampaignLaunched={(campaignData) => {
             setLaunchedCampaign(campaignData)
           }}
