@@ -97,7 +97,7 @@ export function CustomTemplateCreator({ onSave, onClose }: CustomTemplateCreator
             <X className="h-4 w-4" />
           </button>
           <h3 className="flex-1 font-display text-lg font-bold uppercase tracking-tight text-foreground">
-            Create Custom Template
+            Create Custom Email
           </h3>
           <button
             type="button"
