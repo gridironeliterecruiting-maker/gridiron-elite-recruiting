@@ -24,6 +24,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { CreateCampaignOverlay } from "@/components/campaigns/create-campaign-overlay"
+import { CampaignLaunchedOverlay } from "@/components/campaigns/campaign-launched-overlay"
 
 interface EmailTemplate {
   id: string
@@ -117,26 +118,52 @@ export function OutreachClient({
   const [showCreateCampaign, setShowCreateCampaign] = useState(false)
   const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null)
   const [resumingCampaign, setResumingCampaign] = useState(false)
+  const [launchedCampaign, setLaunchedCampaign] = useState<{
+    name: string
+    recipientCount: number
+    programCount: number
+  } | null>(null)
 
-  // Handle resuming campaign after OAuth
+  // Handle auto-launching campaign after OAuth
   useEffect(() => {
     if (resumeCampaignId && gmailStatus === 'connected' && resumeStep === 'launch') {
-      // Load the campaign and open the wizard at launch step
-      const loadAndResumeCampaign = async () => {
+      const autoLaunchCampaign = async () => {
         setResumingCampaign(true)
         try {
           // Fetch campaign details
-          const res = await fetch(`/api/campaigns/${resumeCampaignId}`)
-          if (!res.ok) {
+          const campaignRes = await fetch(`/api/campaigns/${resumeCampaignId}`)
+          if (!campaignRes.ok) {
             console.error('Failed to load campaign')
             return
           }
           
-          const campaignData = await res.json()
+          const campaignData = await campaignRes.json()
           
-          // TODO: Open CreateCampaignOverlay with the campaign data at launch step
-          // For now, just show a message
-          alert(`Welcome back! Your campaign "${campaignData.name}" is ready to launch. Click "New Campaign" to continue where you left off.`)
+          // Auto-launch the campaign
+          const launchRes = await fetch(`/api/campaigns/${resumeCampaignId}/launch`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              scheduledAt: null, // Launch now
+            }),
+          })
+
+          if (!launchRes.ok) {
+            const error = await launchRes.json()
+            console.error('Failed to launch campaign:', error)
+            alert(`Failed to launch campaign: ${error.error || 'Unknown error'}`)
+            return
+          }
+
+          // Get program count
+          const programSet = new Set(campaignData.recipients?.map((r: any) => r.program_name) || [])
+          
+          // Show success overlay
+          setLaunchedCampaign({
+            name: campaignData.name,
+            recipientCount: campaignData.recipients?.length || 0,
+            programCount: programSet.size,
+          })
           
           // Clear the URL params
           const url = new URL(window.location.href)
@@ -145,13 +172,14 @@ export function OutreachClient({
           url.searchParams.delete('resume')
           window.history.replaceState({}, '', url.pathname + url.search)
         } catch (err) {
-          console.error('Error resuming campaign:', err)
+          console.error('Error auto-launching campaign:', err)
+          alert('Failed to launch campaign. Please try again.')
         } finally {
           setResumingCampaign(false)
         }
       }
       
-      loadAndResumeCampaign()
+      autoLaunchCampaign()
     }
   }, [resumeCampaignId, gmailStatus, resumeStep])
 
@@ -463,6 +491,28 @@ export function OutreachClient({
           </Card>
         </div>
       </div>
+
+      {launchedCampaign && (
+        <CampaignLaunchedOverlay
+          campaignName={launchedCampaign.name}
+          recipientCount={launchedCampaign.recipientCount}
+          programCount={launchedCampaign.programCount}
+          onClose={() => {
+            setLaunchedCampaign(null)
+            // Refresh the page to show updated campaign status
+            window.location.reload()
+          }}
+        />
+      )}
+
+      {resumingCampaign && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm font-medium">Launching your campaign...</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
