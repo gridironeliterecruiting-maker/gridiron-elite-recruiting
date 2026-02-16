@@ -145,28 +145,14 @@ export function LaunchConfirmationOverlay({
               </div>
             </div>
 
-            {/* Gmail Status / Confirmation */}
-            {!gmailEmail ? (
-              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-center">
-                <AlertCircle className="mx-auto h-6 w-6 text-primary" />
-                <p className="mt-3 text-sm font-semibold text-primary">Are you sure?</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  When you confirm your name will be in the selected coaches Inbox!
-                </p>
-              </div>
-            ) : (
-              <div className="rounded-lg border border-green-200 bg-green-50/50 p-4">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
-                  <div>
-                    <p className="text-sm font-semibold text-green-800">Gmail Connected</p>
-                    <p className="mt-0.5 text-xs text-green-700">
-                      Emails will be sent from <span className="font-bold">{gmailEmail}</span>.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Final Confirmation */}
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-center">
+              <AlertCircle className="mx-auto h-6 w-6 text-primary" />
+              <p className="mt-3 text-sm font-semibold text-primary">Are you sure?</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                When you confirm your name will be in the selected coaches Inbox!
+              </p>
+            </div>
 
             {/* Launch Error */}
             {launchError && (
