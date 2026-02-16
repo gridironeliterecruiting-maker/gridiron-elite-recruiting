@@ -43,14 +43,6 @@ const GOALS: {
     description: "You've built a connection. Now lock in a campus visit, virtual meeting, or tryout opportunity.",
     color: "primary",
   },
-  {
-    id: "custom_email", // New entry
-    icon: Mail,
-    title: "Write your own",
-    highlight: "CUSTOM EMAIL",
-    description: "Craft a unique email from scratch, tailored to any specific situation or recipient.",
-    color: "primary", // Using primary for consistency
-  },
 ]
 
 interface GoalStepProps {
