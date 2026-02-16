@@ -276,7 +276,7 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
         onClick={() => setShowAddOverlay(true)}
         className="mb-6 w-full rounded-lg border border-dashed border-border bg-card py-3 text-sm text-muted-foreground transition-all hover:border-primary hover:bg-primary/[0.02] hover:text-foreground"
       >
-        + Add Template
+        + Add Custom Email
       </button>
 
       {/* Navigation */}
