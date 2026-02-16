@@ -262,7 +262,7 @@ export async function GET(request: Request) {
           const mergeData: Record<string, string> = {
             // Coach/School info
             Coach_Name: recipient.coach_name || 'Coach',
-            Last_Name: recipient.coach_name?.split(' ').pop() || 'Coach', // Extract coach last name
+            Coach_Last_Name: recipient.coach_name?.split(' ').pop() || 'Coach', // Extract coach last name
             School: recipient.program_name || '',
             School_Name: recipient.program_name || '',
             
