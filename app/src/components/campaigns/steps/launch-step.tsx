@@ -355,6 +355,7 @@ export function LaunchStep({
           isLaunching={launching}
           launchError={launchError}
           launchSuccess={launchSuccess}
+          setIsLaunching={setLaunching}
         />
       )}
     </div>

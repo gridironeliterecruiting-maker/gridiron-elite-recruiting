@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { name, goal, templates, recipients, scheduledAt } = body
+    const { name, goal, templates, recipients, scheduledAt, status } = body
 
     if (!name || !goal || !templates?.length || !recipients?.length) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
         user_id: user.id,
         name,
         goal,
-        status: 'draft',
+        status: status || 'draft',
         scheduled_at: scheduledAt || null,
       })
       .select('id')
