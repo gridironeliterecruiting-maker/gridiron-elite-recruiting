@@ -1,6 +1,6 @@
 "use client"
 
-import { Mail, Film, Heart, MapPin } from "lucide-react"
+import { Mail, Film, Heart, MapPin, Edit } from "lucide-react"
 import type { CampaignGoal } from "../types"
 
 const GOALS: {
@@ -41,6 +41,14 @@ const GOALS: {
     title: "Discuss the details and",
     highlight: "SECURE A VISIT",
     description: "You've built a connection. Now lock in a campus visit, virtual meeting, or tryout opportunity.",
+    color: "primary",
+  },
+  {
+    id: "custom_email",
+    icon: Edit,
+    title: "Write your own",
+    highlight: "CUSTOM EMAIL",
+    description: "Create a completely custom email for any specific situation or recipient not covered by the templates.",
     color: "primary",
   },
 ]
