@@ -213,6 +213,12 @@ export function TargetStep({
     const coaches = await fetchCoaches(program.id)
     const autoSelected = coaches.filter((c) => shouldAutoSelect(c.title, playerPosition))
 
+    // If no coaches match auto-select criteria, open the overlay for manual selection
+    if (autoSelected.length === 0) {
+      openCoachOverlay(program)
+      return
+    }
+
     const newSelections = autoSelected.map((c) => ({
       coachId: c.id,
       programId: program.id,
