@@ -10,9 +10,12 @@ import {
   Check,
 } from "lucide-react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { QuickEmailModal } from "@/components/campaigns/quick-email-modal"
+import type { CampaignGoal } from "@/components/campaigns/types"
 
 interface Program {
   id: string
@@ -61,6 +64,20 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export function CoachDetail({ coach, program, onClose }: CoachDetailProps) {
+  const router = useRouter()
+  const [showQuickEmail, setShowQuickEmail] = useState(false)
+
+  const handleEmailGoalSelected = (goal: CampaignGoal) => {
+    // Navigate to campaign builder with pre-filled values
+    const params = new URLSearchParams({
+      goal: goal,
+      coaches: coach.id,
+      program: program.id,
+      quickEmail: 'true'
+    })
+    router.push(`/outreach/campaigns/new?${params.toString()}`)
+  }
+
   return (
     <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[70] overflow-y-auto duration-200">
       {/* Dimmed backdrop */}
@@ -192,7 +209,7 @@ export function CoachDetail({ coach, program, onClose }: CoachDetailProps) {
             <Button
               variant="outline"
               className="flex-1"
-              onClick={() => { window.location.href = `mailto:${coach.email}` }}
+              onClick={() => setShowQuickEmail(true)}
             >
               <Mail className="mr-2 h-4 w-4" />
               Send Email
@@ -209,6 +226,21 @@ export function CoachDetail({ coach, program, onClose }: CoachDetailProps) {
           )}
         </div>
       </div>
+
+      {/* Quick Email Modal */}
+      {showQuickEmail && (
+        <QuickEmailModal
+          coach={{
+            id: coach.id,
+            first_name: coach.first_name,
+            last_name: coach.last_name,
+            title: coach.title || "Coach",
+            school_name: program.school_name
+          }}
+          onContinue={handleEmailGoalSelected}
+          onClose={() => setShowQuickEmail(false)}
+        />
+      )}
     </div>
   )
 }

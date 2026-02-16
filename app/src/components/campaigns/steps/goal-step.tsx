@@ -1,6 +1,6 @@
 "use client"
 
-import { Mail, Film, Heart, MapPin } from "lucide-react"
+import { Mail, Film, Heart, MapPin, MessageSquare } from "lucide-react"
 import type { CampaignGoal } from "../types"
 
 const GOALS: {
@@ -94,6 +94,23 @@ export function GoalStep({ onSelect, selected }: GoalStepProps) {
             </button>
           )
         })}
+      </div>
+
+      {/* Other option */}
+      <div className="mt-6 flex flex-col items-center">
+        <div className="text-xs text-muted-foreground mb-2">Need something else?</div>
+        <button
+          type="button"
+          onClick={() => onSelect("other")}
+          className={`flex items-center gap-3 rounded-lg border px-6 py-3 text-sm font-medium transition-all ${
+            selected === "other"
+              ? "border-primary bg-primary/[0.03] text-primary"
+              : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground"
+          }`}
+        >
+          <MessageSquare className="h-4 w-4" />
+          Other (custom message)
+        </button>
       </div>
     </div>
   )

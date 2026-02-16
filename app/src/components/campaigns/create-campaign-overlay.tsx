@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ArrowLeft, Mail, Check } from "lucide-react"
 import { GoalStep } from "./steps/goal-step"
 import { TargetStep } from "./steps/target-step"
@@ -43,6 +43,11 @@ interface CreateCampaignOverlayProps {
   playerPosition: string
   gmailEmail: string | null
   gmailTier: string | null
+  quickEmailData?: {
+    goal: string | null
+    coachId: string | null
+    programId: string | null
+  } | null
   onClose: () => void
   onCampaignLaunched?: (campaignData: {
     name: string
@@ -51,9 +56,9 @@ interface CreateCampaignOverlayProps {
   }) => void
 }
 
-export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gmailTier, onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
-  const [currentStep, setCurrentStep] = useState(1)
-  const [maxStepReached, setMaxStepReached] = useState(1)
+export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gmailTier, quickEmailData, onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
+  const [currentStep, setCurrentStep] = useState(quickEmailData ? 3 : 1)
+  const [maxStepReached, setMaxStepReached] = useState(quickEmailData ? 3 : 1)
   const [draft, setDraft] = useState<CampaignDraft>({ goal: null, selectedCoaches: [], templates: [] })
 
   // Target step navigation state persistence
@@ -61,6 +66,39 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
     activeDivision: string | null
     expandedConference: string | null
   }>({ activeDivision: null, expandedConference: null })
+
+  // Initialize from quick email data if provided
+  useEffect(() => {
+    if (quickEmailData && quickEmailData.goal && quickEmailData.coachId) {
+      // Fetch coach details to populate the draft
+      const fetchCoachDetails = async () => {
+        try {
+          const res = await fetch(`/api/programs/${quickEmailData.programId}/coaches`)
+          if (res.ok) {
+            const coaches = await res.json()
+            const coach = coaches.find((c: any) => c.id === quickEmailData.coachId)
+            if (coach) {
+              setDraft({
+                goal: quickEmailData.goal as CampaignGoal,
+                selectedCoaches: [{
+                  coachId: coach.id,
+                  programId: quickEmailData.programId!,
+                  programName: programs.find(p => p.id === quickEmailData.programId)?.school_name || '',
+                  coachName: `${coach.first_name} ${coach.last_name}`,
+                  title: coach.title || 'Coach',
+                  email: coach.email
+                }],
+                templates: []
+              })
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch coach details:', error)
+        }
+      }
+      fetchCoachDetails()
+    }
+  }, [quickEmailData, programs])
 
   const handleClose = () => {
     window.scrollTo(0, 0)

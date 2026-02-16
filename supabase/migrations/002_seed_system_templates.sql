@@ -158,4 +158,14 @@ Please let me know if you need any additional information from me.
 
 See you soon!
 ((First Name)) ((Last Name))',
+true),
+
+-- Goal: Other (custom messages)
+('Custom Message',
+'',
+'Coach ((Last Name)),
+
+
+
+((First Name)) ((Last Name))',
 true);
