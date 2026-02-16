@@ -1,6 +1,6 @@
 "use client"
 
-import { Mail, Film, Heart, MapPin, PenTool } from "lucide-react"
+import { Mail, Film, Heart, MapPin } from "lucide-react"
 import type { CampaignGoal } from "../types"
 
 const GOALS: {
@@ -42,14 +42,6 @@ const GOALS: {
     highlight: "SECURE A VISIT",
     description: "You've built a connection. Now lock in a campus visit, virtual meeting, or tryout opportunity.",
     color: "primary",
-  },
-  {
-    id: "custom_email",
-    icon: PenTool,
-    title: "Start from scratch to",
-    highlight: "WRITE A CUSTOM EMAIL",
-    description: "Craft a unique message without templates. Perfect for personalized outreach or specific situations.",
-    color: "secondary",
   },
 ]
 
