@@ -413,7 +413,7 @@ function AddTemplateOverlay({
           className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-primary bg-primary/[0.03] py-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
         >
           <Library className="h-4 w-4" />
-          Create Custom Template
+          Create Custom Email
         </button>
 
         {loadingTemplates ? (
