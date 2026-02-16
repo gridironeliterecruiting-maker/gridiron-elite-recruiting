@@ -44,9 +44,14 @@ interface CreateCampaignOverlayProps {
   gmailEmail: string | null
   gmailTier: string | null
   onClose: () => void
+  onCampaignLaunched?: (campaignData: {
+    name: string
+    recipientCount: number
+    programCount: number
+  }) => void
 }
 
-export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gmailTier, onClose }: CreateCampaignOverlayProps) {
+export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gmailTier, onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [maxStepReached, setMaxStepReached] = useState(1)
   const [draft, setDraft] = useState<CampaignDraft>({ goal: null, selectedCoaches: [], templates: [] })
@@ -183,6 +188,15 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
             onEditTarget={() => goToStep(2)}
             onEditBuild={() => goToStep(3)}
             onBack={() => goToStep(3)}
+            onLaunched={(campaignData) => {
+              // Close the overlay
+              onClose()
+              
+              // Show the success overlay if callback provided
+              if (onCampaignLaunched) {
+                onCampaignLaunched(campaignData)
+              }
+            }}
           />
         )}
       </div>
