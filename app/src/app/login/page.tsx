@@ -49,7 +49,7 @@ function LoginContent() {
         <div className="flex justify-center mb-3">
           <Image src="/logo.png" alt="Gridiron Elite Recruiting" width={220} height={220} className="object-contain" />
         </div>
-        <h1 className="text-2xl font-bold text-[#0047AB] mb-1">Welcome Back</h1>
+        <h1 className="text-2xl font-bold text-[#0047AB] mb-1">Welcome</h1>
         <p className="text-gray-500 mb-8">Sign in to your recruiting dashboard</p>
 
         {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>}
