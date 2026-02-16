@@ -99,7 +99,7 @@ export async function GET(request: Request) {
       // ============================================================
       const { data: userProfile } = await admin
         .from('profiles')
-        .select('can_send_emails')
+        .select('can_send_emails, email')
         .eq('id', userId)
         .single()
 
@@ -182,7 +182,7 @@ export async function GET(request: Request) {
       // Get user profile for merge tags
       const { data: profile } = await admin
         .from('profiles')
-        .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url')
+        .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, phone')
         .eq('id', userId)
         .single()
 
@@ -258,18 +258,42 @@ export async function GET(request: Request) {
             continue
           }
 
-          // Prepare merge data
+          // Prepare merge data - keys must match template tags (spaces converted to underscores)
           const mergeData: Record<string, string> = {
-            coach_name: recipient.coach_name || 'Coach',
-            school_name: recipient.program_name || '',
-            first_name: profile?.first_name || '',
-            last_name: profile?.last_name || '',
-            position: profile?.position || '',
-            grad_year: profile?.grad_year?.toString() || '',
-            high_school: profile?.high_school || '',
-            city_state: [profile?.city, profile?.state].filter(Boolean).join(', '),
-            gpa: profile?.gpa?.toString() || '',
-            hudl_url: profile?.hudl_url || '',
+            // Coach/School info
+            Coach_Name: recipient.coach_name || 'Coach',
+            Last_Name: recipient.coach_name?.split(' ').pop() || 'Coach', // Extract coach last name
+            School: recipient.program_name || '',
+            School_Name: recipient.program_name || '',
+            
+            // Player info
+            First_Name: profile?.first_name || '',
+            Last_Name: profile?.last_name || '',
+            Position: profile?.position || '',
+            Grad_Year: profile?.grad_year?.toString() || '',
+            High_School: profile?.high_school || '',
+            City: profile?.city || '',
+            State: profile?.state || '',
+            City_State: [profile?.city, profile?.state].filter(Boolean).join(', '),
+            
+            // Stats and contact
+            GPA: profile?.gpa?.toString() || '',
+            Film_Link: profile?.hudl_url || '',
+            Hudl_URL: profile?.hudl_url || '',
+            // Generate basic stats format based on position
+            Stats: profile?.position === 'QB' ? 
+              `• ${profile?.grad_year || 'Senior'} QB\n• GPA: ${profile?.gpa || 'N/A'}\n• Height: 6'2" Weight: 195 lbs` : 
+              `• ${profile?.grad_year || 'Senior'} ${profile?.position || 'Player'}\n• GPA: ${profile?.gpa || 'N/A'}`,
+            Phone: profile?.phone || '',
+            Email: userProfile?.email || '',
+            
+            // Additional useful fields
+            Recent_Achievement: '', // TODO: Add achievements
+            Improvement_Area: '', // TODO: Add improvement tracking
+            Recent_Game_Event: '', // TODO: Add recent games
+            Recent_Performance: '', // TODO: Add performance tracking
+            Specific_Reason: '', // TODO: Add school-specific interests
+            All_Contact_Info: [userProfile?.email, profile?.phone].filter(Boolean).join(' • '),
           }
 
           // Resolve merge tags
