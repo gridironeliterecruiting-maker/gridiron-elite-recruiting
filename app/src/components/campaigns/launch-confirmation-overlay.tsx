@@ -53,6 +53,7 @@ export function LaunchConfirmationOverlay({
   isLaunching,
   launchError,
   launchSuccess,
+  setIsLaunching,
 }: LaunchConfirmationOverlayProps) {
   const programCount = new Set(selectedCoaches.map((sc) => sc.programId)).size
   const goalLabel = GOAL_LABELS[goal]
