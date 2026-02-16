@@ -6,7 +6,10 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/dashboard'
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://gridironeliterecruiting.com'
+  // Use Vercel preview URL if available, otherwise production URL
+  const appUrl = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}` 
+    : (process.env.NEXT_PUBLIC_APP_URL || 'https://gridironeliterecruiting.com')
 
   if (code) {
     const cookieStore = await cookies()

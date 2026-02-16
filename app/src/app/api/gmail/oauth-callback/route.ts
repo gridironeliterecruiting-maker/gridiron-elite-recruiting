@@ -7,7 +7,11 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   const error = searchParams.get('error')
   const stateParam = searchParams.get('state')
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://gridironeliterecruiting.com').trim()
+  // Use Vercel preview URL if available, otherwise production URL
+  const appUrl = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}` 
+    : (process.env.NEXT_PUBLIC_APP_URL || 'https://gridironeliterecruiting.com')
+  const finalUrl = appUrl.trim()
 
   // Parse state to get campaign ID
   let campaignId = null
@@ -24,15 +28,15 @@ export async function GET(request: NextRequest) {
   if (error) {
     console.error('Gmail OAuth error:', error)
     const redirectUrl = campaignId 
-      ? `${appUrl}/outreach?campaign=${campaignId}&gmail=error&reason=${encodeURIComponent(error)}`
-      : `${appUrl}/outreach?gmail=error&reason=${encodeURIComponent(error)}`
+      ? `${finalUrl}/outreach?campaign=${campaignId}&gmail=error&reason=${encodeURIComponent(error)}`
+      : `${finalUrl}/outreach?gmail=error&reason=${encodeURIComponent(error)}`
     return NextResponse.redirect(redirectUrl)
   }
 
   if (!code) {
     const redirectUrl = campaignId 
-      ? `${appUrl}/outreach?campaign=${campaignId}&gmail=error&reason=no_code`
-      : `${appUrl}/outreach?gmail=error&reason=no_code`
+      ? `${finalUrl}/outreach?campaign=${campaignId}&gmail=error&reason=no_code`
+      : `${finalUrl}/outreach?gmail=error&reason=no_code`
     return NextResponse.redirect(redirectUrl)
   }
 
@@ -42,7 +46,7 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-      return NextResponse.redirect(`${appUrl}/login?redirect=/outreach`)
+      return NextResponse.redirect(`${finalUrl}/login?redirect=/outreach`)
     }
 
     // Exchange code for tokens
@@ -53,7 +57,7 @@ export async function GET(request: NextRequest) {
         code,
         client_id: process.env.GOOGLE_CLIENT_ID!.trim(),
         client_secret: process.env.GOOGLE_CLIENT_SECRET!.trim(),
-        redirect_uri: `${appUrl}/api/gmail/oauth-callback`,
+        redirect_uri: `${finalUrl}/api/gmail/oauth-callback`,
         grant_type: 'authorization_code',
       }),
     })
@@ -61,7 +65,7 @@ export async function GET(request: NextRequest) {
     if (!tokenRes.ok) {
       const tokenError = await tokenRes.text()
       console.error('Token exchange failed:', tokenError)
-      return NextResponse.redirect(`${appUrl}/outreach?gmail=error&reason=token_exchange_failed`)
+      return NextResponse.redirect(`${finalUrl}/outreach?gmail=error&reason=token_exchange_failed`)
     }
 
     const tokens = await tokenRes.json()
@@ -78,7 +82,7 @@ export async function GET(request: NextRequest) {
 
     if (!userInfoRes.ok) {
       console.error('Failed to get user info')
-      return NextResponse.redirect(`${appUrl}/outreach?gmail=error&reason=userinfo_failed`)
+      return NextResponse.redirect(`${finalUrl}/outreach?gmail=error&reason=userinfo_failed`)
     }
 
     const userInfo = await userInfoRes.json()
@@ -113,8 +117,8 @@ export async function GET(request: NextRequest) {
     if (upsertError) {
       console.error('Failed to store Gmail tokens:', upsertError)
       const redirectUrl = campaignId 
-        ? `${appUrl}/outreach?campaign=${campaignId}&gmail=error&reason=store_failed`
-        : `${appUrl}/outreach?gmail=error&reason=store_failed`
+        ? `${finalUrl}/outreach?campaign=${campaignId}&gmail=error&reason=store_failed`
+        : `${finalUrl}/outreach?gmail=error&reason=store_failed`
       return NextResponse.redirect(redirectUrl)
     }
 
@@ -122,15 +126,15 @@ export async function GET(request: NextRequest) {
     
     // If we have a campaign ID, redirect to the campaign editor
     const successUrl = campaignId 
-      ? `${appUrl}/outreach?campaign=${campaignId}&gmail=connected&resume=launch`
-      : `${appUrl}/outreach?gmail=connected`
+      ? `${finalUrl}/outreach?campaign=${campaignId}&gmail=connected&resume=launch`
+      : `${finalUrl}/outreach?gmail=connected`
     
     return NextResponse.redirect(successUrl)
   } catch (err) {
     console.error('Gmail OAuth callback error:', err)
     const redirectUrl = campaignId 
-      ? `${appUrl}/outreach?campaign=${campaignId}&gmail=error&reason=unexpected`
-      : `${appUrl}/outreach?gmail=error&reason=unexpected`
+      ? `${finalUrl}/outreach?campaign=${campaignId}&gmail=error&reason=unexpected`
+      : `${finalUrl}/outreach?gmail=error&reason=unexpected`
     return NextResponse.redirect(redirectUrl)
   }
 }
