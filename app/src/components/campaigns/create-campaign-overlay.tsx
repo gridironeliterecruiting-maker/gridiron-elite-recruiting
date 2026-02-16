@@ -167,7 +167,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
           <BuildStep
             goal={draft.goal}
             templates={draft.templates}
-            onTemplatesChange={(templates) => setDraft((prev) => ({ ...prev, templates }))}
+            onTemplatesChange={(templates: EmailTemplate[]) => setDraft((prev) => ({ ...prev, templates }))}
             onNext={() => goToStep(4)}
             onBack={() => goToStep(2)}
           />

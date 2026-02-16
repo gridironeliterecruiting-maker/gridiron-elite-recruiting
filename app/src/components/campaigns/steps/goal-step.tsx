@@ -1,7 +1,7 @@
 "use client"
 
 import { Mail, Film, Heart, MapPin } from "lucide-react"
-import type { CampaignGoal } from "../create-campaign-overlay"
+import type { CampaignGoal } from "../types"
 
 const GOALS: {
   id: CampaignGoal

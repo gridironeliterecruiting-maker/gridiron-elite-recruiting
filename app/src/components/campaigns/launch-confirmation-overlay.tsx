@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, Rocket, Mail, Users, AlertCircle, CheckCircle2 } from "lucide-react"
+import { ArrowLeft, Rocket, Mail, Users, AlertCircle, CheckCircle2, Calendar, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import type { CampaignGoal, EmailTemplate } from "../campaigns/types"
@@ -114,16 +114,8 @@ export function LaunchConfirmationOverlay({
                 <AlertCircle className="mx-auto h-6 w-6 text-orange-600" />
                 <p className="mt-3 text-sm font-semibold text-orange-800">Gmail Connection Required</p>
                 <p className="mt-1 text-xs text-orange-700">
-                  To send emails, we need your permission to access your Gmail. This will happen on Google's site.
+                  To send emails, we need your permission to access your Gmail. Click "Let's Go 🚀" to proceed to Google's site for connection.
                 </p>
-                <Button
-                  onClick={handleGmailConnect}
-                  className="mt-4 bg-orange-600 text-white hover:bg-orange-700"
-                  disabled={isLaunching}
-                >
-                  <Mail className="h-4 w-4 mr-2" />
-                  Connect Gmail
-                </Button>
               </div>
             ) : (
               <div className="rounded-lg border border-green-200 bg-green-50/50 p-4">
@@ -164,7 +156,7 @@ export function LaunchConfirmationOverlay({
               <Button
                 type="button"
                 onClick={gmailEmail ? onConfirmLaunch : handleGmailConnect}
-                disabled={isLaunching || launchSuccess || !gmailEmail}
+                disabled={isLaunching || launchSuccess}
                 className="inline-flex items-center gap-2 rounded-md bg-accent px-6 py-2.5 text-sm font-semibold text-accent-foreground transition-all hover:bg-accent/90 shadow-sm disabled:opacity-50"
               >
                 {isLaunching ? (

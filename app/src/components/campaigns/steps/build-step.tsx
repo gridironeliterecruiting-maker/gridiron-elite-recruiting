@@ -20,6 +20,95 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { CampaignGoal, EmailTemplate } from "../types"
 
+interface BuildStepProps {
+  goal: CampaignGoal
+  templates: EmailTemplate[]
+  onTemplatesChange: (templates: EmailTemplate[]) => void
+  onNext: () => void
+  onBack: () => void
+}
+
+const GOAL_TEMPLATES: Record<CampaignGoal, EmailTemplate[]> = {
+  get_response: [
+    {
+      name: "Introduction Email",
+      subject: "((First Name)), I'm Interested in Your Program",
+      body: "Dear Coach ((Last Name)),\n\nMy name is ((First Name)) ((Last Name)), and I'm a ((Position)) from ((High School)) in ((City)), ((State)). I'm reaching out because I'm very interested in your program at ((School)).\n\n((Stats))\n\nI'd love to learn more about your program and what you look for in recruits. My highlight film is available at: ((Film Link))\n\nThank you for your time!\n\n((First Name)) ((Last Name))\n((Phone))\n((Email))",
+      delayDays: null
+    }
+  ],
+  evaluate_film: [
+    {
+      name: "Film Share",
+      subject: "((First Name)) ((Last Name)) - ((Position)) Film",
+      body: "Coach ((Last Name)),\n\nI wanted to share my latest film with you. I've had a strong season and would appreciate your evaluation.\n\n((Film Link))\n\nKey highlights:\n((Stats))\n\nI look forward to hearing your thoughts.\n\n((First Name)) ((Last Name))",
+      delayDays: null
+    }
+  ],
+  build_interest: [
+    {
+      name: "Personal Story",
+      subject: "Why ((School)) Is My Top Choice",
+      body: "Coach ((Last Name)),\n\nI wanted to share more about myself beyond the field. ((Personal Story))\n\nAcademically, I maintain a ((GPA)) GPA and am interested in studying ((Major)).\n\nI believe I'd be a great fit for your program both athletically and academically.\n\n((First Name)) ((Last Name))",
+      delayDays: null
+    }
+  ],
+  secure_visit: [
+    {
+      name: "Visit Request",
+      subject: "Campus Visit Opportunity",
+      body: "Coach ((Last Name)),\n\nThank you for your interest in me as a recruit. I'm very excited about the possibility of joining your program.\n\nI'd love to schedule a campus visit to meet you and the team. I'm available ((Availability)).\n\nPlease let me know what dates work best for you.\n\n((First Name)) ((Last Name))",
+      delayDays: null
+    }
+  ]
+}
+
+const TEMPLATE_LIBRARY: EmailTemplate[] = [
+  {
+    name: "Introduction Email",
+    subject: "((First Name)), I'm Interested in Your Program",
+    body: "Dear Coach ((Last Name)),\n\nMy name is ((First Name)) ((Last Name)), and I'm a ((Position)) from ((High School)) in ((City)), ((State)). I'm reaching out because I'm very interested in your program at ((School)).",
+    delayDays: null
+  },
+  {
+    name: "Follow Up 1",
+    subject: "Following Up - ((First Name)) ((Last Name))",
+    body: "Coach ((Last Name)),\n\nI wanted to follow up on my previous email. I remain very interested in your program.",
+    delayDays: 4
+  },
+  {
+    name: "Follow Up 2",
+    subject: "Still Interested - ((First Name)) ((Last Name))",
+    body: "Coach ((Last Name)),\n\nI'm still very interested in your program and would love to connect.",
+    delayDays: 5
+  },
+  {
+    name: "Final Follow Up",
+    subject: "Final Follow Up - ((First Name)) ((Last Name))",
+    body: "Coach ((Last Name)),\n\nThis is my final follow up. I remain interested and hope to hear from you.",
+    delayDays: 7
+  }
+]
+
+const MERGE_TAGS = [
+  { key: "first_name", label: "First Name" },
+  { key: "last_name", label: "Last Name" },
+  { key: "position", label: "Position" },
+  { key: "high_school", label: "High School" },
+  { key: "city", label: "City" },
+  { key: "state", label: "State" },
+  { key: "school", label: "School" },
+  { key: "coach_name", label: "Coach Name" },
+  { key: "stats", label: "Stats" },
+  { key: "film_link", label: "Film Link" },
+  { key: "phone", label: "Phone" },
+  { key: "email", label: "Email" },
+  { key: "gpa", label: "GPA" },
+  { key: "major", label: "Major" },
+  { key: "personal_story", label: "Personal Story" },
+  { key: "availability", label: "Availability" }
+]
+
 export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }: BuildStepProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [showAddOverlay, setShowAddOverlay] = useState(false)
@@ -32,7 +121,7 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
   }, [goal]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateTemplate = (index: number, updates: Partial<EmailTemplate>) => {
-    let updated = templates.map((t, i) => (i === index ? { ...t, ...updates } : t))
+    let updated = templates.map((t: EmailTemplate, i: number) => (i === index ? { ...t, ...updates } : t))
     // Auto-sort by delayDays (null/first email stays at 0)
     updated.sort((a, b) => (a.delayDays ?? -1) - (b.delayDays ?? -1))
     onTemplatesChange(updated)
@@ -128,7 +217,7 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
                       Subject: {template.subject}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground/70 line-clamp-2">
-                      {template.body.slice(0, 150)}...
+                      {(template.body || "").slice(0, 150)}...
                     </p>
                   </div>
 
@@ -298,7 +387,7 @@ function AddTemplateOverlay({
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-foreground">{template.name}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground truncate">
-                    {template.body.slice(0, 80)}...
+                    {(template.body || "").slice(0, 80)}...
                   </p>
                 </div>
                 {alreadyInSequence && (
@@ -335,7 +424,7 @@ function TemplateEditorOverlay({
   // Initialize editor content
   useEffect(() => {
     if (editorRef.current) {
-      editorRef.current.innerHTML = renderMergeTags(template.body)
+      editorRef.current.innerHTML = renderMergeTags(template.body || "")
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
