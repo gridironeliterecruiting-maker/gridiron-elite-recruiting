@@ -258,11 +258,12 @@ export async function GET(request: Request) {
             continue
           }
 
-          // Prepare merge data - keys must match template tags (spaces converted to underscores)
-          const mergeData: Record<string, string> = {
+          // Prepare merge data - support both underscore and space formats
+          const profileData = {
             // Coach/School info
             Coach_Name: recipient.coach_name || 'Coach',
-            Coach_Last_Name: recipient.coach_name?.split(' ').pop() || 'Coach', // Extract coach last name
+            Coach_Last_Name: recipient.coach_name?.split(' ').pop() || 'Coach',
+            Last_Name_Coach: recipient.coach_name?.split(' ').pop() || 'Coach', // Alternative format
             School: recipient.program_name || '',
             School_Name: recipient.program_name || '',
             
@@ -280,21 +281,31 @@ export async function GET(request: Request) {
             GPA: profile?.gpa?.toString() || '',
             Film_Link: profile?.hudl_url || '',
             Hudl_URL: profile?.hudl_url || '',
-            // Generate basic stats format based on position
             Stats: profile?.position === 'QB' ? 
               `• ${profile?.grad_year || 'Senior'} QB\n• GPA: ${profile?.gpa || 'N/A'}\n• Height: 6'2" Weight: 195 lbs` : 
               `• ${profile?.grad_year || 'Senior'} ${profile?.position || 'Player'}\n• GPA: ${profile?.gpa || 'N/A'}`,
             Phone: profile?.phone || '',
             Email: userProfile?.email || '',
             
-            // Additional useful fields
-            Recent_Achievement: '', // TODO: Add achievements
-            Improvement_Area: '', // TODO: Add improvement tracking
-            Recent_Game_Event: '', // TODO: Add recent games
-            Recent_Performance: '', // TODO: Add performance tracking
-            Specific_Reason: '', // TODO: Add school-specific interests
+            // Additional fields
+            Recent_Achievement: '',
+            Improvement_Area: '',
+            Recent_Game_Event: '', 
+            Recent_Performance: '',
+            Specific_Reason: '',
             All_Contact_Info: [userProfile?.email, profile?.phone].filter(Boolean).join(' • '),
           }
+
+          // Create merge data with both formats
+          const mergeData: Record<string, string> = {}
+          
+          // Add all keys with underscores
+          Object.entries(profileData).forEach(([key, value]) => {
+            mergeData[key] = value
+            // Also add with spaces
+            const spaceKey = key.replace(/_/g, ' ')
+            mergeData[spaceKey] = value
+          })
 
           // Resolve merge tags
           const subject = resolveEmailMergeTags(emailTemplate.subject, mergeData)

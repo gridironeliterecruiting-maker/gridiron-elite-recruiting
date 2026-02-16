@@ -132,19 +132,35 @@ export function resolveEmailMergeTags(
   data: Record<string, string>
 ): string {
   // First handle "Coach ((Last Name))" special case
-  let result = template.replace(/Coach\s+\(\(Last Name\)\)/g, (_match) => {
+  let result = template.replace(/Coach\s+\(\(Last[_ ]Name\)\)/gi, (_match) => {
     return 'Coach ' + (data['Coach_Last_Name'] || data['Last_Name'] || '')
   })
   
   // Handle (( )) format (primary)
   result = result.replace(/\(\(([^)]+)\)\)/g, (_match, tag) => {
-    const key = tag.trim().replace(/\s+/g, '_')
+    const trimmedTag = tag.trim()
+    
+    // First try exact match (for tags already with underscores)
+    if (data[trimmedTag]) {
+      return data[trimmedTag]
+    }
+    
+    // Then try with spaces converted to underscores
+    const key = trimmedTag.replace(/\s+/g, '_')
     return data[key] ?? ''
   })
 
   // Handle {{ }} format (backwards compat)
   result = result.replace(/\{\{([^}]+)\}\}/g, (_match, tag) => {
-    const key = tag.trim().replace(/\s+/g, '_')
+    const trimmedTag = tag.trim()
+    
+    // First try exact match
+    if (data[trimmedTag]) {
+      return data[trimmedTag]
+    }
+    
+    // Then try with spaces converted to underscores
+    const key = trimmedTag.replace(/\s+/g, '_')
     return data[key] ?? ''
   })
 
