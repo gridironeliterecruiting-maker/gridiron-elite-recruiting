@@ -15,9 +15,11 @@ import {
   Plus,
   Trash2,
   Check,
+  Library,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { CustomTemplateCreator } from "./custom-template-creator"
 import type { CampaignGoal, EmailTemplate } from "../types"
 
 interface BuildStepProps {
@@ -28,6 +30,18 @@ interface BuildStepProps {
   onBack: () => void
 }
 
+interface DatabaseTemplate {
+  id: string
+  name: string
+  subject: string
+  body: string
+  is_system: boolean
+  created_by?: string
+  created_at: string
+  updated_at: string
+}
+
+// Default templates for each goal (fallback if database is empty)
 const GOAL_TEMPLATES: Record<CampaignGoal, EmailTemplate[]> = {
   get_response: [
     {
@@ -81,33 +95,6 @@ const GOAL_TEMPLATES: Record<CampaignGoal, EmailTemplate[]> = {
   ]
 }
 
-const TEMPLATE_LIBRARY: EmailTemplate[] = [
-  {
-    name: "Introduction Email",
-    subject: "((First Name)), I'm Interested in Your Program",
-    body: "Dear Coach ((Last Name)),\n\nMy name is ((First Name)) ((Last Name)), and I'm a ((Position)) from ((High School)) in ((City)), ((State)). I'm reaching out because I'm very interested in your program at ((School)).",
-    delayDays: null
-  },
-  {
-    name: "Follow Up 1",
-    subject: "Following Up - ((First Name)) ((Last Name))",
-    body: "Coach ((Last Name)),\n\nI wanted to follow up on my previous email. I remain very interested in your program.",
-    delayDays: 4
-  },
-  {
-    name: "Follow Up 2",
-    subject: "Still Interested - ((First Name)) ((Last Name))",
-    body: "Coach ((Last Name)),\n\nI'm still very interested in your program and would love to connect.",
-    delayDays: 5
-  },
-  {
-    name: "Final Follow Up",
-    subject: "Final Follow Up - ((First Name)) ((Last Name))",
-    body: "Coach ((Last Name)),\n\nThis is my final follow up. I remain interested and hope to hear from you.",
-    delayDays: 7
-  }
-]
-
 const MERGE_TAGS = [
   { key: "first_name", label: "First Name" },
   { key: "last_name", label: "Last Name" },
@@ -130,6 +117,29 @@ const MERGE_TAGS = [
 export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }: BuildStepProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [showAddOverlay, setShowAddOverlay] = useState(false)
+  const [availableTemplates, setAvailableTemplates] = useState<DatabaseTemplate[]>([])
+  const [loadingTemplates, setLoadingTemplates] = useState(true)
+  const [showCustomCreator, setShowCustomCreator] = useState(false)
+
+  // Load templates from database
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        const response = await fetch('/api/templates')
+        if (response.ok) {
+          const { templates: dbTemplates } = await response.json()
+          setAvailableTemplates(dbTemplates || [])
+        } else {
+          console.error('Failed to load templates')
+        }
+      } catch (error) {
+        console.error('Error loading templates:', error)
+      } finally {
+        setLoadingTemplates(false)
+      }
+    }
+    loadTemplates()
+  }, [])
 
   // Initialize templates from defaults if empty
   useEffect(() => {
@@ -178,121 +188,113 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
     setShowAddOverlay(false)
   }
 
+  const handleCreateCustomTemplate = async (template: { name: string; subject: string; body: string }) => {
+    try {
+      const response = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(template)
+      })
+
+      if (response.ok) {
+        const { template: newTemplate } = await response.json()
+        // Refresh the available templates list
+        setAvailableTemplates(prev => [newTemplate, ...prev])
+        setShowCustomCreator(false)
+        // Optionally, automatically add it to the sequence
+        addTemplates([{
+          name: newTemplate.name,
+          subject: newTemplate.subject,
+          body: newTemplate.body,
+          delayDays: null
+        }])
+      } else {
+        throw new Error('Failed to create template')
+      }
+    } catch (error) {
+      console.error('Error creating template:', error)
+      throw error
+    }
+  }
+
+  const canProceed = templates.length > 0 && templates.every((t) => t.subject && t.body)
+
   return (
-    <div className="relative">
-      <div className="mb-6">
-        <h2 className="mb-2 font-display text-base font-bold uppercase tracking-wider text-foreground">
-          Build
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Recommended email sequence based on your goal. Click any email to customize.
-          Delete unwanted templates or{" "}
-          <button
-            type="button"
-            onClick={() => setShowAddOverlay(true)}
-            className="font-semibold text-primary hover:underline"
+    <div className="px-5 pb-5">
+      <h3 className="mb-2 font-display text-lg font-bold uppercase tracking-tight text-foreground">
+        Build Your Email Sequence
+      </h3>
+      <p className="mb-6 text-sm text-muted-foreground">
+        Create the emails that will be sent to coaches. Click to edit, drag to reorder.
+      </p>
+
+      {/* Template Cards */}
+      <div className="mb-4 flex flex-col gap-3">
+        {templates.map((template: EmailTemplate, index: number) => (
+          <Card
+            key={index}
+            className="cursor-pointer border border-border bg-card p-4 transition-all hover:border-primary/20"
+            onClick={() => setEditingIndex(index)}
           >
-            add a template
-          </button>
-          .
-        </p>
-      </div>
-
-      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        Recommended Sequence
-      </div>
-
-      <div className="flex flex-col gap-3">
-        {templates.map((template, index) => (
-          <div key={`${template.name}-${index}`} className="group relative">
-            <button
-              type="button"
-              onClick={() => setEditingIndex(index)}
-              className="w-full text-left"
-            >
-              <Card className="overflow-hidden transition-all group-hover:ring-1 group-hover:ring-primary/20 group-hover:shadow-sm">
-                <div className="flex items-start gap-4 p-4">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                    {index + 1}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-foreground">{template.name}</p>
-                      {template.delayDays !== null && (
-                        <Badge variant="outline" className="border border-border bg-secondary text-[10px] font-semibold text-muted-foreground">
-                          <Clock className="mr-1 h-2.5 w-2.5" />
-                          after {template.delayDays} days
-                        </Badge>
-                      )}
-                      {template.delayDays === null && index === 0 && (
-                        <Badge variant="outline" className="border border-primary/20 bg-primary/10 text-[10px] font-semibold text-primary">
-                          First Email
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground truncate">
-                      Subject: {template.subject}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground/70 line-clamp-2">
-                      {(template.body || "").slice(0, 150)}...
-                    </p>
-                  </div>
-
-                  <ChevronRight className="mt-2 h-4 w-4 shrink-0 text-muted-foreground/30 transition-colors group-hover:text-primary" />
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex shrink-0 items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                  {index + 1}
                 </div>
-              </Card>
-            </button>
-
-            {/* Delete button — shows on hover */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                deleteTemplate(index)
-              }}
-              className="absolute bottom-3 right-3 flex h-7 w-7 items-center justify-center rounded-md bg-secondary text-muted-foreground/0 transition-all group-hover:text-destructive hover:!bg-destructive/10"
-              title="Remove from sequence"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        ))}
-
-        {templates.length === 0 && (
-          <Card className="flex flex-col items-center justify-center p-8 text-center">
-            <Mail className="mb-2 h-8 w-8 text-muted-foreground/30" />
-            <p className="text-sm font-semibold text-foreground">No emails in sequence</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              <button
-                type="button"
-                onClick={() => setShowAddOverlay(true)}
-                className="font-semibold text-primary hover:underline"
-              >
-                Add a template
-              </button>{" "}
-              to get started.
-            </p>
+                <Mail className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="font-medium text-foreground">{template.name}</h4>
+                <p className="truncate text-xs text-muted-foreground">{template.subject}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {template.delayDays !== null && (
+                  <Badge variant="secondary" className="gap-1 text-[10px]">
+                    <Clock className="h-3 w-3" />
+                    Day {template.delayDays}
+                  </Badge>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    deleteTemplate(index)
+                  }}
+                  className="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
           </Card>
-        )}
+        ))}
       </div>
+
+      {/* Add Template Button */}
+      <button
+        type="button"
+        onClick={() => setShowAddOverlay(true)}
+        className="mb-6 w-full rounded-lg border border-dashed border-border bg-card py-3 text-sm text-muted-foreground transition-all hover:border-primary hover:bg-primary/[0.02] hover:text-foreground"
+      >
+        + Add Template
+      </button>
 
       {/* Navigation */}
-      <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
+      <div className="flex items-center justify-between">
         <button
           type="button"
           onClick={onBack}
-          className="rounded-md bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary/80"
+          className="rounded-md border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
         >
           Back
         </button>
         <button
           type="button"
           onClick={onNext}
-          disabled={templates.length === 0}
-          className="rounded-md bg-primary px-6 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
+          disabled={!canProceed}
+          className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Next — Review & Launch
+          Continue <ChevronRight className="h-3 w-3" />
         </button>
       </div>
 
@@ -311,8 +313,22 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
       {showAddOverlay && (
         <AddTemplateOverlay
           existingNames={templates.map((t) => t.name)}
+          availableTemplates={availableTemplates}
+          loadingTemplates={loadingTemplates}
           onAdd={addTemplates}
           onClose={() => setShowAddOverlay(false)}
+          onCreateNew={() => {
+            setShowAddOverlay(false)
+            setShowCustomCreator(true)
+          }}
+        />
+      )}
+
+      {/* Custom Template Creator */}
+      {showCustomCreator && (
+        <CustomTemplateCreator
+          onSave={handleCreateCustomTemplate}
+          onClose={() => setShowCustomCreator(false)}
         />
       )}
     </div>
@@ -322,28 +338,46 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
 // ─── Add Template Overlay ───────────────────────────────────────
 function AddTemplateOverlay({
   existingNames,
+  availableTemplates,
+  loadingTemplates,
   onAdd,
   onClose,
+  onCreateNew,
 }: {
   existingNames: string[]
+  availableTemplates: DatabaseTemplate[]
+  loadingTemplates: boolean
   onAdd: (templates: EmailTemplate[]) => void
   onClose: () => void
+  onCreateNew: () => void
 }) {
-  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
-  const toggleTemplate = (index: number) => {
+  const toggleTemplate = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev)
-      if (next.has(index)) next.delete(index)
-      else next.add(index)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }
 
   const handleAdd = () => {
-    const toAdd = Array.from(selected).map((i) => TEMPLATE_LIBRARY[i])
+    const toAdd = Array.from(selected)
+      .map(id => availableTemplates.find(t => t.id === id))
+      .filter(Boolean)
+      .map(t => ({
+        name: t!.name,
+        subject: t!.subject,
+        body: t!.body,
+        delayDays: null
+      }))
     onAdd(toAdd)
   }
+
+  // Separate system and user templates
+  const systemTemplates = availableTemplates.filter(t => t.is_system)
+  const userTemplates = availableTemplates.filter(t => !t.is_system)
 
   return (
     <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[70] overflow-y-auto duration-200">
@@ -372,53 +406,103 @@ function AddTemplateOverlay({
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        <p className="mb-4 text-xs text-muted-foreground">
-          Select one or more templates to add to your sequence.
-        </p>
-        <div className="flex flex-col gap-2">
-          {TEMPLATE_LIBRARY.map((template, index) => {
-            const isSelected = selected.has(index)
-            const alreadyInSequence = existingNames.includes(template.name)
-            return (
-              <button
-                key={index}
-                type="button"
-                onClick={() => !alreadyInSequence && toggleTemplate(index)}
-                disabled={alreadyInSequence}
-                className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-all ${
-                  alreadyInSequence
-                    ? "border-border bg-secondary/30 opacity-50 cursor-not-allowed"
-                    : isSelected
-                      ? "border-primary/30 bg-primary/[0.03]"
-                      : "border-border bg-card hover:border-primary/20"
-                }`}
-              >
-                <div
-                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                    isSelected
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card"
-                  }`}
-                >
-                  {isSelected && <Check className="h-3 w-3" />}
+        {/* Create Custom Template Button */}
+        <button
+          type="button"
+          onClick={onCreateNew}
+          className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-primary bg-primary/[0.03] py-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+        >
+          <Library className="h-4 w-4" />
+          Create Custom Template
+        </button>
+
+        {loadingTemplates ? (
+          <p className="text-center text-sm text-muted-foreground">Loading templates...</p>
+        ) : (
+          <>
+            {/* User Templates */}
+            {userTemplates.length > 0 && (
+              <>
+                <h4 className="mb-2 text-xs font-semibold text-muted-foreground">Your Templates</h4>
+                <div className="mb-4 flex flex-col gap-2">
+                  {userTemplates.map((template) => {
+                    const isSelected = selected.has(template.id)
+                    const alreadyInSequence = existingNames.includes(template.name)
+                    return (
+                      <button
+                        key={template.id}
+                        type="button"
+                        onClick={() => !alreadyInSequence && toggleTemplate(template.id)}
+                        disabled={alreadyInSequence}
+                        className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-all ${
+                          alreadyInSequence
+                            ? "border-border bg-secondary/30 opacity-50 cursor-not-allowed"
+                            : isSelected
+                              ? "border-primary/30 bg-primary/[0.03]"
+                              : "border-border bg-card hover:border-primary/20"
+                        }`}
+                      >
+                        <div
+                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
+                            isSelected
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border"
+                          }`}
+                        >
+                          {isSelected && <Check className="h-3 w-3" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h5 className="font-medium text-foreground">{template.name}</h5>
+                          <p className="truncate text-xs text-muted-foreground">{template.subject}</p>
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-foreground">{template.name}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground truncate">
-                    {(template.body || "").slice(0, 80)}...
-                  </p>
-                </div>
-                {alreadyInSequence && (
-                  <Badge variant="outline" className="border-0 bg-secondary text-[9px] text-muted-foreground">
-                    Already added
-                  </Badge>
-                )}
-              </button>
-            )
-          })}
-        </div>
+              </>
+            )}
+
+            {/* System Templates */}
+            <h4 className="mb-2 text-xs font-semibold text-muted-foreground">Recommended Templates</h4>
+            <div className="flex flex-col gap-2">
+              {systemTemplates.map((template) => {
+                const isSelected = selected.has(template.id)
+                const alreadyInSequence = existingNames.includes(template.name)
+                return (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => !alreadyInSequence && toggleTemplate(template.id)}
+                    disabled={alreadyInSequence}
+                    className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-all ${
+                      alreadyInSequence
+                        ? "border-border bg-secondary/30 opacity-50 cursor-not-allowed"
+                        : isSelected
+                          ? "border-primary/30 bg-primary/[0.03]"
+                          : "border-border bg-card hover:border-primary/20"
+                    }`}
+                  >
+                    <div
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
+                        isSelected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border"
+                      }`}
+                    >
+                      {isSelected && <Check className="h-3 w-3" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h5 className="font-medium text-foreground">{template.name}</h5>
+                      <p className="truncate text-xs text-muted-foreground">{template.subject}</p>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </>
+        )}
       </div>
-      </div>
+    </div>
     </div>
   )
 }
@@ -435,195 +519,221 @@ function TemplateEditorOverlay({
   onUpdate: (updates: Partial<EmailTemplate>) => void
   onClose: () => void
 }) {
-  const editorRef = useRef<HTMLDivElement>(null)
+  const [name, setName] = useState(template.name)
   const [subject, setSubject] = useState(template.subject)
-  const [delayDays, setDelayDays] = useState(template.delayDays)
-
-  // Initialize editor content
-  useEffect(() => {
-    if (editorRef.current) {
-      editorRef.current.innerHTML = renderMergeTags(template.body || "")
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const [body, setBody] = useState(template.body || '')
+  const [delayDays, setDelayDays] = useState(template.delayDays ?? 0)
+  const bodyRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSave = () => {
-    const body = extractPlainText(editorRef.current?.innerHTML || "")
-    onUpdate({ subject, body, delayDays })
+    onUpdate({ name, subject, body, delayDays: index === 0 ? null : delayDays })
     onClose()
   }
 
   const insertMergeTag = (tag: string) => {
-    if (!editorRef.current) return
-    const sel = window.getSelection()
-    const tagHtml = `<span class="merge-tag" contenteditable="false" data-tag="${tag}">((${tag.replace(/_/g, " ")}))</span>&nbsp;`
-
-    if (sel && sel.rangeCount > 0 && editorRef.current.contains(sel.anchorNode)) {
-      const range = sel.getRangeAt(0)
-      range.deleteContents()
-      const frag = document.createRange().createContextualFragment(tagHtml)
-      range.insertNode(frag)
-      range.collapse(false)
-    } else {
-      editorRef.current.innerHTML += tagHtml
-    }
+    if (!bodyRef.current) return
+    const start = bodyRef.current.selectionStart
+    const end = bodyRef.current.selectionEnd
+    const currentBody = body || ''
+    const newBody = currentBody.slice(0, start) + `((${tag}))` + currentBody.slice(end)
+    setBody(newBody)
+    // Reset cursor position after React re-render
+    setTimeout(() => {
+      if (bodyRef.current) {
+        bodyRef.current.selectionStart = start + tag.length + 4
+        bodyRef.current.selectionEnd = start + tag.length + 4
+        bodyRef.current.focus()
+      }
+    }, 0)
   }
 
-  const execCommand = (cmd: string) => {
-    document.execCommand(cmd, false)
-    editorRef.current?.focus()
+  const applyFormat = (format: "bold" | "italic" | "underline" | "list") => {
+    if (!bodyRef.current) return
+    const start = bodyRef.current.selectionStart
+    const end = bodyRef.current.selectionEnd
+    const currentBody = body || ''
+    const selectedText = currentBody.slice(start, end)
+
+    let newText = selectedText
+    switch (format) {
+      case "bold":
+        newText = `**${selectedText}**`
+        break
+      case "italic":
+        newText = `*${selectedText}*`
+        break
+      case "underline":
+        newText = `__${selectedText}__`
+        break
+      case "list":
+        newText = selectedText
+          .split("\n")
+          .map((line) => (line.trim() ? `• ${line}` : line))
+          .join("\n")
+        break
+    }
+
+    const newBody = currentBody.slice(0, start) + newText + currentBody.slice(end)
+    setBody(newBody)
   }
 
   return (
     <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[70] overflow-y-auto duration-200">
       <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute inset-y-0 right-0 flex w-full max-w-lg flex-col overflow-hidden bg-card shadow-2xl sm:rounded-l-2xl">
-      {/* Header */}
-      <div className="flex items-center gap-4 border-b border-border px-5 py-4">
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
-          aria-label="Close"
-        >
-          <X className="h-4 w-4" />
-        </button>
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-            {index + 1}
-          </div>
-          <h3 className="font-display text-lg font-bold uppercase tracking-tight text-foreground truncate">
-            {template.name}
+      <div className="absolute inset-y-0 right-0 flex w-full max-w-2xl flex-col overflow-hidden bg-card shadow-2xl sm:rounded-l-2xl">
+        {/* Header */}
+        <div className="flex items-center gap-4 border-b border-border px-5 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <h3 className="flex-1 font-display text-lg font-bold uppercase tracking-tight text-foreground">
+            Edit Email Template
           </h3>
+          <button
+            type="button"
+            onClick={handleSave}
+            className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Save Changes
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={handleSave}
-          className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          Save
-        </button>
-      </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        {/* Delay */}
-        {template.delayDays !== null && (
-          <div className="mb-4 flex items-center gap-3">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Send after</span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setDelayDays(Math.max(1, (delayDays || 1) - 1))}
-                className="flex h-7 w-7 items-center justify-center rounded border border-border bg-secondary text-muted-foreground hover:text-foreground"
-              >
-                <Minus className="h-3 w-3" />
-              </button>
-              <span className="w-8 text-center text-sm font-bold text-foreground">{delayDays}</span>
-              <button
-                type="button"
-                onClick={() => setDelayDays((delayDays || 1) + 1)}
-                className="flex h-7 w-7 items-center justify-center rounded border border-border bg-secondary text-muted-foreground hover:text-foreground"
-              >
-                <Plus className="h-3 w-3" />
-              </button>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-5 py-6">
+          {/* Template Name */}
+          <div className="mb-6">
+            <label htmlFor="template-name" className="mb-2 block text-xs font-medium text-foreground">
+              Template Name
+            </label>
+            <input
+              id="template-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          {/* Delay Days */}
+          {index > 0 && (
+            <div className="mb-6">
+              <label className="mb-2 block text-xs font-medium text-foreground">
+                Send After (Days)
+              </label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDelayDays(Math.max(1, delayDays - 1))}
+                  className="rounded border border-border bg-secondary px-2 py-1 transition-colors hover:bg-primary hover:text-primary-foreground"
+                >
+                  <Minus className="h-3 w-3" />
+                </button>
+                <input
+                  type="number"
+                  value={delayDays}
+                  onChange={(e) => setDelayDays(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-16 rounded-md border border-border bg-card px-2 py-1 text-center text-sm text-foreground"
+                />
+                <button
+                  type="button"
+                  onClick={() => setDelayDays(delayDays + 1)}
+                  className="rounded border border-border bg-secondary px-2 py-1 transition-colors hover:bg-primary hover:text-primary-foreground"
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
+                <span className="text-xs text-muted-foreground">days after previous email</span>
+              </div>
             </div>
-            <span className="text-xs text-muted-foreground">days</span>
+          )}
+
+          {/* Subject Line */}
+          <div className="mb-6">
+            <label htmlFor="subject" className="mb-2 block text-xs font-medium text-foreground">
+              Subject Line
+            </label>
+            <input
+              id="subject"
+              type="text"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="e.g., ((First Name)), I'm interested in your program"
+              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
           </div>
-        )}
 
-        {/* Subject */}
-        <div className="mb-4">
-          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Subject Line
-          </label>
-          <input
-            type="text"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/30"
-          />
-        </div>
+          {/* Email Body */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label htmlFor="body" className="block text-xs font-medium text-foreground">
+                Email Body
+              </label>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => applyFormat("bold")}
+                  className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  title="Bold"
+                >
+                  <Bold className="h-3 w-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyFormat("italic")}
+                  className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  title="Italic"
+                >
+                  <Italic className="h-3 w-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyFormat("underline")}
+                  className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  title="Underline"
+                >
+                  <Underline className="h-3 w-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyFormat("list")}
+                  className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  title="Bullet List"
+                >
+                  <List className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
 
-        {/* Merge Tags */}
-        <div className="mb-4">
-          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Insert Variable
-          </label>
-          <div className="flex flex-wrap gap-1.5">
-            {MERGE_TAGS.map((tag) => (
-              <button
-                key={tag.key}
-                type="button"
-                onClick={() => insertMergeTag(tag.key)}
-                className="rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/10"
-              >
-                {tag.label}
-              </button>
-            ))}
+            {/* Merge Tags */}
+            <div className="mb-3 flex flex-wrap gap-1">
+              {MERGE_TAGS.map((tag) => (
+                <button
+                  key={tag.key}
+                  type="button"
+                  onClick={() => insertMergeTag(tag.label)}
+                  className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                >
+                  {tag.label}
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              ref={bodyRef}
+              id="body"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={12}
+              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="Write your email here..."
+            />
           </div>
         </div>
-
-        {/* Toolbar */}
-        <div className="mb-2 flex items-center gap-1 rounded-t-md border border-b-0 border-border bg-secondary/50 px-2 py-1.5">
-          <button type="button" onClick={() => execCommand("bold")} className="rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground" title="Bold">
-            <Bold className="h-3.5 w-3.5" />
-          </button>
-          <button type="button" onClick={() => execCommand("italic")} className="rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground" title="Italic">
-            <Italic className="h-3.5 w-3.5" />
-          </button>
-          <button type="button" onClick={() => execCommand("underline")} className="rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground" title="Underline">
-            <Underline className="h-3.5 w-3.5" />
-          </button>
-          <div className="mx-1 h-4 w-px bg-border" />
-          <button type="button" onClick={() => execCommand("insertUnorderedList")} className="rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground" title="Bullet List">
-            <List className="h-3.5 w-3.5" />
-          </button>
-          <button type="button" onClick={() => execCommand("justifyLeft")} className="rounded p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground" title="Align Left">
-            <AlignLeft className="h-3.5 w-3.5" />
-          </button>
-        </div>
-
-        {/* Editor */}
-        <div
-          ref={editorRef}
-          contentEditable
-          suppressContentEditableWarning
-          className="min-h-[300px] rounded-b-md border border-border bg-card p-4 text-sm leading-relaxed text-foreground focus:border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/30 [&_.merge-tag]:inline-block [&_.merge-tag]:rounded [&_.merge-tag]:bg-primary/10 [&_.merge-tag]:px-1.5 [&_.merge-tag]:py-0.5 [&_.merge-tag]:text-xs [&_.merge-tag]:font-semibold [&_.merge-tag]:text-primary [&_.merge-tag]:cursor-default"
-          style={{ whiteSpace: "pre-wrap" }}
-        />
-      </div>
       </div>
     </div>
   )
 }
-
-// ─── Helpers ────────────────────────────────────────────────────
-function renderMergeTags(text: string): string {
-  return text.replace(
-    /\(\(([^)]+)\)\)/g,
-    (_, tag) => {
-      const key = tag.replace(/\s+/g, "_")
-      return `<span class="merge-tag" contenteditable="false" data-tag="${key}">((${tag}))</span>`
-    }
-  )
-}
-
-function extractPlainText(html: string): string {
-  // Convert merge tag spans back to ((tag)) format
-  let text = html.replace(
-    /<span[^>]*class="merge-tag"[^>]*data-tag="([^"]*)"[^>]*>.*?<\/span>/g,
-    (_, tag) => `((${tag}))`
-  )
-  // Convert <br> and block elements to newlines
-  text = text.replace(/<br\s*\/?>/gi, "\n")
-  text = text.replace(/<\/?(div|p|li|ul|ol)[^>]*>/gi, "\n")
-  // Strip remaining HTML
-  text = text.replace(/<[^>]*>/g, "")
-  // Decode entities
-  text = text.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ")
-  // Clean up excess newlines
-  text = text.replace(/\n{3,}/g, "\n\n").trim()
-  return text
-}
-
-export { GOAL_TEMPLATES }
