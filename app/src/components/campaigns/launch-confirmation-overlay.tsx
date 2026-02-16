@@ -29,6 +29,7 @@ interface LaunchConfirmationOverlayProps {
   isLaunching: boolean
   launchError: string | null
   launchSuccess: boolean
+  setIsLaunching: (value: boolean) => void
 }
 
 const GOAL_LABELS: Record<CampaignGoal, { verb: string; highlight: string }> = {
@@ -56,9 +57,44 @@ export function LaunchConfirmationOverlay({
   const programCount = new Set(selectedCoaches.map((sc) => sc.programId)).size
   const goalLabel = GOAL_LABELS[goal]
 
-  const handleGmailConnect = () => {
-    // Redirect to our backend's OAuth initiation endpoint
-    window.location.href = "/api/gmail/authorize"
+  const handleGmailConnect = async () => {
+    // First, save the campaign as a draft
+    setIsLaunching(true)
+    try {
+      const createRes = await fetch('/api/campaigns/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: campaignName,
+          goal,
+          templates: templates.map((t) => ({
+            subject: t.subject,
+            body: t.body,
+            delayDays: t.delayDays,
+            name: t.name,
+          })),
+          recipients: selectedCoaches.map(c => ({
+            coachId: c.coachId,
+            coachName: c.coachName,
+            email: c.email,
+            programName: c.programName,
+          })),
+          scheduledAt: launchNow ? null : (scheduledAt ? new Date(scheduledAt).toISOString() : null),
+          status: 'draft', // Save as draft
+        }),
+      })
+
+      const data = await createRes.json()
+      if (!createRes.ok) {
+        throw new Error(data.error || 'Failed to save campaign')
+      }
+
+      // Redirect to OAuth with campaign ID in state
+      window.location.href = `/api/gmail/authorize?campaign=${data.campaignId}`
+    } catch (error) {
+      setIsLaunching(false)
+      alert('Failed to save campaign. Please try again.')
+    }
   }
 
   return (

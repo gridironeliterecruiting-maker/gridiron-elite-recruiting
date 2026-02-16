@@ -97,6 +97,9 @@ interface OutreachClientProps {
   gmailEmail: string | null
   gmailTier: string | null
   campaigns: Campaign[]
+  resumeCampaignId?: string
+  resumeStep?: string
+  gmailStatus?: string
 }
 
 export function OutreachClient({
@@ -106,10 +109,51 @@ export function OutreachClient({
   gmailEmail,
   gmailTier,
   campaigns,
+  resumeCampaignId,
+  resumeStep,
+  gmailStatus,
 }: OutreachClientProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [showCreateCampaign, setShowCreateCampaign] = useState(false)
   const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null)
+  const [resumingCampaign, setResumingCampaign] = useState(false)
+
+  // Handle resuming campaign after OAuth
+  useEffect(() => {
+    if (resumeCampaignId && gmailStatus === 'connected' && resumeStep === 'launch') {
+      // Load the campaign and open the wizard at launch step
+      const loadAndResumeCampaign = async () => {
+        setResumingCampaign(true)
+        try {
+          // Fetch campaign details
+          const res = await fetch(`/api/campaigns/${resumeCampaignId}`)
+          if (!res.ok) {
+            console.error('Failed to load campaign')
+            return
+          }
+          
+          const campaignData = await res.json()
+          
+          // TODO: Open CreateCampaignOverlay with the campaign data at launch step
+          // For now, just show a message
+          alert(`Welcome back! Your campaign "${campaignData.name}" is ready to launch. Click "New Campaign" to continue where you left off.`)
+          
+          // Clear the URL params
+          const url = new URL(window.location.href)
+          url.searchParams.delete('campaign')
+          url.searchParams.delete('gmail')
+          url.searchParams.delete('resume')
+          window.history.replaceState({}, '', url.pathname + url.search)
+        } catch (err) {
+          console.error('Error resuming campaign:', err)
+        } finally {
+          setResumingCampaign(false)
+        }
+      }
+      
+      loadAndResumeCampaign()
+    }
+  }, [resumeCampaignId, gmailStatus, resumeStep])
 
   const handleToggleCampaign = async (campaignId: string, newStatus: string) => {
     setTogglingCampaign(campaignId)

@@ -6,15 +6,34 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   const error = searchParams.get('error')
+  const stateParam = searchParams.get('state')
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://gridironeliterecruiting.com').trim()
+
+  // Parse state to get campaign ID
+  let campaignId = null
+  try {
+    if (stateParam) {
+      const stateJson = Buffer.from(stateParam, 'base64').toString()
+      const state = JSON.parse(stateJson)
+      campaignId = state.campaignId
+    }
+  } catch (e) {
+    console.error('Failed to parse OAuth state:', e)
+  }
 
   if (error) {
     console.error('Gmail OAuth error:', error)
-    return NextResponse.redirect(`${appUrl}/outreach?gmail=error&reason=${encodeURIComponent(error)}`)
+    const redirectUrl = campaignId 
+      ? `${appUrl}/outreach?campaign=${campaignId}&gmail=error&reason=${encodeURIComponent(error)}`
+      : `${appUrl}/outreach?gmail=error&reason=${encodeURIComponent(error)}`
+    return NextResponse.redirect(redirectUrl)
   }
 
   if (!code) {
-    return NextResponse.redirect(`${appUrl}/outreach?gmail=error&reason=no_code`)
+    const redirectUrl = campaignId 
+      ? `${appUrl}/outreach?campaign=${campaignId}&gmail=error&reason=no_code`
+      : `${appUrl}/outreach?gmail=error&reason=no_code`
+    return NextResponse.redirect(redirectUrl)
   }
 
   try {
@@ -93,13 +112,25 @@ export async function GET(request: NextRequest) {
 
     if (upsertError) {
       console.error('Failed to store Gmail tokens:', upsertError)
-      return NextResponse.redirect(`${appUrl}/outreach?gmail=error&reason=store_failed`)
+      const redirectUrl = campaignId 
+        ? `${appUrl}/outreach?campaign=${campaignId}&gmail=error&reason=store_failed`
+        : `${appUrl}/outreach?gmail=error&reason=store_failed`
+      return NextResponse.redirect(redirectUrl)
     }
 
     console.log(`Gmail connected for user ${user.id} (${email}), tier: ${accountTier}`)
-    return NextResponse.redirect(`${appUrl}/outreach?gmail=connected`)
+    
+    // If we have a campaign ID, redirect to the campaign editor
+    const successUrl = campaignId 
+      ? `${appUrl}/outreach?campaign=${campaignId}&gmail=connected&resume=launch`
+      : `${appUrl}/outreach?gmail=connected`
+    
+    return NextResponse.redirect(successUrl)
   } catch (err) {
     console.error('Gmail OAuth callback error:', err)
-    return NextResponse.redirect(`${appUrl}/outreach?gmail=error&reason=unexpected`)
+    const redirectUrl = campaignId 
+      ? `${appUrl}/outreach?campaign=${campaignId}&gmail=error&reason=unexpected`
+      : `${appUrl}/outreach?gmail=error&reason=unexpected`
+    return NextResponse.redirect(redirectUrl)
   }
 }

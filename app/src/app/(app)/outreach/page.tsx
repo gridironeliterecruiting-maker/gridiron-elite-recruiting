@@ -1,7 +1,11 @@
 import { createClient } from "@/lib/supabase/server"
 import { OutreachClient } from "./outreach-client"
 
-export default async function OutreachPage() {
+export default async function OutreachPage({
+  searchParams,
+}: {
+  searchParams: { campaign?: string; gmail?: string; resume?: string }
+}) {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -81,6 +85,9 @@ export default async function OutreachPage() {
         ...c,
         stats: campaignStats[c.id] || { total: 0, sent: 0, opened: 0, replied: 0, error: 0 },
       }))}
+      resumeCampaignId={searchParams.campaign}
+      resumeStep={searchParams.resume}
+      gmailStatus={searchParams.gmail}
     />
   )
 }
