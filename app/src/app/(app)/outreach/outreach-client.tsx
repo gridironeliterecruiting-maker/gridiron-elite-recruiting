@@ -232,6 +232,9 @@ export function OutreachClient({
           gmailEmail={gmailEmail}
           gmailTier={gmailTier}
           onClose={() => setShowCreateCampaign(false)}
+          onCampaignLaunched={(campaignData) => {
+            setLaunchedCampaign(campaignData)
+          }}
         />
       )}
 

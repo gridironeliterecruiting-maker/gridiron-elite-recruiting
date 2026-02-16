@@ -41,7 +41,11 @@ interface LaunchStepProps {
   onEditTarget: () => void
   onEditBuild: () => void
   onBack: () => void
-  onLaunched?: () => void
+  onLaunched?: (campaignData: {
+    name: string
+    recipientCount: number
+    programCount: number
+  }) => void
 }
 
 export function LaunchStep({
@@ -118,7 +122,16 @@ export function LaunchStep({
       }
 
       setLaunchSuccess(true)
-      onLaunched?.()
+      
+      // Call onLaunched with campaign data
+      if (onLaunched) {
+        const programSet = new Set(selectedCoaches.map(c => c.programId))
+        onLaunched({
+          name: campaignName,
+          recipientCount: selectedCoaches.length,
+          programCount: programSet.size,
+        })
+      }
     } catch (error) {
       setLaunchError(error instanceof Error ? error.message : 'Something went wrong')
     } finally {
