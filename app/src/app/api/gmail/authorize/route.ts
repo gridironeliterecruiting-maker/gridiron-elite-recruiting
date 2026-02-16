@@ -25,7 +25,7 @@ export async function GET() {
 
     const url = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
 
-    return NextResponse.json({ url })
+    return NextResponse.redirect(url)
   } catch (error) {
     console.error('Gmail authorize error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
