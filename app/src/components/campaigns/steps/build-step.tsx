@@ -105,6 +105,12 @@ const TEMPLATE_LIBRARY: EmailTemplate[] = [
     subject: "Final Follow Up - ((First Name)) ((Last Name))",
     body: "Coach ((Last Name)),\n\nThis is my final follow up. I remain interested and hope to hear from you.",
     delayDays: 7
+  },
+  {
+    name: "Custom Email",
+    subject: "",
+    body: "",
+    delayDays: null,
   }
 ]
 
