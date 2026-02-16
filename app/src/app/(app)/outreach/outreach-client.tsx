@@ -90,6 +90,7 @@ const goalLabels: Record<string, string> = {
   evaluate_film: "Film Evaluation",
   build_interest: "Build Interest",
   secure_visit: "Secure Visit",
+  other: "Other",
 }
 
 interface OutreachClientProps {
