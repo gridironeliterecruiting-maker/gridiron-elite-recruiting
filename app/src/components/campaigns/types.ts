@@ -1,4 +1,4 @@
-export type CampaignGoal = "get_response" | "evaluate_film" | "build_interest" | "secure_visit" | "custom_email"
+export type CampaignGoal = "get_response" | "evaluate_film" | "build_interest" | "secure_visit"
 
 export interface EmailTemplate {
   id?: string // Make optional as it might not be present for new templates

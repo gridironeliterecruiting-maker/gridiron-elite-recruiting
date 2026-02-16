@@ -73,23 +73,9 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
   }
 
   const handleGoalSelect = (goal: CampaignGoal) => {
-    setDraft((prev) => {
-      const newDraft: CampaignDraft = { ...prev, goal };
-      if (goal === "custom_email") {
-        newDraft.templates = [
-          {
-            id: "custom-template",
-            name: "Custom Email",
-            subject: "",
-            body: "",
-            delayDays: 0,
-          },
-        ];
-      }
-      return newDraft;
-    });
-    goToStep(2);
-  };
+    setDraft((prev) => ({ ...prev, goal }))
+    goToStep(2)
+  }
 
   return (
     <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[60] overflow-y-auto bg-background duration-300">
