@@ -78,14 +78,6 @@ const GOAL_TEMPLATES: Record<CampaignGoal, EmailTemplate[]> = {
       body: "Coach ((Last Name)),\n\nThank you for your interest in me as a recruit. I'm very excited about the possibility of joining your program.\n\nI'd love to schedule a campus visit to meet you and the team. I'm available ((Availability)).\n\nPlease let me know what dates work best for you.\n\n((First Name)) ((Last Name))",
       delayDays: null
     }
-  ],
-  custom_email: [
-    {
-      name: "Custom Email",
-      subject: "",
-      body: "",
-      delayDays: null
-    }
   ]
 }
 
