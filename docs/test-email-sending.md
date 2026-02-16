@@ -10,13 +10,16 @@
 ## Testing Steps
 
 1. **Create and launch a campaign** targeting yourself at Ohio State
-2. **Manually trigger the email queue** (cron only runs once daily at 9 AM UTC):
-   ```bash
-   curl https://gridironeliterecruiting.com/api/email/process-queue \
-     -H "Authorization: Bearer gridiron-cron-secret-2024"
-   ```
-
+2. **Emails send automatically!** The launch endpoint now triggers immediate processing
 3. Check your inbox at paulkong3@gmail.com
+
+## Manual Trigger (if needed)
+
+If you need to manually process the queue:
+```bash
+curl https://gridironeliterecruiting.com/api/email/process-queue \
+  -H "Authorization: Bearer gridiron-cron-secret-2024"
+```
 
 ## Queue Status Check
 
