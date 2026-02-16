@@ -119,6 +119,27 @@ export async function POST(
       })
       .eq('id', id)
 
+    // Trigger immediate email processing for "Launch Now" campaigns
+    if (!launchTime || launchTime <= new Date()) {
+      try {
+        const processUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/email/process-queue`
+        const processRes = await fetch(processUrl, {
+          headers: {
+            'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+          },
+        })
+        
+        if (!processRes.ok) {
+          console.error('Failed to trigger email processing:', await processRes.text())
+        } else {
+          console.log('Email queue processing triggered successfully')
+        }
+      } catch (processError) {
+        // Don't fail the launch if queue processing fails - cron will pick it up later
+        console.error('Error triggering email queue:', processError)
+      }
+    }
+
     return NextResponse.json({
       success: true,
       recipientsScheduled: recipients.length,
