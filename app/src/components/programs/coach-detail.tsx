@@ -68,14 +68,14 @@ export function CoachDetail({ coach, program, onClose }: CoachDetailProps) {
   const [showQuickEmail, setShowQuickEmail] = useState(false)
 
   const handleEmailGoalSelected = (goal: CampaignGoal) => {
-    // Navigate to campaign builder with pre-filled values
+    // Navigate to outreach page with pre-filled values
     const params = new URLSearchParams({
       goal: goal,
       coaches: coach.id,
       program: program.id,
       quickEmail: 'true'
     })
-    router.push(`/outreach/campaigns/new?${params.toString()}`)
+    router.push(`/outreach?${params.toString()}`)
   }
 
   return (

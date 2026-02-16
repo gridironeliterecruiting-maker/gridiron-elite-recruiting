@@ -21,6 +21,7 @@ const GOAL_LABELS: Record<CampaignGoal, { verb: string; highlight: string }> = {
   evaluate_film: { verb: "get them to", highlight: "EVALUATE YOUR FILM" },
   build_interest: { verb: "share your story to", highlight: "BUILD INTEREST" },
   secure_visit: { verb: "discuss the details and", highlight: "SECURE A VISIT" },
+  other: { verb: "send a custom", highlight: "MESSAGE" },
 }
 
 interface SelectedCoach {
