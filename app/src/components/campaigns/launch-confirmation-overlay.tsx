@@ -37,6 +37,7 @@ const GOAL_LABELS: Record<CampaignGoal, { verb: string; highlight: string }> = {
   evaluate_film: { verb: "get them to", highlight: "EVALUATE YOUR FILM" },
   build_interest: { verb: "share your story to", highlight: "BUILD INTEREST" },
   secure_visit: { verb: "discuss the details and", highlight: "SECURE A VISIT" },
+  custom_email: { verb: "send your custom message to", highlight: "REACH YOUR TARGET" },
 }
 
 export function LaunchConfirmationOverlay({
