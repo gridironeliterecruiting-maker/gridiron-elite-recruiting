@@ -35,6 +35,24 @@ const GOAL_TEMPLATES: Record<CampaignGoal, EmailTemplate[]> = {
       subject: "((First Name)), I'm Interested in Your Program",
       body: "Dear Coach ((Last Name)),\n\nMy name is ((First Name)) ((Last Name)), and I'm a ((Position)) from ((High School)) in ((City)), ((State)). I'm reaching out because I'm very interested in your program at ((School)).\n\n((Stats))\n\nI'd love to learn more about your program and what you look for in recruits. My highlight film is available at: ((Film Link))\n\nThank you for your time!\n\n((First Name)) ((Last Name))\n((Phone))\n((Email))",
       delayDays: null
+    },
+    {
+      name: "Follow-Up #1",
+      subject: "Following Up - ((First Name)) ((Last Name)), ((Position))",
+      body: "Coach ((Last Name)),\n\nI wanted to follow up on my previous email about my interest in ((School)). I know you're busy, but I'd really appreciate any feedback you might have.\n\nI've been working hard on ((Improvement Area)) and recently ((Recent Achievement)).\n\nMy updated stats:\n((Stats))\n\nFilm: ((Film Link))\n\nThank you for considering me!\n\n((First Name)) ((Last Name))",
+      delayDays: 7
+    },
+    {
+      name: "Follow-Up #2",
+      subject: "Quick Update from ((First Name)) ((Last Name))",
+      body: "Hi Coach ((Last Name)),\n\nI hope this finds you well. I wanted to share a quick update from my recent ((Recent Game/Event)).\n\n((Recent Performance))\n\nI'm still very interested in ((School)) and would love to know:\n- What you look for in a ((Position))\n- Your recruiting timeline\n- If there's anything specific you'd like to see from me\n\nThanks again for your time.\n\n((First Name)) ((Last Name))\n((Phone))",
+      delayDays: 14
+    },
+    {
+      name: "Final Follow-Up",
+      subject: "One More Try - ((First Name)) ((Last Name))",
+      body: "Coach ((Last Name)),\n\nI understand you're extremely busy, and I don't want to be a bother. This will be my last email unless I hear back from you.\n\nI remain very interested in ((School)) because ((Specific Reason)). If there's any possibility of discussing your program, I'd be grateful for the opportunity.\n\nIf the timing isn't right or you're not interested, I completely understand. Either way, I appreciate you taking the time to read my emails.\n\nBest of luck with your season!\n\n((First Name)) ((Last Name))\n((All Contact Info))",
+      delayDays: 21
     }
   ],
   evaluate_film: [
