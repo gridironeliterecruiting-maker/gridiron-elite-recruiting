@@ -10,8 +10,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const clientId = process.env.GOOGLE_CLIENT_ID!
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/oauth-callback`
+    const clientId = process.env.GOOGLE_CLIENT_ID!.trim()
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL!.trim()}/api/gmail/oauth-callback`
 
     const params = new URLSearchParams({
       client_id: clientId,
