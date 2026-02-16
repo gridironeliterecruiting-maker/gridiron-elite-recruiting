@@ -131,37 +131,55 @@ export function resolveEmailMergeTags(
   template: string,
   data: Record<string, string>
 ): string {
-  // First handle "Coach ((Last Name))" special case
-  let result = template.replace(/Coach\s+\(\(Last[_ ]Name\)\)/gi, (_match) => {
-    return 'Coach ' + (data['Coach_Last_Name'] || data['Last_Name'] || '')
+  // First handle "Coach ((Last Name))" special case - case insensitive
+  let result = template.replace(/Coach\s+\(\(Last[_ ]?Name\)\)/gi, (_match) => {
+    return 'Coach ' + (data['Coach_Last_Name'] || data['coach_last_name'] || data['Last_Name'] || data['last_name'] || '')
   })
   
   // Handle (( )) format (primary)
   result = result.replace(/\(\(([^)]+)\)\)/g, (_match, tag) => {
     const trimmedTag = tag.trim()
     
-    // First try exact match (for tags already with underscores)
-    if (data[trimmedTag]) {
-      return data[trimmedTag]
+    // Try multiple variations in order of likelihood
+    const variations = [
+      trimmedTag, // exact match
+      trimmedTag.replace(/\s+/g, '_'), // spaces to underscores
+      trimmedTag.replace(/_/g, ' '), // underscores to spaces
+      trimmedTag.toLowerCase(), // lowercase
+      trimmedTag.replace(/\s+/g, '_').toLowerCase(), // lowercase with underscores
+      trimmedTag.replace(/_/g, ' ').toLowerCase(), // lowercase with spaces
+    ]
+    
+    for (const variation of variations) {
+      if (data[variation] !== undefined && data[variation] !== '') {
+        return data[variation]
+      }
     }
     
-    // Then try with spaces converted to underscores
-    const key = trimmedTag.replace(/\s+/g, '_')
-    return data[key] ?? ''
+    return '' // Return empty string if no match found
   })
 
   // Handle {{ }} format (backwards compat)
   result = result.replace(/\{\{([^}]+)\}\}/g, (_match, tag) => {
     const trimmedTag = tag.trim()
     
-    // First try exact match
-    if (data[trimmedTag]) {
-      return data[trimmedTag]
+    // Try multiple variations
+    const variations = [
+      trimmedTag,
+      trimmedTag.replace(/\s+/g, '_'),
+      trimmedTag.replace(/_/g, ' '),
+      trimmedTag.toLowerCase(),
+      trimmedTag.replace(/\s+/g, '_').toLowerCase(),
+      trimmedTag.replace(/_/g, ' ').toLowerCase(),
+    ]
+    
+    for (const variation of variations) {
+      if (data[variation] !== undefined && data[variation] !== '') {
+        return data[variation]
+      }
     }
     
-    // Then try with spaces converted to underscores
-    const key = trimmedTag.replace(/\s+/g, '_')
-    return data[key] ?? ''
+    return ''
   })
 
   // Clean up lines that are just a label with no value (e.g., "• GPA: \n")

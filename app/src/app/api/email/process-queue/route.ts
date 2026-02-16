@@ -296,16 +296,32 @@ export async function GET(request: Request) {
             All_Contact_Info: [userProfile?.email, profile?.phone].filter(Boolean).join(' • '),
           }
 
-          // Create merge data with both formats
+          // Create merge data with all possible formats
           const mergeData: Record<string, string> = {}
           
-          // Add all keys with underscores
+          // Add all keys in multiple formats
           Object.entries(profileData).forEach(([key, value]) => {
+            // Original format with underscores (First_Name)
             mergeData[key] = value
-            // Also add with spaces
+            
+            // With spaces (First Name)
             const spaceKey = key.replace(/_/g, ' ')
             mergeData[spaceKey] = value
+            
+            // All lowercase with underscores (first_name)
+            const lowerKey = key.toLowerCase()
+            mergeData[lowerKey] = value
+            
+            // All lowercase with spaces (first name)  
+            const lowerSpaceKey = spaceKey.toLowerCase()
+            mergeData[lowerSpaceKey] = value
           })
+          
+          // Add some common variations
+          mergeData['coach_name'] = mergeData['Coach_Name']
+          mergeData['school_name'] = mergeData['School_Name']
+          mergeData['city_state'] = mergeData['City_State']
+          mergeData['hudl_url'] = mergeData['Film_Link']
 
           // Resolve merge tags
           const subject = resolveEmailMergeTags(emailTemplate.subject, mergeData)
