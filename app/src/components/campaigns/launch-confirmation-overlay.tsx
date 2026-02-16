@@ -108,13 +108,13 @@ export function LaunchConfirmationOverlay({
               </div>
             </div>
 
-            {/* Gmail Status */}
+            {/* Gmail Status / Confirmation */}
             {!gmailEmail ? (
-              <div className="rounded-lg border border-orange-200 bg-orange-50/50 p-4 text-center">
-                <AlertCircle className="mx-auto h-6 w-6 text-orange-600" />
-                <p className="mt-3 text-sm font-semibold text-orange-800">Gmail Connection Required</p>
-                <p className="mt-1 text-xs text-orange-700">
-                  To send emails, we need your permission to access your Gmail. Click "Let's Go 🚀" to proceed to Google's site for connection.
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-center">
+                <AlertCircle className="mx-auto h-6 w-6 text-primary" />
+                <p className="mt-3 text-sm font-semibold text-primary">Are you sure?</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  When you confirm your name will be in the selected coaches Inbox!
                 </p>
               </div>
             ) : (
