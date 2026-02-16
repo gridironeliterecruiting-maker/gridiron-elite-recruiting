@@ -1,17 +1,10 @@
 export type CampaignGoal = "get_response" | "evaluate_film" | "build_interest" | "secure_visit"
 
 export interface EmailTemplate {
-  id: string
+  id?: string // Make optional as it might not be present for new templates
   name: string
   subject: string
-  category: string
+  category?: string // Make optional as it might not always be needed or present
   body?: string
   delayDays: number | null
-}
-
-export interface EmailTemplate {
-  name: string
-  subject: string
-  body: string
-  delayDays: number | null // null = first email (no delay)
 }
