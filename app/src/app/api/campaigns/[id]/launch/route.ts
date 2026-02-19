@@ -86,11 +86,12 @@ export async function POST(
         console.log(`Successfully refreshed Gmail token for user ${user.id}`)
       } catch (refreshError) {
         console.error(`Failed to refresh Gmail token for user ${user.id}:`, refreshError)
+        // Trigger seamless re-auth flow by returning gmail_expired status
+        // Frontend will handle this exactly like initial Gmail connection
         return NextResponse.json({ 
-          error: `Your Gmail connection has expired (${gmailToken.email}). Please reconnect your Gmail account before launching this campaign.`,
-          action: 'reconnect_gmail',
-          expired_email: gmailToken.email
-        }, { status: 400 })
+          action: 'gmail_expired',
+          campaign_id: id
+        }, { status: 200 })
       }
     }
 
