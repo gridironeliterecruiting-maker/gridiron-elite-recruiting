@@ -18,7 +18,7 @@ export default async function OutreachPage({
   ] = await Promise.all([
     supabase.from("email_templates").select("*").order("name"),
     supabase.from("programs").select("id, school_name, division, conference, logo_url").order("school_name"),
-    supabase.from("gmail_tokens").select("email, connected_at, account_tier").eq("user_id", user!.id).single(),
+    supabase.from("gmail_tokens").select("email, connected_at, account_tier, token_expiry").eq("user_id", user!.id).gte("token_expiry", new Date().toISOString()).single(),
     supabase.from("campaigns").select("*").eq("user_id", user!.id).order("created_at", { ascending: false }),
   ])
 
