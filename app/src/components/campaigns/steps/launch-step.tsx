@@ -122,13 +122,6 @@ export function LaunchStep({
         throw new Error(launchData.error || 'Failed to launch campaign')
       }
 
-      // Handle Gmail expired - seamlessly redirect to OAuth (just like initial connection)
-      if (launchData.action === 'gmail_expired') {
-        console.log('Gmail token expired, redirecting to OAuth...')
-        window.location.href = `/api/gmail/authorize?campaign=${launchData.campaign_id}&resume=launch`
-        return
-      }
-
       setLaunchSuccess(true)
       
       // Call onLaunched with campaign data
