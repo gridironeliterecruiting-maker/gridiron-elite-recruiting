@@ -334,7 +334,7 @@ export function OutreachClient({
               {campaigns.map((campaign) => (
                 <div
                   key={campaign.id}
-                  className="rounded-lg border border-border bg-secondary/30 p-4 transition-all hover:bg-secondary/50 hover:shadow-sm"
+                  className="rounded-lg border border-border bg-secondary/30 p-4 transition-all hover:border-primary/30 hover:shadow-sm hover:ring-1 hover:ring-primary/20"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex-1 min-w-0">
@@ -442,7 +442,7 @@ export function OutreachClient({
                       className={`group flex flex-col rounded-lg border p-4 text-left transition-all ${
                         selectedTemplate === template.id
                           ? "border-primary/30 bg-primary/[0.03] shadow-sm"
-                          : "border-transparent bg-secondary/40 hover:border-border hover:bg-secondary/70 hover:shadow-sm"
+                          : "border-transparent bg-secondary/40 hover:border-primary/30 hover:shadow-sm hover:ring-1 hover:ring-primary/20"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
