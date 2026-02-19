@@ -620,7 +620,7 @@ function CoachSelectionOverlay({
           >
             <X className="h-4 w-4" />
           </button>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-1">
             {program.logo_url ? (
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white overflow-hidden ring-1 ring-primary/20">
                 <Image src={program.logo_url} alt={program.school_name} width={32} height={32} className="object-contain" />
@@ -634,6 +634,15 @@ function CoachSelectionOverlay({
               {program.school_name}
             </h2>
           </div>
+          {/* Done button - only active when coaches from this program are selected */}
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={!selectedCoaches.some(sc => sc.programId === program.id)}
+            className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Done
+          </button>
         </div>
 
       <div className="flex-1 overflow-y-auto p-5">
