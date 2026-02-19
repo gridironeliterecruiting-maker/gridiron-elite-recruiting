@@ -340,9 +340,9 @@ export function OutreachClient({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-sm font-semibold text-foreground">{campaign.name}</h3>
-                        <Badge className={`${statusColors[campaign.status] || statusColors.draft} border-0 text-[10px] font-semibold`}>
+                        <span className={`${statusColors[campaign.status] || statusColors.draft} inline-flex items-center rounded-full border-0 px-2.5 py-0.5 text-[10px] font-semibold`}>
                           {campaign.status}
-                        </Badge>
+                        </span>
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {goalLabels[campaign.goal] || campaign.goal} · Created {new Date(campaign.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
