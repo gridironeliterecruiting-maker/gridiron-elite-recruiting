@@ -119,6 +119,14 @@ export function LaunchStep({
 
       const launchData = await launchRes.json()
       if (!launchRes.ok) {
+        // Handle specific error types
+        if (launchData.action === 'reconnect_gmail' || launchData.action === 'connect_gmail') {
+          const errorMsg = launchData.expired_email 
+            ? `Gmail connection expired (${launchData.expired_email}). Please reconnect your Gmail account in your Profile settings.`
+            : `Gmail not connected. Please connect your Gmail account in your Profile settings.`
+          setLaunchError(`${errorMsg} Then return here to launch your campaign.`)
+          return // Don't throw, just show the error
+        }
         throw new Error(launchData.error || 'Failed to launch campaign')
       }
 
@@ -296,9 +304,18 @@ export function LaunchStep({
       {launchError && (
         <div className="mt-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-semibold text-red-800">Launch Failed</p>
             <p className="mt-1 text-xs text-red-600">{launchError}</p>
+            {launchError.includes('Gmail') && launchError.includes('Profile settings') && (
+              <a
+                href="/profile"
+                className="mt-2 inline-flex items-center gap-1 rounded-md bg-red-100 px-2 py-1 text-[11px] font-semibold text-red-700 hover:bg-red-150 transition-colors"
+              >
+                Go to Profile Settings
+                <span className="text-red-600">→</span>
+              </a>
+            )}
           </div>
         </div>
       )}

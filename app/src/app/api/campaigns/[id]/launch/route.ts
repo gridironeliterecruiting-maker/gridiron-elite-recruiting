@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { calculateSendSchedule } from '@/lib/gmail'
+import { calculateSendSchedule, refreshGmailToken } from '@/lib/gmail'
 
 export async function POST(
   request: Request,
@@ -49,15 +49,49 @@ export async function POST(
       }, { status: 403 })
     }
 
-    // Check if user has Gmail connected
+    // Check if user has Gmail connected and tokens are valid
     const { data: gmailToken } = await supabase
       .from('gmail_tokens')
-      .select('account_tier, connected_at')
+      .select('account_tier, connected_at, access_token, refresh_token, token_expiry, email')
       .eq('user_id', user.id)
       .single()
 
     if (!gmailToken) {
-      return NextResponse.json({ error: 'Gmail not connected. Please connect your Gmail account first.' }, { status: 400 })
+      return NextResponse.json({ 
+        error: 'Gmail not connected. Please connect your Gmail account first.',
+        action: 'connect_gmail'
+      }, { status: 400 })
+    }
+
+    // Check if Gmail token is expired
+    const tokenExpiry = new Date(gmailToken.token_expiry)
+    const isExpired = tokenExpiry <= new Date()
+    
+    if (isExpired) {
+      // Try to refresh the token
+      try {
+        const refreshed = await refreshGmailToken(gmailToken.refresh_token)
+        
+        // Update the token in database
+        const newExpiry = new Date(Date.now() + refreshed.expires_in * 1000)
+        await supabase
+          .from('gmail_tokens')
+          .update({
+            access_token: refreshed.access_token,
+            token_expiry: newExpiry.toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id)
+          
+        console.log(`Successfully refreshed Gmail token for user ${user.id}`)
+      } catch (refreshError) {
+        console.error(`Failed to refresh Gmail token for user ${user.id}:`, refreshError)
+        return NextResponse.json({ 
+          error: `Your Gmail connection has expired (${gmailToken.email}). Please reconnect your Gmail account before launching this campaign.`,
+          action: 'reconnect_gmail',
+          expired_email: gmailToken.email
+        }, { status: 400 })
+      }
     }
 
     // Get recipients
