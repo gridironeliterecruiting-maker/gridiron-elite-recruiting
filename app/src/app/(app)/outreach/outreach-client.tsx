@@ -100,6 +100,8 @@ interface OutreachClientProps {
   playerPosition: string
   gmailEmail: string | null
   gmailTier: string | null
+  hasGmailToken: boolean
+  gmailTokenExpired: boolean
   campaigns: Campaign[]
   resumeCampaignId?: string
   resumeStep?: string
@@ -112,6 +114,8 @@ export function OutreachClient({
   playerPosition,
   gmailEmail,
   gmailTier,
+  hasGmailToken,
+  gmailTokenExpired,
   campaigns,
   resumeCampaignId,
   resumeStep,

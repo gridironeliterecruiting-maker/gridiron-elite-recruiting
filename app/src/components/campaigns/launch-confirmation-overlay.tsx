@@ -56,12 +56,43 @@ export function LaunchConfirmationOverlay({
   launchSuccess,
   setIsLaunching,
 }: LaunchConfirmationOverlayProps) {
+  const [checkingGmail, setCheckingGmail] = useState(false)
+  const [hasValidGmail, setHasValidGmail] = useState(!!gmailEmail)
   const programCount = new Set(selectedCoaches.map((sc) => sc.programId)).size
   const goalLabel = GOAL_LABELS[goal]
 
+  const handleLaunchClick = async () => {
+    if (hasValidGmail) {
+      // Gmail is valid, proceed with launch
+      await onConfirmLaunch()
+    } else {
+      // Check if we can refresh the token first
+      setCheckingGmail(true)
+      setIsLaunching(true)
+      
+      try {
+        const refreshRes = await fetch('/api/gmail/refresh', { method: 'POST' })
+        const refreshData = await refreshRes.json()
+        
+        if (refreshRes.ok && refreshData.success) {
+          // Token refreshed successfully, proceed with launch
+          setHasValidGmail(true)
+          setCheckingGmail(false)
+          await onConfirmLaunch()
+          return
+        }
+      } catch (error) {
+        console.error('Token refresh failed:', error)
+      }
+      
+      // Refresh failed or no token, need to connect Gmail
+      setCheckingGmail(false)
+      await handleGmailConnect()
+    }
+  }
+
   const handleGmailConnect = async () => {
-    // First, save the campaign as a draft
-    setIsLaunching(true)
+    // Save the campaign as a draft before redirecting
     try {
       const createRes = await fetch('/api/campaigns/create', {
         method: 'POST',
@@ -179,14 +210,14 @@ export function LaunchConfirmationOverlay({
               </Button>
               <Button
                 type="button"
-                onClick={gmailEmail ? onConfirmLaunch : handleGmailConnect}
+                onClick={handleLaunchClick}
                 disabled={isLaunching || launchSuccess}
                 className="inline-flex items-center gap-2 rounded-md bg-accent px-6 py-2.5 text-sm font-semibold text-accent-foreground transition-all hover:bg-accent/90 shadow-sm disabled:opacity-50"
               >
                 {isLaunching ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Launching...
+                    {checkingGmail ? 'Checking Gmail...' : 'Launching...'}
                   </>
                 ) : launchSuccess ? (
                   <>
