@@ -89,7 +89,7 @@ export default async function OutreachPage({
       templates={templates || []}
       programs={programs || []}
       playerPosition={playerPosition}
-      gmailEmail={gmailToken && new Date(gmailToken.token_expiry) > new Date() ? gmailToken.email : null}
+      gmailEmail={gmailToken?.email || null}
       gmailTier={gmailToken?.account_tier || null}
       hasGmailToken={!!gmailToken}
       gmailTokenExpired={gmailToken ? new Date(gmailToken.token_expiry) <= new Date() : false}
