@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-// Direct script to refresh all Gmail tokens
-// Called by cron job to ensure tokens never expire
+// Direct script to refresh ALL Gmail tokens every time it runs
+// Called by cron job every 45 minutes to ensure tokens always have at least 15 minutes remaining
 
 const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres.ufmzldfkdpjeyvjfpoid:MScp1BrdQZF8QBHp@aws-0-us-west-2.pooler.supabase.com:5432/postgres';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '130933663415-j5u1qtr06hnn4rj4porum1g9cq7eae8s.apps.googleusercontent.com';
@@ -43,28 +43,19 @@ async function main() {
     console.log(`[Token Refresh] Found ${result.rows.length} tokens to check`);
 
     for (const token of result.rows) {
-      const expiry = new Date(token.token_expiry);
-      const now = new Date();
-      const hoursUntilExpiry = (expiry - now) / (1000 * 60 * 60);
+      try {
+        console.log(`[Token Refresh] Refreshing token for ${token.email}...`);
+        const refreshed = await refreshGmailToken(token.refresh_token);
+        const newExpiry = new Date(Date.now() + (refreshed.expires_in || 3600) * 1000);
 
-      console.log(`[Token Refresh] ${token.email}: expires in ${hoursUntilExpiry.toFixed(2)} hours`);
+        await client.query(
+          'UPDATE gmail_tokens SET access_token = $1, token_expiry = $2, updated_at = NOW() WHERE id = $3',
+          [refreshed.access_token, newExpiry, token.id]
+        );
 
-      // Refresh if expired or expiring within 10 minutes
-      if (hoursUntilExpiry <= 0.17) {
-        try {
-          console.log(`[Token Refresh] Refreshing token for ${token.email}...`);
-          const refreshed = await refreshGmailToken(token.refresh_token);
-          const newExpiry = new Date(Date.now() + (refreshed.expires_in || 3600) * 1000);
-
-          await client.query(
-            'UPDATE gmail_tokens SET access_token = $1, token_expiry = $2, updated_at = NOW() WHERE id = $3',
-            [refreshed.access_token, newExpiry, token.id]
-          );
-
-          console.log(`[Token Refresh] Successfully refreshed token for ${token.email}`);
-        } catch (error) {
-          console.error(`[Token Refresh] Failed to refresh token for ${token.email}:`, error.message);
-        }
+        console.log(`[Token Refresh] Successfully refreshed token for ${token.email}`);
+      } catch (error) {
+        console.error(`[Token Refresh] Failed to refresh token for ${token.email}:`, error.message);
       }
     }
 
