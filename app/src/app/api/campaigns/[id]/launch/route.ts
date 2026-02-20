@@ -52,13 +52,16 @@ export async function POST(
     // Check if user has Gmail connected
     const { data: gmailToken } = await supabase
       .from('gmail_tokens')
-      .select('account_tier, connected_at')
+      .select('account_tier, connected_at, token_expiry')
       .eq('user_id', user.id)
       .single()
 
     if (!gmailToken) {
       return NextResponse.json({ error: 'Gmail not connected. Please connect your Gmail account first.' }, { status: 400 })
     }
+    
+    // Don't check token expiry - just let it work
+    console.log('[Launch] Gmail token found, proceeding with launch')
 
     // Get recipients
     const { data: recipients } = await supabase
