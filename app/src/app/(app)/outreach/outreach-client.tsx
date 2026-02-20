@@ -27,6 +27,7 @@ import {
 import { CreateCampaignOverlay } from "@/components/campaigns/create-campaign-overlay"
 import { CampaignLaunchedOverlay } from "@/components/campaigns/campaign-launched-overlay"
 import { CampaignDetailsOverlay } from "@/components/campaigns/campaign-details-overlay"
+import { CampaignCard } from "@/components/campaigns/campaign-card"
 
 interface EmailTemplate {
   id: string
@@ -154,6 +155,7 @@ export function OutreachClient({
           const campaignData = await campaignRes.json()
           
           // Auto-launch the campaign
+          console.log('[Auto-launch] Launching campaign:', resumeCampaignId)
           const launchRes = await fetch(`/api/campaigns/${resumeCampaignId}/launch`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -162,10 +164,12 @@ export function OutreachClient({
             }),
           })
 
+          console.log('[Auto-launch] Launch response:', launchRes.status)
           if (!launchRes.ok) {
             const error = await launchRes.json()
-            console.error('Failed to launch campaign:', error)
-            alert(`Failed to launch campaign: ${error.error || 'Unknown error'}`)
+            console.error('[Auto-launch] Failed to launch campaign:', error)
+            // Don't alert - just reload to refresh the state
+            window.location.reload()
             return
           }
 
@@ -340,80 +344,12 @@ export function OutreachClient({
           ) : (
             <div className="flex flex-col gap-3">
               {campaigns.map((campaign) => (
-                <div
+                <CampaignCard
                   key={campaign.id}
-                  className="cursor-pointer rounded-lg border border-border bg-secondary/30 p-4 transition-all hover:border-primary/30 hover:shadow-sm hover:ring-1 hover:ring-primary/20"
+                  campaign={campaign}
                   onClick={() => setSelectedCampaignId(campaign.id)}
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-sm font-semibold text-foreground">{campaign.name}</h3>
-                        <span className={`${statusColors[campaign.status] || statusColors.draft} inline-flex items-center rounded-full border-0 px-2.5 py-0.5 text-[10px] font-semibold`}>
-                          {campaign.status}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {goalLabels[campaign.goal] || campaign.goal} · Created {new Date(campaign.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                      </p>
-                    </div>
-                    {(campaign.status === "active" || campaign.status === "paused") && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={togglingCampaign === campaign.id}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleToggleCampaign(
-                            campaign.id,
-                            campaign.status === "active" ? "paused" : "active"
-                          )
-                        }}
-                        className="shrink-0"
-                      >
-                        {togglingCampaign === campaign.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : campaign.status === "active" ? (
-                          <>
-                            <Pause className="h-3.5 w-3.5" />
-                            Pause
-                          </>
-                        ) : (
-                          <>
-                            <Play className="h-3.5 w-3.5" />
-                            Resume
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Stats row */}
-                  <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-border/50 pt-3">
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Users className="h-3.5 w-3.5" />
-                      <span className="font-medium">{campaign.stats.total}</span> recipients
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Send className="h-3.5 w-3.5" />
-                      <span className="font-medium">{campaign.stats.sent}</span> sent
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <MailOpen className="h-3.5 w-3.5" />
-                      <span className="font-medium">{campaign.stats.opened}</span> opened
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Reply className="h-3.5 w-3.5" />
-                      <span className="font-medium">{campaign.stats.replied}</span> replied
-                    </div>
-                    {campaign.stats.error > 0 && (
-                      <div className="flex items-center gap-1.5 text-xs text-red-500">
-                        <XCircle className="h-3.5 w-3.5" />
-                        <span className="font-medium">{campaign.stats.error}</span> errors
-                      </div>
-                    )}
-                  </div>
-                </div>
+                  onStatusChange={() => window.location.reload()}
+                />
               ))}
             </div>
           )}
