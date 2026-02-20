@@ -3,13 +3,17 @@ import { createClient } from '@/lib/supabase/server'
 import { refreshGmailToken } from '@/lib/gmail'
 
 export async function POST() {
+  console.log('[Gmail Refresh] Endpoint called')
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
+      console.log('[Gmail Refresh] No user found - returning 401')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    console.log('[Gmail Refresh] User:', user.email)
 
     // Get user's Gmail token
     const { data: gmailToken, error: tokenError } = await supabase

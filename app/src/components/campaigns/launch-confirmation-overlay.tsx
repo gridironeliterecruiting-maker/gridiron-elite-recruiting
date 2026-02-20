@@ -88,11 +88,17 @@ export function LaunchConfirmationOverlay({
       
       try {
         console.log('Calling /api/gmail/refresh...')
+        // Get the session token for auth
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        
         const refreshRes = await fetch('/api/gmail/refresh', { 
           method: 'POST',
           credentials: 'same-origin',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
           }
         })
         console.log('Refresh response status:', refreshRes.status)
