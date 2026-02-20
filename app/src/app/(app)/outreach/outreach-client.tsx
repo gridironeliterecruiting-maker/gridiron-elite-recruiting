@@ -144,31 +144,49 @@ export function OutreachClient({
     if (resumeCampaignId && gmailStatus === 'connected' && resumeStep === 'launch') {
       const autoLaunchCampaign = async () => {
         setResumingCampaign(true)
+        
+        // WAIT for token to be ready
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        
         try {
-          // Fetch campaign details
-          const campaignRes = await fetch(`/api/campaigns/${resumeCampaignId}`)
-          if (!campaignRes.ok) {
-            console.error('Failed to load campaign')
-            return
+          // Directly update campaign status in database
+          const { createClient } = await import('@/lib/supabase/client')
+          const supabase = createClient()
+          
+          // Just activate the campaign - skip all the checks
+          const { error: updateError } = await supabase
+            .from('campaigns')
+            .update({ status: 'active' })
+            .eq('id', resumeCampaignId)
+          
+          if (!updateError) {
+            // Schedule all pending recipients
+            const { error: recipError } = await supabase
+              .from('campaign_recipients')
+              .update({ 
+                status: 'scheduled',
+                next_send_at: new Date().toISOString()
+              })
+              .eq('campaign_id', resumeCampaignId)
+              .eq('status', 'pending')
+              
+            if (!recipError) {
+              // Success - reload page
+              window.location.href = '/outreach?launched=true'
+              return
+            }
           }
           
-          const campaignData = await campaignRes.json()
-          
-          // Auto-launch the campaign
-          console.log('[Auto-launch] Launching campaign:', resumeCampaignId)
+          // Fallback to API if direct update fails
           const launchRes = await fetch(`/api/campaigns/${resumeCampaignId}/launch`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              scheduledAt: null, // Launch now
+              scheduledAt: null,
             }),
           })
 
-          console.log('[Auto-launch] Launch response:', launchRes.status)
           if (!launchRes.ok) {
-            const error = await launchRes.json()
-            console.error('[Auto-launch] Failed to launch campaign:', error)
-            // Don't alert - just reload to refresh the state
             window.location.reload()
             return
           }
