@@ -310,38 +310,8 @@ export function OutreachClient({
         />
       )}
 
-      {/* Gmail Token Status & Manual Refresh */}
-      {gmailTokenExpired && (
-        <Card className="mb-6 border-yellow-200 bg-yellow-50">
-          <CardHeader className="flex-row items-center justify-between pb-3">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-yellow-600" />
-              <CardTitle className="text-base text-yellow-900">Gmail Token Expired</CardTitle>
-            </div>
-            <Button
-              size="sm"
-              onClick={async () => {
-                const res = await fetch('/api/gmail/force-refresh')
-                const data = await res.json()
-                if (data.success) {
-                  alert('Token refreshed! Reloading page...')
-                  window.location.reload()
-                } else {
-                  alert(`Failed to refresh: ${data.error}`)
-                }
-              }}
-              className="bg-yellow-600 hover:bg-yellow-700 text-white"
-            >
-              Refresh Token
-            </Button>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <p className="text-sm text-yellow-800">
-              Your Gmail connection has expired. Click "Refresh Token" to restore email sending.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Gmail connection status removed — users already logged in with Google.
+         Gmail sending permissions will be requested just-in-time at campaign launch. */}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
