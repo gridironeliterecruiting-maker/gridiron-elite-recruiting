@@ -91,6 +91,8 @@ export default async function OutreachPage({
       playerPosition={playerPosition}
       gmailEmail={gmailToken && new Date(gmailToken.token_expiry) > new Date() ? gmailToken.email : null}
       gmailTier={gmailToken?.account_tier || null}
+      hasGmailToken={!!gmailToken}
+      gmailTokenExpired={gmailToken ? new Date(gmailToken.token_expiry) <= new Date() : false}
       campaigns={(campaigns || []).map((c) => ({
         ...c,
         stats: campaignStats[c.id] || { total: 0, sent: 0, opened: 0, replied: 0, error: 0 },
