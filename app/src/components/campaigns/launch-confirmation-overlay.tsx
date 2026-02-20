@@ -70,16 +70,32 @@ export function LaunchConfirmationOverlay({
   const currentGmailEmail = refreshedEmail || gmailEmail
 
   const handleLaunchClick = async () => {
+    console.log('Launch clicked - Current state:', {
+      hasValidGmail,
+      hasGmailToken,
+      gmailTokenExpired,
+      gmailEmail
+    })
+    
     if (hasValidGmail) {
       // Gmail is valid, proceed with launch
       await onConfirmLaunch()
     } else {
       // Check if we can refresh the token first
+      console.log('Token expired or missing, attempting refresh...')
       setCheckingGmail(true)
       setIsLaunching(true)
       
       try {
-        const refreshRes = await fetch('/api/gmail/refresh', { method: 'POST' })
+        console.log('Calling /api/gmail/refresh...')
+        const refreshRes = await fetch('/api/gmail/refresh', { 
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        })
+        console.log('Refresh response status:', refreshRes.status)
         
         if (!refreshRes.ok) {
           console.error('Refresh response not OK:', refreshRes.status, refreshRes.statusText)
@@ -87,10 +103,11 @@ export function LaunchConfirmationOverlay({
           console.error('Error response:', errorText)
         } else {
           const refreshData = await refreshRes.json()
-          console.log('Refresh response:', refreshData)
+          console.log('Refresh response data:', refreshData)
           
           if (refreshData.success) {
             // Token refreshed successfully, proceed with launch
+            console.log('Token refresh successful! Proceeding with launch...')
             setHasValidGmail(true)
             setRefreshedEmail(refreshData.email)
             setCheckingGmail(false)
@@ -100,13 +117,16 @@ export function LaunchConfirmationOverlay({
             
             await onConfirmLaunch()
             return
+          } else {
+            console.log('Refresh response indicates failure:', refreshData)
           }
         }
       } catch (error) {
-        console.error('Token refresh failed:', error)
+        console.error('Token refresh exception:', error)
       }
       
       // Refresh failed or no token, need to connect Gmail
+      console.log('Refresh failed, redirecting to Gmail auth...')
       setCheckingGmail(false)
       await handleGmailConnect()
     }
