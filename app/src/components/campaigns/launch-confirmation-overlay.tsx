@@ -70,12 +70,28 @@ export function LaunchConfirmationOverlay({
   const currentGmailEmail = refreshedEmail || gmailEmail
 
   const handleLaunchClick = async () => {
-    console.log('Launch clicked - Current state:', {
-      hasValidGmail,
-      hasGmailToken,
-      gmailTokenExpired,
-      gmailEmail
-    })
+    // ALWAYS try to refresh first if token exists
+    if (hasGmailToken && gmailTokenExpired) {
+      setCheckingGmail(true)
+      setIsLaunching(true)
+      
+      try {
+        const res = await fetch('/api/gmail/force-refresh')
+        const data = await res.json()
+        
+        if (data.success) {
+          // Token refreshed! Now launch
+          await new Promise(resolve => setTimeout(resolve, 500))
+          await onConfirmLaunch()
+          return
+        }
+      } catch (error) {
+        console.error('Auto refresh failed:', error)
+      }
+      
+      setCheckingGmail(false)
+      setIsLaunching(false)
+    }
     
     if (hasValidGmail) {
       // Gmail is valid, proceed with launch

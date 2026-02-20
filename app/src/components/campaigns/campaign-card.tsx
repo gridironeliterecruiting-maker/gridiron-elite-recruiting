@@ -33,6 +33,12 @@ export function CampaignCard({ campaign, onClick, onStatusChange }: CampaignCard
     setLaunchError(null)
     
     try {
+      // First, try to refresh the token if needed
+      const refreshRes = await fetch('/api/gmail/force-refresh')
+      if (refreshRes.ok) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+      
       const res = await fetch(`/api/campaigns/${campaign.id}/launch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
