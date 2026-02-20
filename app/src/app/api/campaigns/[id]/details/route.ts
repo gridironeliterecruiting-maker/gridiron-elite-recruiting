@@ -34,11 +34,16 @@ export async function GET(
       .order('step_number')
 
     // Get all recipients
-    const { data: recipients } = await supabase
+    const { data: recipients, error: recipientsError } = await supabase
       .from('campaign_recipients')
       .select('id, coach_name, coach_email, status, program_id')
       .eq('campaign_id', id)
       .order('created_at', { ascending: false })
+    
+    if (recipientsError) {
+      console.error('Error fetching recipients:', recipientsError)
+    }
+    console.log(`Found ${recipients?.length || 0} recipients for campaign ${id}`)
 
     // Get programs for recipients
     const programIds = [...new Set(recipients?.map((r: any) => r.program_id).filter(Boolean) || [])]
@@ -159,11 +164,14 @@ export async function GET(
       stats.sent = sentCount || 0
     }
 
+    const programsArray = Object.values(programsWithRecipients)
+    console.log(`Returning ${programsArray.length} programs with recipients`)
+    
     return NextResponse.json({
       ...campaign,
       stats,
       emails: emails || [],
-      programsWithRecipients: Object.values(programsWithRecipients),
+      programsWithRecipients: programsArray,
     })
   } catch (error) {
     console.error('Campaign details error:', error)
