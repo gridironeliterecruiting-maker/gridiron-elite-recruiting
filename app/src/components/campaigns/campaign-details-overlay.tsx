@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Send, Users, MailOpen, Reply, XCircle, Loader2, Pause, Play, CheckCircle2, Calendar, Mail } from "lucide-react"
+import { X, Send, Users, MailOpen, Reply, XCircle, Loader2, Pause, Play, CheckCircle2, Calendar, Mail, ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -17,9 +17,7 @@ interface CampaignDetails {
   name: string
   goal: string
   status: string
-  scheduled_at: string | null
   created_at: string
-  updated_at: string
   stats: {
     total: number
     sent: number
@@ -27,21 +25,23 @@ interface CampaignDetails {
     replied: number
     error: number
   }
-  recipients: Array<{
-    id: string
-    coach_name: string
-    coach_email: string
-    program_name: string
-    status: string
-    sent_at: string | null
-    opened_at: string | null
-    replied_at: string | null
-  }>
   emails: Array<{
     id: string
     step_number: number
     subject: string
     send_after_days: number
+  }>
+  programsWithRecipients: Array<{
+    program_name: string
+    coaches: Array<{
+      id: string
+      coach_name: string
+      coach_email: string
+      status: string
+      sent_at: string | null
+      opened_at: string | null
+      replied_at: string | null
+    }>
   }>
 }
 
@@ -231,16 +231,6 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
                       <span className="text-muted-foreground">Created</span>
                       <span>{new Date(campaign.created_at).toLocaleString()}</span>
                     </div>
-                    {campaign.scheduled_at && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Scheduled</span>
-                        <span>{new Date(campaign.scheduled_at).toLocaleString()}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Last Updated</span>
-                      <span>{new Date(campaign.updated_at).toLocaleString()}</span>
-                    </div>
                   </div>
                 </div>
 
@@ -268,44 +258,14 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
                   </div>
                 )}
 
-                {/* Recent Recipients */}
-                {campaign.recipients.length > 0 && (
+                {/* Targeted Programs & Coaches */}
+                {campaign.programsWithRecipients.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold">Recent Recipients</h3>
+                    <h3 className="text-sm font-semibold">Targeted Programs & Coaches</h3>
                     <div className="mt-2 space-y-2">
-                      {campaign.recipients.slice(0, 5).map((recipient) => (
-                        <div key={recipient.id} className="flex items-center justify-between rounded-lg border border-border/50 p-3">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium">{recipient.coach_name}</p>
-                            <p className="text-xs text-muted-foreground">{recipient.program_name}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {recipient.sent_at && (
-                              <div className="flex items-center gap-1">
-                                <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground">Sent</span>
-                              </div>
-                            )}
-                            {recipient.opened_at && (
-                              <div className="flex items-center gap-1">
-                                <MailOpen className="h-3.5 w-3.5 text-primary" />
-                                <span className="text-xs text-primary">Opened</span>
-                              </div>
-                            )}
-                            {recipient.replied_at && (
-                              <div className="flex items-center gap-1">
-                                <Reply className="h-3.5 w-3.5 text-accent" />
-                                <span className="text-xs text-accent">Replied</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                      {campaign.programsWithRecipients.map((program, index) => (
+                        <ProgramSection key={index} program={program} />
                       ))}
-                      {campaign.recipients.length > 5 && (
-                        <p className="text-center text-xs text-muted-foreground">
-                          And {campaign.recipients.length - 5} more recipients...
-                        </p>
-                      )}
                     </div>
                   </div>
                 )}
@@ -350,6 +310,65 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// Component for expandable program sections
+function ProgramSection({ program }: { program: { program_name: string; coaches: Array<any> } }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  return (
+    <div className="rounded-lg border border-border/50 bg-secondary/30 p-3">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex w-full items-center justify-between text-left"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold">{program.program_name}</span>
+          <Badge variant="secondary" className="text-xs">
+            {program.coaches.length} Coaches
+          </Badge>
+        </div>
+        {isExpanded ? (
+          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        )}
+      </button>
+      
+      {isExpanded && (
+        <div className="mt-3 space-y-2 border-t border-border/50 pt-3">
+          {program.coaches.map((coach) => (
+            <div key={coach.id} className="flex items-center justify-between rounded-md bg-background p-2 text-sm">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">{coach.coach_name}</p>
+                <p className="text-xs text-muted-foreground">{coach.coach_email}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {coach.sent_at && (
+                  <div className="flex items-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Sent</span>
+                  </div>
+                )}
+                {coach.opened_at && (
+                  <div className="flex items-center gap-1">
+                    <MailOpen className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-xs text-primary">Opened</span>
+                  </div>
+                )}
+                {coach.replied_at && (
+                  <div className="flex items-center gap-1">
+                    <Reply className="h-3.5 w-3.5 text-accent" />
+                    <span className="text-xs text-accent">Replied</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

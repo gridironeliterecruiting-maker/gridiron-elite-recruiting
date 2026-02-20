@@ -54,14 +54,24 @@ export default async function OutreachPage({
       const cRecipients = (recipients || []).filter((r) => r.campaign_id === cid)
       const cEvents = (events || []).filter((e) => e.campaign_id === cid)
 
-      // Count recipients by status
-      const sentCount = cRecipients.filter((r) => ['sent', 'replied'].includes(r.status)).length
+      // Count unique recipients who had emails sent (from events)
+      const sentRecipientIds = new Set(
+        cEvents.filter((e) => e.event_type === 'sent').map((e) => e.recipient_id)
+      )
+      const sentCount = sentRecipientIds.size
+      
       // Count unique recipients who opened (not total open events)
       const openedRecipientIds = new Set(
         cEvents.filter((e) => e.event_type === 'opened').map((e) => e.recipient_id)
       )
       const openedCount = openedRecipientIds.size
-      const repliedCount = cRecipients.filter((r) => r.status === 'replied').length
+      
+      // Count unique recipients who replied
+      const repliedRecipientIds = new Set(
+        cEvents.filter((e) => e.event_type === 'replied').map((e) => e.recipient_id)
+      )
+      const repliedCount = repliedRecipientIds.size
+      
       const errorCount = cRecipients.filter((r) => ['bounced', 'error'].includes(r.status)).length
 
       campaignStats[cid] = {
