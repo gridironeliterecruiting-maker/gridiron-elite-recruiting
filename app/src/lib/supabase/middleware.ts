@@ -38,11 +38,17 @@ export async function updateSession(request: NextRequest) {
   // deletes the code_verifier cookie, causing exchangeCodeForSession to fail.
   // This is the root cause of the "first login attempt fails, second works" bug.
   const isAuthCallback = request.nextUrl.pathname.startsWith('/auth/callback')
+  console.log(`[Middleware] Path: ${request.nextUrl.pathname}, isAuthCallback: ${isAuthCallback}`)
   
   let user = null
   if (!isAuthCallback) {
-    const { data: { user: sessionUser } } = await supabase.auth.getUser()
+    const { data: { user: sessionUser }, error: userError } = await supabase.auth.getUser()
     user = sessionUser
+    if (userError) {
+      console.error(`[Middleware] Supabase getUser error: ${userError.message}`)
+    } else {
+      console.log(`[Middleware] User: ${user ? user.id : 'null'}`)
+    }
   }
 
   // Helper: create a redirect that preserves Supabase auth cookies
@@ -62,8 +68,10 @@ export async function updateSession(request: NextRequest) {
   const isPublicRoute = publicRoutes.some(route => 
     request.nextUrl.pathname.startsWith(route)
   )
+  console.log(`[Middleware] isPublicRoute: ${isPublicRoute}`)
 
   if (!user && !isPublicRoute) {
+    console.log(`[Middleware] No user and not public route. Redirecting to /login.`)
     return redirectWithCookies('/login')
   }
 

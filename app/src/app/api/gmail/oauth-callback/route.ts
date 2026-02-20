@@ -8,10 +8,7 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error')
   const stateParam = searchParams.get('state')
   // Use Vercel preview URL if available, otherwise production URL
-  const appUrl = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}` 
-    : (process.env.NEXT_PUBLIC_APP_URL || 'https://gridironeliterecruiting.com')
-  const finalUrl = appUrl.trim()
+  const finalUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://gridironeliterecruiting.com'
 
   // Parse state to get campaign ID
   let campaignId = null

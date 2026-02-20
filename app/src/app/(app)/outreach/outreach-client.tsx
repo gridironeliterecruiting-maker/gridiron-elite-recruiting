@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 import { CreateCampaignOverlay } from "@/components/campaigns/create-campaign-overlay"
 import { CampaignLaunchedOverlay } from "@/components/campaigns/campaign-launched-overlay"
+import { CampaignDetailsOverlay } from "@/components/campaigns/campaign-details-overlay"
 
 interface EmailTemplate {
   id: string
@@ -131,6 +132,7 @@ export function OutreachClient({
     recipientCount: number
     programCount: number
   } | null>(null)
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
 
   // Handle auto-launching campaign after OAuth
   useEffect(() => {
@@ -334,7 +336,8 @@ export function OutreachClient({
               {campaigns.map((campaign) => (
                 <div
                   key={campaign.id}
-                  className="rounded-lg border border-border bg-secondary/30 p-4 transition-all hover:border-primary/30 hover:shadow-sm hover:ring-1 hover:ring-primary/20"
+                  className="cursor-pointer rounded-lg border border-border bg-secondary/30 p-4 transition-all hover:border-primary/30 hover:shadow-sm hover:ring-1 hover:ring-primary/20"
+                  onClick={() => setSelectedCampaignId(campaign.id)}
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex-1 min-w-0">
@@ -353,12 +356,13 @@ export function OutreachClient({
                         size="sm"
                         variant="outline"
                         disabled={togglingCampaign === campaign.id}
-                        onClick={() =>
+                        onClick={(e) => {
+                          e.stopPropagation()
                           handleToggleCampaign(
                             campaign.id,
                             campaign.status === "active" ? "paused" : "active"
                           )
-                        }
+                        }}
                         className="shrink-0"
                       >
                         {togglingCampaign === campaign.id ? (
@@ -548,6 +552,16 @@ export function OutreachClient({
             <p className="text-sm font-medium">Launching your campaign...</p>
           </div>
         </div>
+      )}
+
+      {selectedCampaignId && (
+        <CampaignDetailsOverlay
+          campaignId={selectedCampaignId}
+          onClose={() => setSelectedCampaignId(null)}
+          onStatusChange={() => {
+            window.location.reload()
+          }}
+        />
       )}
     </div>
   )
