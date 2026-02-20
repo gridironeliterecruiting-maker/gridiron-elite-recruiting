@@ -36,23 +36,14 @@ export async function GET(
     // Get all recipients
     const { data: recipients, error: recipientsError } = await supabase
       .from('campaign_recipients')
-      .select('id, coach_name, coach_email, status, program_id')
+      .select('id, coach_name, coach_email, status, program_name')
       .eq('campaign_id', id)
       .order('created_at', { ascending: false })
     
     if (recipientsError) {
       console.error('Error fetching recipients:', recipientsError)
+      return NextResponse.json({ error: 'Failed to fetch recipients' }, { status: 500 })
     }
-    console.log(`Found ${recipients?.length || 0} recipients for campaign ${id}`)
-
-    // Get programs for recipients
-    const programIds = [...new Set(recipients?.map((r: any) => r.program_id).filter(Boolean) || [])]
-    const { data: programs } = await supabase
-      .from('programs')
-      .select('id, school_name')
-      .in('id', programIds)
-    
-    const programMap = new Map(programs?.map((p: any) => [p.id, p.school_name]) || [])
 
     // Get email events for this campaign
     const { data: events } = await supabase
@@ -72,9 +63,9 @@ export async function GET(
     // Group recipients by program
     const programsWithRecipients: Record<string, any> = {}
     recipients?.forEach((r: any) => {
-      const programName = programMap.get(r.program_id) || 'Unknown Program'
-      if (!programsWithRecipients[r.program_id]) {
-        programsWithRecipients[r.program_id] = {
+      const programName = r.program_name || 'Unknown Program'
+      if (!programsWithRecipients[programName]) {
+        programsWithRecipients[programName] = {
           program_name: programName,
           coaches: []
         }
@@ -98,7 +89,7 @@ export async function GET(
         }
       })
 
-      programsWithRecipients[r.program_id].coaches.push({
+      programsWithRecipients[programName].coaches.push({
         id: r.id,
         coach_name: r.coach_name,
         coach_email: r.coach_email,
@@ -164,14 +155,11 @@ export async function GET(
       stats.sent = sentCount || 0
     }
 
-    const programsArray = Object.values(programsWithRecipients)
-    console.log(`Returning ${programsArray.length} programs with recipients`)
-    
     return NextResponse.json({
       ...campaign,
       stats,
       emails: emails || [],
-      programsWithRecipients: programsArray,
+      programsWithRecipients: Object.values(programsWithRecipients),
     })
   } catch (error) {
     console.error('Campaign details error:', error)
