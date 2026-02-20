@@ -266,6 +266,8 @@ export function OutreachClient({
           playerPosition={playerPosition}
           gmailEmail={gmailEmail}
           gmailTier={gmailTier}
+          hasGmailToken={hasGmailToken}
+          gmailTokenExpired={gmailTokenExpired}
           quickEmailData={quickEmailData}
           onClose={() => {
             setShowCreateCampaign(false)

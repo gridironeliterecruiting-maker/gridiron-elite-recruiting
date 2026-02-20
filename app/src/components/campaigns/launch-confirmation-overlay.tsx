@@ -21,6 +21,8 @@ interface LaunchConfirmationOverlayProps {
   templates: EmailTemplate[]
   gmailEmail: string | null
   gmailTier: string | null
+  hasGmailToken: boolean
+  gmailTokenExpired: boolean
   campaignName: string
   scheduledAt: string | null
   launchNow: boolean
@@ -46,6 +48,8 @@ export function LaunchConfirmationOverlay({
   templates,
   gmailEmail,
   gmailTier,
+  hasGmailToken,
+  gmailTokenExpired,
   campaignName,
   scheduledAt,
   launchNow,
@@ -57,7 +61,7 @@ export function LaunchConfirmationOverlay({
   setIsLaunching,
 }: LaunchConfirmationOverlayProps) {
   const [checkingGmail, setCheckingGmail] = useState(false)
-  const [hasValidGmail, setHasValidGmail] = useState(!!gmailEmail)
+  const [hasValidGmail, setHasValidGmail] = useState(hasGmailToken && !gmailTokenExpired)
   const [refreshedEmail, setRefreshedEmail] = useState<string | null>(null)
   const programCount = new Set(selectedCoaches.map((sc) => sc.programId)).size
   const goalLabel = GOAL_LABELS[goal]
