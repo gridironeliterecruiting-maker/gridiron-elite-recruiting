@@ -206,16 +206,9 @@ export function OutreachClient({
             window.location.reload()
             return
           }
-
-          // Get program count
-          const programSet = new Set(campaignData.recipients?.map((r: any) => r.program_name) || [])
           
-          // Show success overlay
-          setLaunchedCampaign({
-            name: campaignData.name,
-            recipientCount: campaignData.recipients?.length || 0,
-            programCount: programSet.size,
-          })
+          // Success - show the launched overlay
+          window.location.href = '/outreach?launched=true'
           
           // Clear the URL params
           const url = new URL(window.location.href)
