@@ -58,8 +58,12 @@ export function LaunchConfirmationOverlay({
 }: LaunchConfirmationOverlayProps) {
   const [checkingGmail, setCheckingGmail] = useState(false)
   const [hasValidGmail, setHasValidGmail] = useState(!!gmailEmail)
+  const [refreshedEmail, setRefreshedEmail] = useState<string | null>(null)
   const programCount = new Set(selectedCoaches.map((sc) => sc.programId)).size
   const goalLabel = GOAL_LABELS[goal]
+  
+  // Use refreshed email if available, otherwise use prop
+  const currentGmailEmail = refreshedEmail || gmailEmail
 
   const handleLaunchClick = async () => {
     if (hasValidGmail) {
@@ -72,14 +76,27 @@ export function LaunchConfirmationOverlay({
       
       try {
         const refreshRes = await fetch('/api/gmail/refresh', { method: 'POST' })
-        const refreshData = await refreshRes.json()
         
-        if (refreshRes.ok && refreshData.success) {
-          // Token refreshed successfully, proceed with launch
-          setHasValidGmail(true)
-          setCheckingGmail(false)
-          await onConfirmLaunch()
-          return
+        if (!refreshRes.ok) {
+          console.error('Refresh response not OK:', refreshRes.status, refreshRes.statusText)
+          const errorText = await refreshRes.text()
+          console.error('Error response:', errorText)
+        } else {
+          const refreshData = await refreshRes.json()
+          console.log('Refresh response:', refreshData)
+          
+          if (refreshData.success) {
+            // Token refreshed successfully, proceed with launch
+            setHasValidGmail(true)
+            setRefreshedEmail(refreshData.email)
+            setCheckingGmail(false)
+            
+            // Small delay to ensure token is propagated
+            await new Promise(resolve => setTimeout(resolve, 500))
+            
+            await onConfirmLaunch()
+            return
+          }
         }
       } catch (error) {
         console.error('Token refresh failed:', error)
