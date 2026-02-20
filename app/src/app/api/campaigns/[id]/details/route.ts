@@ -33,19 +33,21 @@ export async function GET(
       .eq('campaign_id', id)
       .order('step_number')
 
-    // Get all recipients with their latest status
+    // Get all recipients
     const { data: recipients } = await supabase
       .from('campaign_recipients')
-      .select(`
-        id,
-        coach_name,
-        coach_email,
-        status,
-        programs!inner(school_name)
-      `)
+      .select('id, coach_name, coach_email, status, program_id')
       .eq('campaign_id', id)
       .order('created_at', { ascending: false })
-      .limit(20)
+
+    // Get programs for recipients
+    const programIds = [...new Set(recipients?.map((r: any) => r.program_id).filter(Boolean) || [])]
+    const { data: programs } = await supabase
+      .from('programs')
+      .select('id, school_name')
+      .in('id', programIds)
+    
+    const programMap = new Map(programs?.map((p: any) => [p.id, p.school_name]) || [])
 
     // Get email events for this campaign
     const { data: events } = await supabase
@@ -53,33 +55,53 @@ export async function GET(
       .select('recipient_id, event_type, created_at')
       .eq('campaign_id', id)
 
-    // Process recipients and events to get detailed info
-    const recipientMap = new Map()
-    recipients?.forEach(r => {
-      recipientMap.set(r.id, {
+    // Create event lookup map
+    const eventsByRecipient = new Map<string, any[]>()
+    events?.forEach((event: any) => {
+      if (!eventsByRecipient.has(event.recipient_id)) {
+        eventsByRecipient.set(event.recipient_id, [])
+      }
+      eventsByRecipient.get(event.recipient_id)?.push(event)
+    })
+
+    // Group recipients by program
+    const programsWithRecipients: Record<string, any> = {}
+    recipients?.forEach((r: any) => {
+      const programName = programMap.get(r.program_id) || 'Unknown Program'
+      if (!programsWithRecipients[r.program_id]) {
+        programsWithRecipients[r.program_id] = {
+          program_name: programName,
+          coaches: []
+        }
+      }
+
+      // Get event timestamps for this recipient
+      let sent_at: string | null = null
+      let opened_at: string | null = null
+      let replied_at: string | null = null
+      
+      const recipientEvents = eventsByRecipient.get(r.id) || []
+      recipientEvents.forEach((event: any) => {
+        if (event.event_type === 'sent' && (!sent_at || new Date(event.created_at) < new Date(sent_at))) {
+          sent_at = event.created_at
+        }
+        if (event.event_type === 'opened' && (!opened_at || new Date(event.created_at) < new Date(opened_at))) {
+          opened_at = event.created_at
+        }
+        if (event.event_type === 'replied' && (!replied_at || new Date(event.created_at) < new Date(replied_at))) {
+          replied_at = event.created_at
+        }
+      })
+
+      programsWithRecipients[r.program_id].coaches.push({
         id: r.id,
         coach_name: r.coach_name,
         coach_email: r.coach_email,
-        program_name: r.programs.school_name,
         status: r.status,
-        sent_at: null,
-        opened_at: null,
-        replied_at: null,
+        sent_at,
+        opened_at,
+        replied_at
       })
-    })
-
-    // Update recipient info based on events
-    events?.forEach(event => {
-      const recipient = recipientMap.get(event.recipient_id)
-      if (recipient) {
-        if (event.event_type === 'sent' && !recipient.sent_at) {
-          recipient.sent_at = event.created_at
-        } else if (event.event_type === 'opened' && !recipient.opened_at) {
-          recipient.opened_at = event.created_at
-        } else if (event.event_type === 'replied' && !recipient.replied_at) {
-          recipient.replied_at = event.created_at
-        }
-      }
     })
 
     // Calculate stats from events
@@ -141,7 +163,7 @@ export async function GET(
       ...campaign,
       stats,
       emails: emails || [],
-      recipients: Array.from(recipientMap.values()),
+      programsWithRecipients: Object.values(programsWithRecipients),
     })
   } catch (error) {
     console.error('Campaign details error:', error)
