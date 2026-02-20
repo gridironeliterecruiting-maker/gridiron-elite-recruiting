@@ -43,6 +43,8 @@ interface CreateCampaignOverlayProps {
   playerPosition: string
   gmailEmail: string | null
   gmailTier: string | null
+  hasGmailToken: boolean
+  gmailTokenExpired: boolean
   quickEmailData?: {
     goal: string | null
     coachId: string | null
@@ -56,7 +58,7 @@ interface CreateCampaignOverlayProps {
   }) => void
 }
 
-export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gmailTier, quickEmailData, onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
+export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gmailTier, hasGmailToken, gmailTokenExpired, quickEmailData, onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
   const [currentStep, setCurrentStep] = useState(quickEmailData ? 3 : 1)
   const [maxStepReached, setMaxStepReached] = useState(quickEmailData ? 3 : 1)
   const [draft, setDraft] = useState<CampaignDraft>({ goal: null, selectedCoaches: [], templates: [] })
@@ -223,6 +225,8 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
             templates={draft.templates}
             gmailEmail={gmailEmail}
             gmailTier={gmailTier}
+            hasGmailToken={hasGmailToken}
+            gmailTokenExpired={gmailTokenExpired}
             onEditTarget={() => goToStep(2)}
             onEditBuild={() => goToStep(3)}
             onBack={() => goToStep(3)}

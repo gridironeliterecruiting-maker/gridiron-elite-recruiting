@@ -39,6 +39,8 @@ interface LaunchStepProps {
   templates: EmailTemplate[]
   gmailEmail: string | null
   gmailTier: string | null
+  hasGmailToken: boolean
+  gmailTokenExpired: boolean
   onEditTarget: () => void
   onEditBuild: () => void
   onBack: () => void
@@ -55,6 +57,8 @@ export function LaunchStep({
   templates,
   gmailEmail,
   gmailTier,
+  hasGmailToken,
+  gmailTokenExpired,
   onEditTarget,
   onEditBuild,
   onBack,
@@ -361,6 +365,8 @@ export function LaunchStep({
           templates={templates}
           gmailEmail={gmailEmail}
           gmailTier={gmailTier}
+          hasGmailToken={hasGmailToken}
+          gmailTokenExpired={gmailTokenExpired}
           campaignName={campaignName}
           scheduledAt={scheduledDate}
           launchNow={launchNow}
