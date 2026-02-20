@@ -138,6 +138,22 @@ export function OutreachClient({
     programCount: number
   } | null>(null)
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
+  
+  // Check if we just launched successfully
+  useEffect(() => {
+    const launched = searchParams.get('launched')
+    if (launched === 'true') {
+      setLaunchedCampaign({
+        name: 'Your campaign',
+        recipientCount: 1,
+        programCount: 1
+      })
+      // Clear the param
+      const url = new URL(window.location.href)
+      url.searchParams.delete('launched')
+      window.history.replaceState({}, '', url.pathname + url.search)
+    }
+  }, [searchParams])
 
   // Handle auto-launching campaign after OAuth
   useEffect(() => {
