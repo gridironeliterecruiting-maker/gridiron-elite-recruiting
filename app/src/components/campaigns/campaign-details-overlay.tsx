@@ -77,11 +77,6 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
         throw new Error('Failed to fetch campaign details')
       }
       const data = await res.json()
-      console.log('Campaign details received:', {
-        id: data.id,
-        name: data.name,
-        programsWithRecipients: data.programsWithRecipients
-      })
       setCampaign(data)
     } catch (err) {
       console.error('Error fetching campaign details:', err)
