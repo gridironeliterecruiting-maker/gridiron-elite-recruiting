@@ -6,6 +6,7 @@ import { GoalStep } from "./steps/goal-step"
 import { TargetStep } from "./steps/target-step"
 import { BuildStep } from "./steps/build-step"
 import { LaunchStep } from "./steps/launch-step"
+import { SaveDraftDialog } from "./save-draft-dialog"
 import type { CampaignGoal, EmailTemplate } from "./types"
 
 interface SelectedCoach {
@@ -62,6 +63,9 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
   const [currentStep, setCurrentStep] = useState(quickEmailData ? 3 : 1)
   const [maxStepReached, setMaxStepReached] = useState(quickEmailData ? 3 : 1)
   const [draft, setDraft] = useState<CampaignDraft>({ goal: null, selectedCoaches: [], templates: [] })
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [showSaveDraftDialog, setShowSaveDraftDialog] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   // Target step navigation state persistence
   const [targetNavState, setTargetNavState] = useState<{
@@ -103,8 +107,67 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
   }, [quickEmailData, programs])
 
   const handleClose = () => {
+    // Check if there are unsaved changes
+    if (hasUnsavedChanges && (draft.goal || draft.selectedCoaches.length > 0 || draft.templates.length > 0)) {
+      setShowSaveDraftDialog(true)
+    } else {
+      window.scrollTo(0, 0)
+      onClose()
+    }
+  }
+
+  const handleSaveDraft = async (title: string) => {
+    setIsSaving(true)
+    try {
+      // Prepare the campaign data
+      const campaignData = {
+        name: title,
+        goal: draft.goal,
+        status: 'draft',
+        templates: draft.templates.map((template, index) => ({
+          subject: template.subject,
+          body: template.body,
+          delayDays: template.delayDays || 0,
+          name: template.name || `Email ${index + 1}`
+        })),
+        recipients: draft.selectedCoaches.map(coach => ({
+          coachId: coach.coachId,
+          coachName: coach.coachName,
+          email: coach.email,
+          programName: coach.programName
+        }))
+      }
+
+      const response = await fetch('/api/campaigns/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(campaignData)
+      })
+
+      if (response.ok) {
+        // Successfully saved as draft
+        window.scrollTo(0, 0)
+        onClose()
+      } else {
+        console.error('Failed to save draft')
+        // You might want to show an error message to the user
+      }
+    } catch (error) {
+      console.error('Error saving draft:', error)
+    } finally {
+      setIsSaving(false)
+      setShowSaveDraftDialog(false)
+    }
+  }
+
+  const handleDeleteDraft = () => {
+    setShowSaveDraftDialog(false)
     window.scrollTo(0, 0)
     onClose()
+  }
+
+  const handleCancelDialog = () => {
+    setShowSaveDraftDialog(false)
   }
 
   const goToStep = (step: number) => {
@@ -114,6 +177,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
 
   const handleGoalSelect = (goal: CampaignGoal) => {
     setDraft((prev) => ({ ...prev, goal }))
+    setHasUnsavedChanges(true)
     goToStep(2)
   }
 
@@ -200,7 +264,10 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
             programs={programs}
             playerPosition={playerPosition}
             selectedCoaches={draft.selectedCoaches}
-            onCoachesChange={(coaches) => setDraft((prev) => ({ ...prev, selectedCoaches: coaches }))}
+            onCoachesChange={(coaches) => {
+              setDraft((prev) => ({ ...prev, selectedCoaches: coaches }))
+              setHasUnsavedChanges(true)
+            }}
             onNext={() => goToStep(3)}
             onBack={() => goToStep(1)}
             initialNavState={targetNavState}
@@ -212,7 +279,10 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
           <BuildStep
             goal={draft.goal}
             templates={draft.templates}
-            onTemplatesChange={(templates: EmailTemplate[]) => setDraft((prev) => ({ ...prev, templates }))}
+            onTemplatesChange={(templates: EmailTemplate[]) => {
+              setDraft((prev) => ({ ...prev, templates }))
+              setHasUnsavedChanges(true)
+            }}
             onNext={() => goToStep(4)}
             onBack={() => goToStep(2)}
           />
@@ -231,7 +301,11 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
             onEditBuild={() => goToStep(3)}
             onBack={() => goToStep(3)}
             onLaunched={(campaignData) => {
+              // Mark as saved since campaign is launched
+              setHasUnsavedChanges(false)
+              
               // Close the overlay
+              window.scrollTo(0, 0)
               onClose()
               
               // Show the success overlay if callback provided
@@ -242,6 +316,15 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
           />
         )}
       </div>
+
+      {/* Save Draft Dialog */}
+      <SaveDraftDialog
+        isOpen={showSaveDraftDialog}
+        onSave={handleSaveDraft}
+        onDelete={handleDeleteDraft}
+        onCancel={handleCancelDialog}
+        defaultTitle={`${draft.goal || 'New'} Campaign`}
+      />
     </div>
   )
 }
