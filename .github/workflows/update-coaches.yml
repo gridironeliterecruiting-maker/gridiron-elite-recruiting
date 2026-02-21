@@ -1,0 +1,51 @@
+name: Update Coach Data from RML
+
+on:
+  schedule:
+    # 1st and 15th of every month at 6:00 AM UTC (bi-weekly)
+    - cron: '0 6 1,15 * *'
+  workflow_dispatch:
+    # Manual trigger from GitHub Actions UI
+
+jobs:
+  update-coaches:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180  # scraping can take 1-2 hours
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install script dependencies
+        working-directory: scripts
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: scripts
+        run: npx playwright install chromium --with-deps
+
+      - name: Scrape RML coach data
+        working-directory: scripts
+        env:
+          RML_USERNAME: ${{ secrets.RML_USERNAME }}
+          RML_PASSWORD: ${{ secrets.RML_PASSWORD }}
+        run: node scrape-rml.js
+
+      - name: Sync coaches to Supabase
+        working-directory: scripts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: node sync-coaches.js
+
+      - name: Upload scraped data as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rml-coach-data-${{ github.run_id }}
+          path: data/rml_all_coaches.json
+          retention-days: 30

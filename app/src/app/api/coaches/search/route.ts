@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from("coaches")
     .select("id, program_id, first_name, last_name, title, email, phone, twitter_handle, twitter_dm_open, programs(id, school_name, division, conference, logo_url)", { count: "exact" })
+    .eq("is_active", true)
     .order("last_name")
     .range(offset, offset + limit - 1)
 

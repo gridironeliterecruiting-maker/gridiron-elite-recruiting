@@ -14,7 +14,7 @@ export default async function DashboardPage() {
     { data: profile },
   ] = await Promise.all([
     supabase.from("programs").select("*", { count: "exact", head: true }),
-    supabase.from("coaches").select("*", { count: "exact", head: true }),
+    supabase.from("coaches").select("*", { count: "exact", head: true }).eq("is_active", true),
     supabase.from("pipeline_entries").select("*", { count: "exact", head: true }),
     supabase
       .from("pipeline_stages")

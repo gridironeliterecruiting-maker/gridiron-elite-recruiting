@@ -21,6 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     .from("coaches")
     .select("id, program_id, first_name, last_name, title, email, phone, twitter_handle, twitter_dm_open")
     .eq("program_id", id)
+    .eq("is_active", true)
     .order("last_name")
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
