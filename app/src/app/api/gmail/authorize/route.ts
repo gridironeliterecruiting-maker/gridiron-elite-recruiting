@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     }
 
     const clientId = process.env.GOOGLE_CLIENT_ID!.trim()
-    const redirectUri = `${getAppUrl()}/api/gmail/oauth-callback`
+    const redirectUri = `${getAppUrl(request)}/api/gmail/oauth-callback`
 
     // Create state that includes both user ID and campaign ID
     const state = JSON.stringify({

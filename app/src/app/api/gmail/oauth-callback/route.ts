@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   const error = searchParams.get('error')
   const stateParam = searchParams.get('state')
-  const finalUrl = getAppUrl()
+  const finalUrl = getAppUrl(request)
 
   // Parse state to get campaign ID
   let campaignId = null
