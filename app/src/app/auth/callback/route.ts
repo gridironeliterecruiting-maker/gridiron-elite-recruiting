@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/dashboard'
-  const appUrl = getAppUrl()
+  const appUrl = getAppUrl(request)
 
   if (code) {
     const cookieStore = await cookies()
