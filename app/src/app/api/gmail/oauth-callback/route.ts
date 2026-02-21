@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getAppUrl } from '@/lib/app-url'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   const error = searchParams.get('error')
   const stateParam = searchParams.get('state')
-  // Use Vercel preview URL if available, otherwise production URL
-  const finalUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://gridironeliterecruiting.com'
+  const finalUrl = getAppUrl()
 
   // Parse state to get campaign ID
   let campaignId = null

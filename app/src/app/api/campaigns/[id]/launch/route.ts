@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { calculateSendSchedule } from '@/lib/gmail'
+import { getAppUrl } from '@/lib/app-url'
 
 export async function POST(
   request: Request,
@@ -125,7 +126,7 @@ export async function POST(
     // Trigger immediate email processing for "Launch Now" campaigns
     if (!launchTime || launchTime <= new Date()) {
       try {
-        const processUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/email/process-queue`
+        const processUrl = `${getAppUrl()}/api/email/process-queue`
         const processRes = await fetch(processUrl, {
           headers: {
             'Authorization': `Bearer ${process.env.CRON_SECRET}`,

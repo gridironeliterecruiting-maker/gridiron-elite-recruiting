@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getAppUrl } from '@/lib/app-url'
 import Image from 'next/image'
 
 export default function LoginPage() {
@@ -34,7 +35,7 @@ function LoginContent() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/callback`,
+        redirectTo: `${getAppUrl()}/auth/callback`,
       },
     })
     if (error) {
