@@ -1,4 +1,5 @@
 // Gmail API utility functions for sending emails, managing tokens, and tracking
+import { getAppUrl } from './app-url'
 
 const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1'
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
@@ -199,7 +200,7 @@ export function addTrackingPixel(
   recipientId: string,
   campaignId: string
 ): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://gridironeliterecruiting.com'
+  const appUrl = getAppUrl()
   const pixelUrl = `${appUrl}/api/track/open?rid=${recipientId}&cid=${campaignId}`
   const pixel = `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:none;width:1px;height:1px;border:0;" />`
 
@@ -218,7 +219,7 @@ export function wrapLinksForTracking(
   recipientId: string,
   campaignId: string
 ): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://gridironeliterecruiting.com'
+  const appUrl = getAppUrl()
 
   return html.replace(
     /<a\s+([^>]*?)href=["']([^"']+)["']([^>]*?)>/gi,
@@ -241,7 +242,7 @@ export function addUnsubscribeFooter(
   recipientEmail: string,
   campaignId: string
 ): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://gridironeliterecruiting.com'
+  const appUrl = getAppUrl()
   const unsubUrl = `${appUrl}/api/unsubscribe?email=${encodeURIComponent(recipientEmail)}&cid=${campaignId}`
   const footer = `
 <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center;">
