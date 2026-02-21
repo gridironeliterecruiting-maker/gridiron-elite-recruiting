@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
+import { SaveExitDialog } from "@/components/ui/save-exit-dialog"
 import {
   Mail,
   Clock,
@@ -533,8 +534,39 @@ function TemplateEditorOverlay({
   const [delayDays, setDelayDays] = useState(template.delayDays ?? 0)
   const bodyRef = useRef<HTMLTextAreaElement>(null)
 
+  const initialTemplateState = useRef({ name: template.name, subject: template.subject, body: template.body || '', delayDays: template.delayDays ?? 0 })
+  const [showSaveExitDialog, setShowSaveExitDialog] = useState(false)
+
+  const hasChanges = useMemo(() => {
+    return (
+      name !== initialTemplateState.current.name ||
+      subject !== initialTemplateState.current.subject ||
+      body !== initialTemplateState.current.body ||
+      delayDays !== initialTemplateState.current.delayDays
+    )
+  }, [name, subject, body, delayDays])
+
+  const handleCloseEditor = () => {
+    if (hasChanges) {
+      setShowSaveExitDialog(true)
+    } else {
+      onClose()
+    }
+  }
+
   const handleSave = () => {
     onUpdate({ name, subject, body, delayDays: index === 0 ? null : delayDays })
+    onClose()
+  }
+
+  const handleSaveDraft = (newTitle: string) => {
+    onUpdate({ name: newTitle, subject, body, delayDays: index === 0 ? null : delayDays })
+    setShowSaveExitDialog(false)
+    onClose()
+  }
+
+  const handleDeleteDraft = () => {
+    setShowSaveExitDialog(false)
     onClose()
   }
 
@@ -587,13 +619,13 @@ function TemplateEditorOverlay({
 
   return (
     <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[70] overflow-y-auto duration-200">
-      <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" onClick={handleCloseEditor} />
       <div className="absolute inset-y-0 right-0 flex w-full max-w-2xl flex-col overflow-hidden bg-card shadow-2xl sm:rounded-l-2xl">
         {/* Header */}
         <div className="flex items-center gap-4 border-b border-border px-5 py-4">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleCloseEditor}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
             aria-label="Close"
           >
@@ -742,6 +774,14 @@ function TemplateEditorOverlay({
           </div>
         </div>
       </div>
+
+      <SaveExitDialog
+        isOpen={showSaveExitDialog}
+        onClose={() => setShowSaveExitDialog(false)}
+        onSave={handleSaveDraft}
+        onDelete={handleDeleteDraft}
+        initialTitle={name}
+      />
     </div>
   )
 }
