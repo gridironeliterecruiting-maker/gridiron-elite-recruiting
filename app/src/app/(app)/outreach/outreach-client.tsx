@@ -291,8 +291,7 @@ export function OutreachClient({
         <div className="flex items-center gap-2">
           <Button
             onClick={() => setShowCreateCampaign('dm')}
-            variant="outline"
-            className="border-primary text-primary hover:bg-primary/10"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />
             Twitter DM Assist
