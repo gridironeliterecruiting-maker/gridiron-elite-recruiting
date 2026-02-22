@@ -79,10 +79,11 @@ function getProgram(entry: PipelineEntry): ProgramData | null {
 }
 
 function ProgramLogo({ program }: { program: ProgramData | null }) {
-  if (program?.logo_url) {
+  const [imgError, setImgError] = useState(false)
+  if (program?.logo_url && !imgError) {
     return (
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white ring-1 ring-primary/20 overflow-hidden">
-        <img src={program.logo_url} alt={program.school_name} width={36} height={36} className="object-contain" />
+        <img src={program.logo_url} alt={program.school_name} width={36} height={36} className="object-contain" onError={() => setImgError(true)} />
       </div>
     )
   }
@@ -437,7 +438,7 @@ export function PipelineClient({
                       >
                         <div className="flex h-14 w-14 items-center justify-center">
                           {program?.logo_url ? (
-                            <img src={program.logo_url} alt={program.school_name || ""} width={44} height={44} className="object-contain" />
+                            <img src={program.logo_url} alt={program.school_name || ""} width={44} height={44} className="object-contain" onError={(e) => { const el = e.currentTarget; el.outerHTML = `<div class="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">${program?.school_name?.slice(0, 3).toUpperCase() || "???"}</div>`; }} />
                           ) : (
                             <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">
                               {program?.school_name?.slice(0, 3).toUpperCase() || "???"}

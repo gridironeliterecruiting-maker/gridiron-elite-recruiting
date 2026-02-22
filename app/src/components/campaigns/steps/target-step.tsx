@@ -392,7 +392,7 @@ export function TargetStep({
                 >
                   {p.logo_url ? (
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-white overflow-hidden">
-                      <img src={p.logo_url} alt={p.school_name} width={24} height={24} className="object-contain" />
+                      <img src={p.logo_url} alt={p.school_name} width={24} height={24} className="object-contain" onError={(e) => { const el = e.currentTarget.parentElement!; el.className = "flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary"; el.innerHTML = `${p.school_name.slice(0, 3).toUpperCase()}`; }} />
                     </div>
                   ) : (
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
@@ -515,7 +515,7 @@ export function TargetStep({
                   >
                     {p.logo_url ? (
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-white overflow-hidden ring-1 ring-primary/10">
-                        <img src={p.logo_url} alt={p.school_name} width={24} height={24} className="object-contain" />
+                        <img src={p.logo_url} alt={p.school_name} width={24} height={24} className="object-contain" onError={(e) => { const el = e.currentTarget.parentElement!; el.className = "flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary ring-1 ring-primary/10"; el.innerHTML = `${p.school_name.slice(0, 3).toUpperCase()}`; }} />
                       </div>
                     ) : (
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary ring-1 ring-primary/10">
@@ -650,7 +650,7 @@ function CoachSelectionOverlay({
           <div className="flex items-center gap-3 flex-1">
             {program.logo_url ? (
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white overflow-hidden ring-1 ring-primary/20">
-                <img src={program.logo_url} alt={program.school_name} width={32} height={32} className="object-contain" />
+                <img src={program.logo_url} alt={program.school_name} width={32} height={32} className="object-contain" onError={(e) => { const el = e.currentTarget.parentElement!; el.className = "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary ring-1 ring-primary/20"; el.innerHTML = `${program.school_name.slice(0, 3).toUpperCase()}`; }} />
               </div>
             ) : (
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary ring-1 ring-primary/20">

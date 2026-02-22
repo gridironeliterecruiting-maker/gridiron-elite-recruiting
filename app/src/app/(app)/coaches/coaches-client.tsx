@@ -69,10 +69,11 @@ const divisionColorMap: Record<string, string> = {
 }
 
 function SchoolLogo({ school, logoUrl }: { school: string; logoUrl: string | null }) {
-  if (logoUrl) {
+  const [imgError, setImgError] = useState(false)
+  if (logoUrl && !imgError) {
     return (
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white ring-1 ring-primary/20 overflow-hidden">
-        <img src={logoUrl} alt={school} width={32} height={32} className="object-contain" />
+        <img src={logoUrl} alt={school} width={32} height={32} className="object-contain" onError={() => setImgError(true)} />
       </div>
     )
   }
