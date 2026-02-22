@@ -13,5 +13,8 @@ ALTER TABLE campaign_recipients ADD COLUMN IF NOT EXISTS twitter_handle TEXT;
 -- campaign_recipients: when user marked DM as sent
 ALTER TABLE campaign_recipients ADD COLUMN IF NOT EXISTS dm_sent_at TIMESTAMPTZ;
 
+-- campaign_recipients: allow null email for DM-only coaches
+ALTER TABLE campaign_recipients ALTER COLUMN coach_email DROP NOT NULL;
+
 -- Index for filtering by campaign type
 CREATE INDEX IF NOT EXISTS idx_campaigns_type ON campaigns(type);
