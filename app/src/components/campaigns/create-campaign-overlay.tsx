@@ -204,7 +204,9 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
     })
 
     if (!response.ok) {
-      throw new Error('Failed to create DM campaign')
+      const errorData = await response.json().catch(() => ({}))
+      console.error('DM campaign API error:', response.status, errorData)
+      throw new Error(errorData.error || `Failed to create DM campaign (${response.status})`)
     }
 
     const { campaignId } = await response.json()

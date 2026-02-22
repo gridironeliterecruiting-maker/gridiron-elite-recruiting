@@ -47,6 +47,7 @@ export function DmComposeStep({
   const [messageBody, setMessageBody] = useState(GOAL_DM_TEMPLATES[goal])
   const [showPreview, setShowPreview] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const charCount = messageBody.length
@@ -86,8 +87,12 @@ export function DmComposeStep({
   const handleCreate = async () => {
     if (!campaignName.trim() || !messageBody.trim()) return
     setIsCreating(true)
+    setError(null)
     try {
       await onCreateDmCampaign(campaignName, messageBody)
+    } catch (err) {
+      console.error('DM campaign creation failed:', err)
+      setError(err instanceof Error ? err.message : 'Failed to create DM campaign')
     } finally {
       setIsCreating(false)
     }
@@ -214,6 +219,13 @@ export function DmComposeStep({
           </div>
         </div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-400">
+          {error}
+        </div>
+      )}
 
       {/* Navigation */}
       <div className="flex items-center justify-between border-t border-border pt-6">
