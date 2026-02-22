@@ -6,6 +6,9 @@
 # Dependencies
 node_modules/
 
+# RML session cookies
+data/.rml-session.json
+
 # OS files
 .DS_Store
 Thumbs.db
