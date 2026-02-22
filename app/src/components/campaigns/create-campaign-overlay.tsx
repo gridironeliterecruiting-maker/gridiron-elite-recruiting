@@ -1,9 +1,8 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Mail, MessageCircle, Check } from "lucide-react"
-import { ChannelStep } from "./steps/channel-step"
 import { GoalStep } from "./steps/goal-step"
 import { TargetStep } from "./steps/target-step"
 import { BuildStep } from "./steps/build-step"
@@ -27,18 +26,16 @@ interface Program {
 }
 
 const EMAIL_STEPS = [
-  { number: 1, label: "Channel" },
-  { number: 2, label: "Goal" },
-  { number: 3, label: "Target" },
-  { number: 4, label: "Build" },
-  { number: 5, label: "Launch" },
+  { number: 1, label: "Goal" },
+  { number: 2, label: "Target" },
+  { number: 3, label: "Build" },
+  { number: 4, label: "Launch" },
 ] as const
 
 const DM_STEPS = [
-  { number: 1, label: "Channel" },
-  { number: 2, label: "Goal" },
-  { number: 3, label: "Target" },
-  { number: 4, label: "Compose" },
+  { number: 1, label: "Goal" },
+  { number: 2, label: "Target" },
+  { number: 3, label: "Compose" },
 ] as const
 
 interface CreateCampaignOverlayProps {
@@ -53,6 +50,7 @@ interface CreateCampaignOverlayProps {
     coachId: string | null
     programId: string | null
   } | null
+  initialCampaignType?: CampaignType
   onClose: () => void
   onCampaignLaunched?: (campaignData: {
     name: string
@@ -61,14 +59,12 @@ interface CreateCampaignOverlayProps {
   }) => void
 }
 
-export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gmailTier, hasGmailToken, gmailTokenExpired, quickEmailData, onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
+export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gmailTier, hasGmailToken, gmailTokenExpired, quickEmailData, initialCampaignType = 'email', onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
   const router = useRouter()
-  const [campaignType, setCampaignType] = useState<CampaignType | null>(
-    quickEmailData ? 'email' : null
-  )
-  // Quick email skips channel (step 1) and goal (step 2), goes straight to target (step 3) then build (step 4)
-  const [currentStep, setCurrentStep] = useState(quickEmailData ? 4 : 1)
-  const [maxStepReached, setMaxStepReached] = useState(quickEmailData ? 4 : 1)
+  const campaignType = initialCampaignType
+  // Quick email skips goal (step 1), goes straight to target (step 2) then build (step 3)
+  const [currentStep, setCurrentStep] = useState(quickEmailData ? 3 : 1)
+  const [maxStepReached, setMaxStepReached] = useState(quickEmailData ? 3 : 1)
   const [draft, setDraft] = useState<CampaignDraft>({ goal: null, selectedCoaches: [], templates: [] })
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [showSaveDraftDialog, setShowSaveDraftDialog] = useState(false)
@@ -81,10 +77,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
   }>({ activeDivision: null, expandedConference: null })
 
   // Dynamic steps based on campaign type
-  const steps = useMemo(() => {
-    if (campaignType === 'dm') return DM_STEPS
-    return EMAIL_STEPS
-  }, [campaignType])
+  const steps = campaignType === 'dm' ? DM_STEPS : EMAIL_STEPS
 
   // Initialize from quick email data if provided
   useEffect(() => {
@@ -185,16 +178,10 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
     setMaxStepReached((prev) => Math.max(prev, step))
   }
 
-  const handleChannelSelect = (type: CampaignType) => {
-    setCampaignType(type)
-    setHasUnsavedChanges(true)
-    goToStep(2)
-  }
-
   const handleGoalSelect = (goal: CampaignGoal) => {
     setDraft((prev) => ({ ...prev, goal }))
     setHasUnsavedChanges(true)
-    goToStep(3)
+    goToStep(2)
   }
 
   const handleCreateDmCampaign = async (name: string, messageBody: string) => {
@@ -307,32 +294,28 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
       {/* Step Content */}
       <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
         {currentStep === 1 && (
-          <ChannelStep onSelect={handleChannelSelect} selected={campaignType} />
-        )}
-
-        {currentStep === 2 && (
           <GoalStep onSelect={handleGoalSelect} selected={draft.goal} />
         )}
 
-        {currentStep === 3 && (
+        {currentStep === 2 && (
           <TargetStep
             programs={programs}
             playerPosition={playerPosition}
             selectedCoaches={draft.selectedCoaches}
-            channelFilter={campaignType || undefined}
+            channelFilter={campaignType}
             onCoachesChange={(coaches) => {
               setDraft((prev) => ({ ...prev, selectedCoaches: coaches }))
               setHasUnsavedChanges(true)
             }}
-            onNext={() => goToStep(4)}
-            onBack={() => goToStep(2)}
+            onNext={() => goToStep(3)}
+            onBack={() => goToStep(1)}
             initialNavState={targetNavState}
             onNavStateChange={setTargetNavState}
           />
         )}
 
-        {/* Email flow: Build (step 4) */}
-        {currentStep === 4 && campaignType !== 'dm' && draft.goal && (
+        {/* Email flow: Build (step 3) */}
+        {currentStep === 3 && campaignType !== 'dm' && draft.goal && (
           <BuildStep
             goal={draft.goal}
             templates={draft.templates}
@@ -340,13 +323,13 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
               setDraft((prev) => ({ ...prev, templates }))
               setHasUnsavedChanges(true)
             }}
-            onNext={() => goToStep(5)}
-            onBack={() => goToStep(3)}
+            onNext={() => goToStep(4)}
+            onBack={() => goToStep(2)}
           />
         )}
 
-        {/* Email flow: Launch (step 5) */}
-        {currentStep === 5 && campaignType !== 'dm' && draft.goal && (
+        {/* Email flow: Launch (step 4) */}
+        {currentStep === 4 && campaignType !== 'dm' && draft.goal && (
           <LaunchStep
             goal={draft.goal}
             selectedCoaches={draft.selectedCoaches}
@@ -355,9 +338,9 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
             gmailTier={gmailTier}
             hasGmailToken={hasGmailToken}
             gmailTokenExpired={gmailTokenExpired}
-            onEditTarget={() => goToStep(3)}
-            onEditBuild={() => goToStep(4)}
-            onBack={() => goToStep(4)}
+            onEditTarget={() => goToStep(2)}
+            onEditBuild={() => goToStep(3)}
+            onBack={() => goToStep(3)}
             onLaunched={(campaignData) => {
               setHasUnsavedChanges(false)
               window.scrollTo(0, 0)
@@ -369,13 +352,13 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
           />
         )}
 
-        {/* DM flow: Compose (step 4) */}
-        {currentStep === 4 && campaignType === 'dm' && draft.goal && (
+        {/* DM flow: Compose (step 3) */}
+        {currentStep === 3 && campaignType === 'dm' && draft.goal && (
           <DmComposeStep
             goal={draft.goal}
             selectedCoaches={draft.selectedCoaches}
             onCreateDmCampaign={handleCreateDmCampaign}
-            onBack={() => goToStep(3)}
+            onBack={() => goToStep(2)}
           />
         )}
       </div>

@@ -127,7 +127,7 @@ export function OutreachClient({
   const searchParams = useSearchParams()
   const router = useRouter()
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
-  const [showCreateCampaign, setShowCreateCampaign] = useState(false)
+  const [showCreateCampaign, setShowCreateCampaign] = useState<'email' | 'dm' | null>(null)
   const [quickEmailData, setQuickEmailData] = useState<{
     goal: string | null
     coachId: string | null
@@ -240,7 +240,7 @@ export function OutreachClient({
 
     if (isQuickEmail && goal && coachId) {
       setQuickEmailData({ goal, coachId, programId })
-      setShowCreateCampaign(true)
+      setShowCreateCampaign('email')
       
       // Clear URL params
       const url = new URL(window.location.href)
@@ -288,13 +288,23 @@ export function OutreachClient({
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">Manage campaigns, templates, and track your outreach</p>
         </div>
-        <Button
-          onClick={() => setShowCreateCampaign(true)}
-          className="bg-accent text-accent-foreground hover:bg-accent/90"
-        >
-          <Plus className="h-4 w-4" />
-          Create Campaign
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setShowCreateCampaign('dm')}
+            variant="outline"
+            className="border-primary text-primary hover:bg-primary/10"
+          >
+            <Plus className="h-4 w-4" />
+            Twitter DM Assist
+          </Button>
+          <Button
+            onClick={() => setShowCreateCampaign('email')}
+            className="bg-accent text-accent-foreground hover:bg-accent/90"
+          >
+            <Plus className="h-4 w-4" />
+            Create Campaign
+          </Button>
+        </div>
       </div>
 
       {showCreateCampaign && (
@@ -306,8 +316,9 @@ export function OutreachClient({
           hasGmailToken={hasGmailToken}
           gmailTokenExpired={gmailTokenExpired}
           quickEmailData={quickEmailData}
+          initialCampaignType={showCreateCampaign}
           onClose={() => {
-            setShowCreateCampaign(false)
+            setShowCreateCampaign(null)
             setQuickEmailData(null)
           }}
           onCampaignLaunched={(campaignData) => {
@@ -367,7 +378,7 @@ export function OutreachClient({
                 Create your first email campaign to start reaching out to college coaches.
               </p>
               <Button
-                onClick={() => setShowCreateCampaign(true)}
+                onClick={() => setShowCreateCampaign('email')}
                 className="mt-4 bg-accent text-accent-foreground hover:bg-accent/90"
                 size="sm"
               >
