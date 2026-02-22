@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react"
-import Image from "next/image"
+
 import { createClient } from "@/lib/supabase/client"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -72,7 +72,7 @@ function SchoolLogo({ school, logoUrl }: { school: string; logoUrl: string | nul
   if (logoUrl) {
     return (
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white ring-1 ring-primary/20 overflow-hidden">
-        <Image src={logoUrl} alt={school} width={32} height={32} className="object-contain" />
+        <img src={logoUrl} alt={school} width={32} height={32} className="object-contain" />
       </div>
     )
   }

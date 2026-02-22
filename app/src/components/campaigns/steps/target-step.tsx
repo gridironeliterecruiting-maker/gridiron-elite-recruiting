@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
-import Image from "next/image"
+
 import {
   Search,
   Users,
@@ -392,7 +392,7 @@ export function TargetStep({
                 >
                   {p.logo_url ? (
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-white overflow-hidden">
-                      <Image src={p.logo_url} alt={p.school_name} width={24} height={24} className="object-contain" />
+                      <img src={p.logo_url} alt={p.school_name} width={24} height={24} className="object-contain" />
                     </div>
                   ) : (
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
@@ -515,7 +515,7 @@ export function TargetStep({
                   >
                     {p.logo_url ? (
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-white overflow-hidden ring-1 ring-primary/10">
-                        <Image src={p.logo_url} alt={p.school_name} width={24} height={24} className="object-contain" />
+                        <img src={p.logo_url} alt={p.school_name} width={24} height={24} className="object-contain" />
                       </div>
                     ) : (
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary ring-1 ring-primary/10">
@@ -650,7 +650,7 @@ function CoachSelectionOverlay({
           <div className="flex items-center gap-3 flex-1">
             {program.logo_url ? (
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white overflow-hidden ring-1 ring-primary/20">
-                <Image src={program.logo_url} alt={program.school_name} width={32} height={32} className="object-contain" />
+                <img src={program.logo_url} alt={program.school_name} width={32} height={32} className="object-contain" />
               </div>
             ) : (
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary ring-1 ring-primary/20">

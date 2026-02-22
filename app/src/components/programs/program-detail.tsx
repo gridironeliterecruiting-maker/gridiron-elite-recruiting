@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import Image from "next/image"
+
 import {
   ArrowLeft,
   Globe,
@@ -93,7 +93,7 @@ function SchoolLogo({ school, logoUrl, size = 40 }: { school: string; logoUrl: s
         className="flex shrink-0 items-center justify-center rounded-lg bg-white ring-1 ring-primary/20 overflow-hidden"
         style={{ width: size, height: size }}
       >
-        <Image src={logoUrl} alt={school} width={size - 8} height={size - 8} className="object-contain" />
+        <img src={logoUrl} alt={school} width={size - 8} height={size - 8} className="object-contain" />
       </div>
     )
   }
@@ -139,7 +139,7 @@ export function ProgramDetail({ program, coaches, onBack, onSelectCoach, pipelin
 
   // Fetch ESPN data
   useEffect(() => {
-    const espnId = program.espn_id || extractEspnId(program.logo_url)
+    const espnId = program.espn_id
     if (!espnId) return
 
     setEspnLoading(true)
@@ -149,7 +149,7 @@ export function ProgramDetail({ program, coaches, onBack, onSelectCoach, pipelin
       .then((data) => { if (data) setEspn(data) })
       .catch(() => {})
       .finally(() => setEspnLoading(false))
-  }, [program.id, program.espn_id, program.logo_url])
+  }, [program.id, program.espn_id])
 
   const teamColor = espn?.color ? `#${espn.color}` : undefined
 
@@ -374,10 +374,4 @@ export function ProgramDetail({ program, coaches, onBack, onSelectCoach, pipelin
       )}
     </div>
   )
-}
-
-function extractEspnId(logoUrl: string | null): number | null {
-  if (!logoUrl) return null
-  const match = logoUrl.match(/ncaa\/500\/(\d+)\.png/)
-  return match ? parseInt(match[1]) : null
 }

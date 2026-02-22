@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useCallback } from "react"
-import Image from "next/image"
+
 import { createClient } from "@/lib/supabase/client"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -82,7 +82,7 @@ function ProgramLogo({ program }: { program: ProgramData | null }) {
   if (program?.logo_url) {
     return (
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white ring-1 ring-primary/20 overflow-hidden">
-        <Image src={program.logo_url} alt={program.school_name} width={36} height={36} className="object-contain" />
+        <img src={program.logo_url} alt={program.school_name} width={36} height={36} className="object-contain" />
       </div>
     )
   }
@@ -290,7 +290,7 @@ export function PipelineClient({
                             }`}
                           >
                             {p.logo_url ? (
-                              <Image src={p.logo_url} alt={p.school_name} width={20} height={20} className="shrink-0 rounded object-contain" />
+                              <img src={p.logo_url} alt={p.school_name} width={20} height={20} className="shrink-0 rounded object-contain" />
                             ) : (
                               <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary/10 text-[8px] font-bold text-primary">
                                 {p.school_name.slice(0, 2).toUpperCase()}
@@ -437,7 +437,7 @@ export function PipelineClient({
                       >
                         <div className="flex h-14 w-14 items-center justify-center">
                           {program?.logo_url ? (
-                            <Image src={program.logo_url} alt={program.school_name || ""} width={44} height={44} className="object-contain" />
+                            <img src={program.logo_url} alt={program.school_name || ""} width={44} height={44} className="object-contain" />
                           ) : (
                             <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">
                               {program?.school_name?.slice(0, 3).toUpperCase() || "???"}
