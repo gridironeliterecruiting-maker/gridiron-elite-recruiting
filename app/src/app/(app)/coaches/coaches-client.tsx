@@ -53,6 +53,11 @@ interface Stage {
 }
 
 type SortField = "school_name" | "division" | "conference" | "state"
+type CoachSortField = "last_name" | "school_name" | "has_email" | "dm_open"
+
+const DIVISION_ORDER: Record<string, number> = {
+  FBS: 0, FCS: 1, DII: 2, DIII: 3, JUCO: 4, NAIA: 5,
+}
 
 const divisionColorMap: Record<string, string> = {
   FBS: "bg-primary text-primary-foreground",
@@ -85,6 +90,8 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
   const [viewMode, setViewMode] = useState<"programs" | "coaches">("programs")
   const [sortField, setSortField] = useState<SortField>("school_name")
   const [sortAsc, setSortAsc] = useState(true)
+  const [coachSortField, setCoachSortField] = useState<CoachSortField>("last_name")
+  const [coachSortAsc, setCoachSortAsc] = useState(true)
 
   // Drill-down state
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null)
@@ -137,6 +144,11 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortAsc(!sortAsc)
     else { setSortField(field); setSortAsc(true) }
+  }
+
+  const handleCoachSort = (field: CoachSortField) => {
+    if (coachSortField === field) setCoachSortAsc(!coachSortAsc)
+    else { setCoachSortField(field); setCoachSortAsc(true) }
   }
 
   // Fetch coaches for a specific program (direct Supabase query)
@@ -247,6 +259,11 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
       )
     }
     result = [...result].sort((a, b) => {
+      if (sortField === "division") {
+        const ao = DIVISION_ORDER[a.division] ?? 99
+        const bo = DIVISION_ORDER[b.division] ?? 99
+        return sortAsc ? ao - bo : bo - ao
+      }
       const av = (a as any)[sortField] || ""
       const bv = (b as any)[sortField] || ""
       return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av)
@@ -262,6 +279,48 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
     >
       {children}
       <ArrowUpDown className={`h-3 w-3 ${sortField === field ? "text-primary" : "text-muted-foreground/50"}`} />
+    </button>
+  )
+
+  const sortedCoachResults = useMemo(() => {
+    return [...coachResults].sort((a, b) => {
+      const progA = (a as any).programs as Program | undefined
+      const progB = (b as any).programs as Program | undefined
+      switch (coachSortField) {
+        case "last_name": {
+          const cmp = (a.last_name || "").localeCompare(b.last_name || "")
+          return coachSortAsc ? cmp : -cmp
+        }
+        case "school_name": {
+          const cmp = (progA?.school_name || "").localeCompare(progB?.school_name || "")
+          return coachSortAsc ? cmp : -cmp
+        }
+        case "has_email": {
+          const ae = a.email ? 1 : 0
+          const be = b.email ? 1 : 0
+          if (ae !== be) return coachSortAsc ? be - ae : ae - be
+          return (a.last_name || "").localeCompare(b.last_name || "")
+        }
+        case "dm_open": {
+          const ad = a.twitter_dm_open ? 1 : 0
+          const bd = b.twitter_dm_open ? 1 : 0
+          if (ad !== bd) return coachSortAsc ? bd - ad : ad - bd
+          return (a.last_name || "").localeCompare(b.last_name || "")
+        }
+        default:
+          return 0
+      }
+    })
+  }, [coachResults, coachSortField, coachSortAsc])
+
+  const CoachSortButton = ({ field, children }: { field: CoachSortField; children: React.ReactNode }) => (
+    <button
+      type="button"
+      className="flex items-center gap-1.5 font-semibold text-foreground transition-colors hover:text-primary"
+      onClick={() => handleCoachSort(field)}
+    >
+      {children}
+      <ArrowUpDown className={`h-3 w-3 ${coachSortField === field ? "text-primary" : "text-muted-foreground/50"}`} />
     </button>
   )
 
@@ -417,15 +476,15 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-secondary/50 hover:bg-secondary/50">
-                    <TableHead className="w-[250px]">Coach</TableHead>
-                    <TableHead>School</TableHead>
+                    <TableHead className="w-[250px]"><CoachSortButton field="last_name">Coach</CoachSortButton></TableHead>
+                    <TableHead><CoachSortButton field="school_name">School</CoachSortButton></TableHead>
                     <TableHead>Title</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Twitter</TableHead>
+                    <TableHead><CoachSortButton field="has_email">Email</CoachSortButton></TableHead>
+                    <TableHead><CoachSortButton field="dm_open">Twitter</CoachSortButton></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {coachResults.map((coach) => {
+                  {sortedCoachResults.map((coach) => {
                     const prog = (coach as any).programs as Program | undefined
                     return (
                       <TableRow
