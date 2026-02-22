@@ -8,7 +8,8 @@ const GOALS: {
   icon: typeof Mail
   title: string
   highlight: string
-  description: string
+  emailDescription: string
+  dmDescription: string
   color: string
 }[] = [
   {
@@ -16,7 +17,8 @@ const GOALS: {
     icon: Mail,
     title: "Initiate contact to",
     highlight: "GET A RESPONSE",
-    description: "Send your first email to coaches who don't know you yet. Start the conversation and get on their radar.",
+    emailDescription: "Send your first email to coaches who don't know you yet. Start the conversation and get on their radar.",
+    dmDescription: "Send your first direct message to coaches who don't know you yet. Start the conversation and get on their radar.",
     color: "primary",
   },
   {
@@ -24,7 +26,8 @@ const GOALS: {
     icon: Film,
     title: "Get them to",
     highlight: "EVALUATE YOUR FILM",
-    description: "Share your highlight reel and game film. Get coaches to watch and assess your abilities.",
+    emailDescription: "Share your highlight reel and game film. Get coaches to watch and assess your abilities.",
+    dmDescription: "Drop your film link directly in their DMs. Get coaches to watch and assess your abilities.",
     color: "primary",
   },
   {
@@ -32,7 +35,8 @@ const GOALS: {
     icon: Heart,
     title: "Share your story to",
     highlight: "BUILD INTEREST",
-    description: "Go beyond stats. Share your academics, character, and what makes you a great fit for their program.",
+    emailDescription: "Go beyond stats. Share your academics, character, and what makes you a great fit for their program.",
+    dmDescription: "Go beyond stats. Share your academics, character, and what makes you a great fit for their program.",
     color: "primary",
   },
   {
@@ -40,7 +44,8 @@ const GOALS: {
     icon: MapPin,
     title: "Discuss the details and",
     highlight: "SECURE A VISIT",
-    description: "You've built a connection. Now lock in a campus visit, virtual meeting, or tryout opportunity.",
+    emailDescription: "You've built a connection. Now lock in a campus visit, virtual meeting, or tryout opportunity.",
+    dmDescription: "You've built a connection. Now lock in a campus visit, virtual meeting, or tryout opportunity.",
     color: "primary",
   },
 ]
@@ -48,16 +53,19 @@ const GOALS: {
 interface GoalStepProps {
   onSelect: (goal: CampaignGoal) => void
   selected: CampaignGoal | null
+  channelFilter?: 'email' | 'dm'
 }
 
-export function GoalStep({ onSelect, selected }: GoalStepProps) {
+export function GoalStep({ onSelect, selected, channelFilter }: GoalStepProps) {
+  const isDm = channelFilter === 'dm'
+  const channelLabel = isDm ? 'Twitter campaign' : 'email campaign'
   return (
     <div>
       <h2 className="mb-2 font-display text-base font-bold uppercase tracking-wider text-foreground">
         What&apos;s your goal?
       </h2>
       <p className="mb-8 text-sm text-muted-foreground">
-        Choose the objective for this email campaign. This determines your templates and strategy.
+        Choose the objective for this {channelLabel}. This determines your templates and strategy.
       </p>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -89,7 +97,7 @@ export function GoalStep({ onSelect, selected }: GoalStepProps) {
                 {goal.highlight}
               </p>
               <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                {goal.description}
+                {isDm ? goal.dmDescription : goal.emailDescription}
               </p>
             </button>
           )

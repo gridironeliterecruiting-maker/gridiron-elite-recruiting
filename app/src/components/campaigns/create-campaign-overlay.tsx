@@ -216,7 +216,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
 
   // Header icon and title
   const headerIcon = campaignType === 'dm' ? MessageCircle : Mail
-  const headerTitle = campaignType === 'dm' ? 'New DM Campaign' : 'New Email Campaign'
+  const headerTitle = campaignType === 'dm' ? 'New Twitter Campaign' : 'New Email Campaign'
   const HeaderIcon = headerIcon
 
   return (
@@ -294,7 +294,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
       {/* Step Content */}
       <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
         {currentStep === 1 && (
-          <GoalStep onSelect={handleGoalSelect} selected={draft.goal} />
+          <GoalStep onSelect={handleGoalSelect} selected={draft.goal} channelFilter={campaignType} />
         )}
 
         {currentStep === 2 && (
