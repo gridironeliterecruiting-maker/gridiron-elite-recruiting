@@ -7,7 +7,8 @@ import type { CampaignGoal, SelectedCoach } from "../types"
 import { resolveMergeTags } from "@/lib/merge-tags"
 
 const DM_MERGE_TAGS = [
-  { key: "Coach Name", label: "Coach Name" },
+  { key: "Last Name", label: "Coach Last Name" },
+  { key: "Coach Name", label: "Coach Full Name" },
   { key: "School", label: "School" },
   { key: "First Name", label: "First Name" },
   { key: "Position", label: "Position" },
@@ -16,15 +17,15 @@ const DM_MERGE_TAGS = [
 
 const GOAL_DM_TEMPLATES: Record<CampaignGoal, string> = {
   get_response:
-    "Coach ((Coach Name)), my name is ((First Name)) and I'm a ((Position)) very interested in ((School)). I'd love to connect about your program. Here's my film: ((Film Link))",
+    "Coach ((Last Name)), my name is ((First Name)) and I'm a ((Position)) very interested in ((School)). I'd love to connect about your program. Here's my film: ((Film Link))",
   evaluate_film:
-    "Coach ((Coach Name)), I wanted to share my latest film with you. I believe I can contribute at ((School)). ((Film Link)) — ((First Name)), ((Position))",
+    "Coach ((Last Name)), I wanted to share my latest film with you. I believe I can contribute at ((School)). ((Film Link)) — ((First Name)), ((Position))",
   build_interest:
-    "Coach ((Coach Name)), I've been following ((School)) closely and I'm very interested in your program. I'd love to tell you more about myself. ((First Name)), ((Position))",
+    "Coach ((Last Name)), I've been following ((School)) closely and I'm very interested in your program. I'd love to tell you more about myself. ((First Name)), ((Position))",
   secure_visit:
-    "Coach ((Coach Name)), I'd love to set up a campus visit to ((School)). Is there a good time to connect? ((First Name)), ((Position))",
+    "Coach ((Last Name)), I'd love to set up a campus visit to ((School)). Is there a good time to connect? ((First Name)), ((Position))",
   other:
-    "Coach ((Coach Name)),\n\n\n\n((First Name))",
+    "Coach ((Last Name)),\n\n\n\n((First Name))",
 }
 
 interface DmComposeStepProps {
