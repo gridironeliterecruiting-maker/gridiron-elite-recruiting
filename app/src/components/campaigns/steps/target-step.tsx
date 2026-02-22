@@ -71,6 +71,7 @@ interface Coach {
   email: string
   phone?: string | null
   twitter_handle: string | null
+  twitter_dm_open?: boolean
 }
 
 interface SelectedCoach {
@@ -80,6 +81,8 @@ interface SelectedCoach {
   coachName: string
   title: string
   email: string
+  twitterHandle?: string | null
+  twitterDmOpen?: boolean
 }
 
 const DIVISIONS = ["FBS", "FCS", "DII", "DIII", "JUCO", "NAIA"]
@@ -102,6 +105,7 @@ interface TargetStepProps {
   programs: Program[]
   playerPosition: string
   selectedCoaches: SelectedCoach[]
+  channelFilter?: 'email' | 'dm'
   onCoachesChange: (coaches: SelectedCoach[]) => void
   onNext: () => void
   onBack: () => void
@@ -113,6 +117,7 @@ export function TargetStep({
   programs,
   playerPosition,
   selectedCoaches,
+  channelFilter,
   onCoachesChange,
   onNext,
   onBack,
@@ -208,10 +213,18 @@ export function TargetStep({
     }
   }
 
+  // Check if a coach is eligible for the current channel
+  const isDmEligible = (coach: Coach) =>
+    coach.twitter_dm_open === true && !!coach.twitter_handle
+
   // Auto-select coaches for a single program (recruiting coordinators + position coaches only)
   const autoSelectProgram = async (program: Program) => {
     const coaches = await fetchCoaches(program.id)
-    const autoSelected = coaches.filter((c) => shouldAutoSelect(c.title, playerPosition))
+    let eligible = coaches
+    if (channelFilter === 'dm') {
+      eligible = coaches.filter(isDmEligible)
+    }
+    const autoSelected = eligible.filter((c) => shouldAutoSelect(c.title, playerPosition))
 
     // If no coaches match auto-select criteria, open the overlay for manual selection
     if (autoSelected.length === 0) {
@@ -226,6 +239,8 @@ export function TargetStep({
       coachName: `${c.first_name} ${c.last_name}`,
       title: c.title,
       email: c.email,
+      twitterHandle: c.twitter_handle,
+      twitterDmOpen: c.twitter_dm_open,
     }))
 
     // Use functional update to avoid stale closure
@@ -240,7 +255,11 @@ export function TargetStep({
     for (const p of progs) {
       if (alreadySelectedProgramIds.has(p.id)) continue
       const coaches = await fetchCoaches(p.id)
-      const autoSelected = coaches.filter((c) => shouldAutoSelect(c.title, playerPosition))
+      let eligible = coaches
+      if (channelFilter === 'dm') {
+        eligible = coaches.filter(isDmEligible)
+      }
+      const autoSelected = eligible.filter((c) => shouldAutoSelect(c.title, playerPosition))
 
       for (const c of autoSelected) {
         allNewSelections.push({
@@ -250,6 +269,8 @@ export function TargetStep({
           coachName: `${c.first_name} ${c.last_name}`,
           title: c.title,
           email: c.email,
+          twitterHandle: c.twitter_handle,
+          twitterDmOpen: c.twitter_dm_open,
         })
       }
     }
@@ -279,6 +300,8 @@ export function TargetStep({
           coachName: `${coach.first_name} ${coach.last_name}`,
           title: coach.title,
           email: coach.email,
+          twitterHandle: coach.twitter_handle,
+          twitterDmOpen: coach.twitter_dm_open,
         },
       ])
     }
@@ -542,7 +565,7 @@ export function TargetStep({
           disabled={selectedCoaches.length === 0}
           className="rounded-md bg-primary px-6 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Next — Build Emails
+          {channelFilter === 'dm' ? 'Next — Compose DM' : 'Next — Build Emails'}
         </button>
       </div>
 
@@ -555,6 +578,7 @@ export function TargetStep({
           loading={loadingCoaches === coachOverlayProgram.id}
           selectedCoaches={selectedCoaches}
           playerPosition={playerPosition}
+          channelFilter={channelFilter}
           onToggleCoach={(coach) => toggleCoach(coach, coachOverlayProgram)}
           onClose={() => setCoachOverlayProgram(null)}
         />
@@ -571,6 +595,7 @@ function CoachSelectionOverlay({
   loading,
   selectedCoaches,
   playerPosition,
+  channelFilter,
   onToggleCoach,
   onClose,
 }: {
@@ -579,6 +604,7 @@ function CoachSelectionOverlay({
   loading: boolean
   selectedCoaches: SelectedCoach[]
   playerPosition: string
+  channelFilter?: 'email' | 'dm'
   onToggleCoach: (coach: Coach) => void
   onClose: () => void
 }) {
@@ -648,7 +674,11 @@ function CoachSelectionOverlay({
       <div className="flex-1 overflow-y-auto p-5">
         <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-3">
           <p className="text-xs text-muted-foreground leading-relaxed">
-            We recommend that initial emails to a program target <span className="font-semibold text-foreground">recruiting coaches</span> and your <span className="font-semibold text-foreground">position coach</span>.
+            {channelFilter === 'dm' ? (
+              <>Only coaches with <span className="font-semibold text-foreground">open Twitter DMs</span> can be selected. Greyed-out coaches don&apos;t accept DMs.</>
+            ) : (
+              <>We recommend that initial emails to a program target <span className="font-semibold text-foreground">recruiting coaches</span> and your <span className="font-semibold text-foreground">position coach</span>.</>
+            )}
           </p>
         </div>
 
@@ -666,15 +696,19 @@ function CoachSelectionOverlay({
             {sortedCoaches.map((coach) => {
               const isSelected = selectedCoaches.some((sc) => sc.coachId === coach.id)
               const isRecommended = shouldAutoSelect(coach.title, playerPosition)
+              const dmIneligible = channelFilter === 'dm' && (!coach.twitter_dm_open || !coach.twitter_handle)
               return (
                 <button
                   key={coach.id}
                   type="button"
-                  onClick={() => onToggleCoach(coach)}
+                  onClick={() => !dmIneligible && onToggleCoach(coach)}
+                  disabled={dmIneligible}
                   className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-all ${
-                    isSelected
-                      ? "border-primary/30 bg-primary/[0.03]"
-                      : "border-border bg-card hover:border-primary/20"
+                    dmIneligible
+                      ? "border-border bg-secondary/30 opacity-50 cursor-not-allowed"
+                      : isSelected
+                        ? "border-primary/30 bg-primary/[0.03]"
+                        : "border-border bg-card hover:border-primary/20"
                   }`}
                 >
                   <div
@@ -694,19 +728,28 @@ function CoachSelectionOverlay({
                       <p className="text-sm font-semibold text-foreground">
                         {coach.first_name} {coach.last_name}
                       </p>
-                      {isRecommended && (
+                      {isRecommended && !dmIneligible && (
                         <Badge variant="outline" className="border-0 bg-primary/10 text-[9px] font-semibold text-primary">
                           Recommended
                         </Badge>
                       )}
+                      {dmIneligible && (
+                        <Badge variant="outline" className="border-0 bg-muted text-[9px] font-semibold text-muted-foreground">
+                          DMs not open
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground">{coach.title}</p>
-                    {coach.email && (
+                    {channelFilter === 'dm' && coach.twitter_handle ? (
+                      <div className="mt-2 flex items-center gap-1.5 text-[11px] text-primary">
+                        <span>@{coach.twitter_handle}</span>
+                      </div>
+                    ) : coach.email ? (
                       <div className="mt-2 flex items-center gap-1.5 text-[11px] text-primary">
                         <Mail className="h-3 w-3" />
                         <span className="truncate">{coach.email}</span>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </button>
               )

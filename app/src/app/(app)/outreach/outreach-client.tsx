@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -23,6 +23,7 @@ import {
   Reply,
   XCircle,
   Loader2,
+  MessageCircle,
 } from "lucide-react"
 import { CreateCampaignOverlay } from "@/components/campaigns/create-campaign-overlay"
 import { CampaignLaunchedOverlay } from "@/components/campaigns/campaign-launched-overlay"
@@ -58,6 +59,7 @@ interface Campaign {
   name: string
   goal: string
   status: string
+  type?: string
   scheduled_at: string | null
   created_at: string
   stats: CampaignStats
@@ -123,6 +125,7 @@ export function OutreachClient({
   gmailStatus,
 }: OutreachClientProps) {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [showCreateCampaign, setShowCreateCampaign] = useState(false)
   const [quickEmailData, setQuickEmailData] = useState<{
@@ -268,9 +271,12 @@ export function OutreachClient({
   }
 
   // Aggregate stats
-  const totalSent = campaigns.reduce((sum, c) => sum + c.stats.sent, 0)
-  const totalOpened = campaigns.reduce((sum, c) => sum + c.stats.opened, 0)
-  const totalReplied = campaigns.reduce((sum, c) => sum + c.stats.replied, 0)
+  const emailCampaigns = campaigns.filter(c => c.type !== 'dm')
+  const dmCampaigns = campaigns.filter(c => c.type === 'dm')
+  const totalSent = emailCampaigns.reduce((sum, c) => sum + c.stats.sent, 0)
+  const totalOpened = emailCampaigns.reduce((sum, c) => sum + c.stats.opened, 0)
+  const totalReplied = emailCampaigns.reduce((sum, c) => sum + c.stats.replied, 0)
+  const totalDmSent = dmCampaigns.reduce((sum, c) => sum + c.stats.sent, 0)
 
   return (
     <div className="flex flex-col gap-6">
@@ -314,10 +320,11 @@ export function OutreachClient({
          Gmail sending permissions will be requested just-in-time at campaign launch. */}
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         {[
           { label: "Templates", value: templates.length, icon: FileText, color: "primary" },
-          { label: "Total Sent", value: totalSent, icon: Send, color: "accent" },
+          { label: "Emails Sent", value: totalSent, icon: Send, color: "accent" },
+          { label: "DMs Sent", value: totalDmSent, icon: MessageCircle, color: "primary" },
           { label: "Opened", value: totalOpened, icon: MailOpen, color: "primary" },
           { label: "Replied", value: totalReplied, icon: Reply, color: "primary" },
         ].map((stat) => (
@@ -374,7 +381,13 @@ export function OutreachClient({
                 <CampaignCard
                   key={campaign.id}
                   campaign={campaign}
-                  onClick={() => setSelectedCampaignId(campaign.id)}
+                  onClick={() => {
+                    if (campaign.type === 'dm') {
+                      router.push(`/outreach/dm/${campaign.id}`)
+                    } else {
+                      setSelectedCampaignId(campaign.id)
+                    }
+                  }}
                   onStatusChange={() => window.location.reload()}
                 />
               ))}
