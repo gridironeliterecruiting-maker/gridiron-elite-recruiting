@@ -50,6 +50,11 @@ interface CreateCampaignOverlayProps {
     coachId: string | null
     programId: string | null
   } | null
+  quickDmData?: {
+    goal: string | null
+    coachId: string | null
+    programId: string | null
+  } | null
   initialCampaignType?: CampaignType
   onClose: () => void
   onCampaignLaunched?: (campaignData: {
@@ -59,12 +64,12 @@ interface CreateCampaignOverlayProps {
   }) => void
 }
 
-export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gmailTier, hasGmailToken, gmailTokenExpired, quickEmailData, initialCampaignType = 'email', onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
+export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gmailTier, hasGmailToken, gmailTokenExpired, quickEmailData, quickDmData, initialCampaignType = 'email', onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
   const router = useRouter()
   const campaignType = initialCampaignType
-  // Quick email skips goal (step 1), goes straight to target (step 2) then build (step 3)
-  const [currentStep, setCurrentStep] = useState(quickEmailData ? 3 : 1)
-  const [maxStepReached, setMaxStepReached] = useState(quickEmailData ? 3 : 1)
+  // Quick email/DM skips goal and target, goes straight to build/compose (step 3)
+  const [currentStep, setCurrentStep] = useState(quickEmailData || quickDmData ? 3 : 1)
+  const [maxStepReached, setMaxStepReached] = useState(quickEmailData || quickDmData ? 3 : 1)
   const [draft, setDraft] = useState<CampaignDraft>({ goal: null, selectedCoaches: [], templates: [] })
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [showSaveDraftDialog, setShowSaveDraftDialog] = useState(false)
@@ -112,6 +117,40 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
       fetchCoachDetails()
     }
   }, [quickEmailData, programs])
+
+  // Initialize from quick DM data if provided
+  useEffect(() => {
+    if (quickDmData && quickDmData.goal && quickDmData.coachId) {
+      const fetchCoachDetails = async () => {
+        try {
+          const res = await fetch(`/api/programs/${quickDmData.programId}/coaches`)
+          if (res.ok) {
+            const coaches = await res.json()
+            const coach = coaches.find((c: any) => c.id === quickDmData.coachId)
+            if (coach) {
+              setDraft({
+                goal: quickDmData.goal as CampaignGoal,
+                selectedCoaches: [{
+                  coachId: coach.id,
+                  programId: quickDmData.programId!,
+                  programName: programs.find(p => p.id === quickDmData.programId)?.school_name || '',
+                  coachName: `${coach.first_name} ${coach.last_name}`,
+                  title: coach.title || 'Coach',
+                  email: coach.email || null,
+                  twitterHandle: coach.twitter_handle || null,
+                  twitterDmOpen: coach.twitter_dm_open || false,
+                }],
+                templates: []
+              })
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch coach details:', error)
+        }
+      }
+      fetchCoachDetails()
+    }
+  }, [quickDmData, programs])
 
   const handleClose = () => {
     if (hasUnsavedChanges && (draft.goal || draft.selectedCoaches.length > 0 || draft.templates.length > 0)) {

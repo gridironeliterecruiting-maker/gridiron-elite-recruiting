@@ -66,6 +66,7 @@ function CopyButton({ text }: { text: string }) {
 export function CoachDetail({ coach, program, onClose }: CoachDetailProps) {
   const router = useRouter()
   const [showQuickEmail, setShowQuickEmail] = useState(false)
+  const [showQuickDm, setShowQuickDm] = useState(false)
 
   const handleEmailGoalSelected = (goal: CampaignGoal) => {
     // Navigate to outreach page with pre-filled values
@@ -77,6 +78,19 @@ export function CoachDetail({ coach, program, onClose }: CoachDetailProps) {
     })
     router.push(`/outreach?${params.toString()}`)
   }
+
+  const handleDmGoalSelected = (goal: CampaignGoal) => {
+    const params = new URLSearchParams({
+      goal: goal,
+      coaches: coach.id,
+      program: program.id,
+      quickDm: 'true'
+    })
+    router.push(`/outreach?${params.toString()}`)
+  }
+
+  const hasDm = coach.twitter_dm_open && coach.twitter_handle
+  const hasEmail = !!coach.email
 
   return (
     <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[70] overflow-y-auto duration-200">
@@ -205,7 +219,17 @@ export function CoachDetail({ coach, program, onClose }: CoachDetailProps) {
 
         {/* Footer actions */}
         <div className="flex items-center gap-3 border-t border-border px-5 py-4">
-          {coach.email && (
+          {hasDm && (
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setShowQuickDm(true)}
+            >
+              <Twitter className="mr-2 h-4 w-4" />
+              Send DM
+            </Button>
+          )}
+          {hasEmail && (
             <Button
               variant="outline"
               className="flex-1"
@@ -239,6 +263,22 @@ export function CoachDetail({ coach, program, onClose }: CoachDetailProps) {
           }}
           onContinue={handleEmailGoalSelected}
           onClose={() => setShowQuickEmail(false)}
+        />
+      )}
+
+      {/* Quick DM Modal */}
+      {showQuickDm && (
+        <QuickEmailModal
+          coach={{
+            id: coach.id,
+            first_name: coach.first_name,
+            last_name: coach.last_name,
+            title: coach.title || "Coach",
+            school_name: program.school_name
+          }}
+          channel="dm"
+          onContinue={handleDmGoalSelected}
+          onClose={() => setShowQuickDm(false)}
         />
       )}
     </div>

@@ -133,6 +133,11 @@ export function OutreachClient({
     coachId: string | null
     programId: string | null
   } | null>(null)
+  const [quickDmData, setQuickDmData] = useState<{
+    goal: string | null
+    coachId: string | null
+    programId: string | null
+  } | null>(null)
   const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null)
   const [resumingCampaign, setResumingCampaign] = useState(false)
   const [launchedCampaign, setLaunchedCampaign] = useState<{
@@ -231,23 +236,35 @@ export function OutreachClient({
     }
   }, [resumeCampaignId, gmailStatus, resumeStep])
 
-  // Handle quick email flow from URL params
+  // Handle quick email/DM flow from URL params
   useEffect(() => {
     const goal = searchParams.get('goal')
     const coachId = searchParams.get('coaches')
     const programId = searchParams.get('program')
     const isQuickEmail = searchParams.get('quickEmail') === 'true'
+    const isQuickDm = searchParams.get('quickDm') === 'true'
 
     if (isQuickEmail && goal && coachId) {
       setQuickEmailData({ goal, coachId, programId })
       setShowCreateCampaign('email')
-      
+
       // Clear URL params
       const url = new URL(window.location.href)
       url.searchParams.delete('goal')
       url.searchParams.delete('coaches')
       url.searchParams.delete('program')
       url.searchParams.delete('quickEmail')
+      window.history.replaceState({}, '', url.pathname + url.search)
+    } else if (isQuickDm && goal && coachId) {
+      setQuickDmData({ goal, coachId, programId })
+      setShowCreateCampaign('dm')
+
+      // Clear URL params
+      const url = new URL(window.location.href)
+      url.searchParams.delete('goal')
+      url.searchParams.delete('coaches')
+      url.searchParams.delete('program')
+      url.searchParams.delete('quickDm')
       window.history.replaceState({}, '', url.pathname + url.search)
     }
   }, [searchParams])
@@ -315,10 +332,12 @@ export function OutreachClient({
           hasGmailToken={hasGmailToken}
           gmailTokenExpired={gmailTokenExpired}
           quickEmailData={quickEmailData}
+          quickDmData={quickDmData}
           initialCampaignType={showCreateCampaign}
           onClose={() => {
             setShowCreateCampaign(null)
             setQuickEmailData(null)
+            setQuickDmData(null)
           }}
           onCampaignLaunched={(campaignData) => {
             setLaunchedCampaign(campaignData)

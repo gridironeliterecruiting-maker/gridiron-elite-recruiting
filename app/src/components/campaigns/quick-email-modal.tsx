@@ -12,6 +12,7 @@ interface QuickEmailModalProps {
     title: string
     school_name: string
   }
+  channel?: 'email' | 'dm'
   onContinue: (goal: CampaignGoal) => void
   onClose: () => void
 }
@@ -54,7 +55,8 @@ const GOALS: {
   }
 ]
 
-export function QuickEmailModal({ coach, onContinue, onClose }: QuickEmailModalProps) {
+export function QuickEmailModal({ coach, channel = 'email', onContinue, onClose }: QuickEmailModalProps) {
+  const isDm = channel === 'dm'
   const [selectedGoal, setSelectedGoal] = useState<CampaignGoal | null>(null)
 
   const handleContinue = () => {
@@ -71,7 +73,7 @@ export function QuickEmailModal({ coach, onContinue, onClose }: QuickEmailModalP
         <div className="mb-6 flex items-start justify-between">
           <div>
             <h3 className="font-display text-lg font-bold uppercase tracking-tight text-foreground">
-              Email {coach.first_name} {coach.last_name}
+              {isDm ? 'DM' : 'Email'} {coach.first_name} {coach.last_name}
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
               {coach.title} • {coach.school_name}
@@ -89,7 +91,7 @@ export function QuickEmailModal({ coach, onContinue, onClose }: QuickEmailModalP
 
         {/* Goal Selection */}
         <div className="mb-6">
-          <p className="mb-4 text-sm text-muted-foreground">What's your goal with this email?</p>
+          <p className="mb-4 text-sm text-muted-foreground">What&apos;s your goal with this {isDm ? 'DM' : 'email'}?</p>
           <div className="space-y-2">
             {GOALS.map((goal) => {
               const Icon = goal.icon
