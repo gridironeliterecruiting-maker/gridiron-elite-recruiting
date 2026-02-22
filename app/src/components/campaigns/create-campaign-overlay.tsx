@@ -211,9 +211,8 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
 
     const { campaignId } = await response.json()
     setHasUnsavedChanges(false)
-    window.scrollTo(0, 0)
-    onClose()
-    router.push(`/outreach/dm/${campaignId}`)
+    // Use hard navigation to ensure the DM Queue page loads fresh from the server
+    window.location.href = `/outreach/dm/${campaignId}`
   }
 
   // Header icon and title
