@@ -46,7 +46,8 @@ function matchesPosition(coachTitle: string, playerPosition: string): boolean {
 }
 
 function isRecruitingCoach(title: string): boolean {
-  return title.toLowerCase().includes("recruit")
+  const t = title.toLowerCase()
+  return t.includes("recruit") || t.includes("scout")
 }
 
 function shouldAutoSelect(coachTitle: string, playerPosition: string): boolean {
