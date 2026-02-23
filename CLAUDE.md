@@ -355,6 +355,18 @@ System templates are seeded in migration 002 and cover goals: Get a Response (4 
 | account_tier | TEXT | 'new', 'building', 'established', 'veteran' |
 | connected_at | TIMESTAMPTZ | |
 
+#### `twitter_tokens` — Per-user Twitter/X OAuth tokens (migration 005)
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID | PK |
+| user_id | UUID | FK → profiles(id), UNIQUE |
+| twitter_user_id | TEXT | Twitter numeric user ID |
+| twitter_handle | TEXT | Twitter @handle |
+| access_token | TEXT | |
+| refresh_token | TEXT | |
+| token_expiry | TIMESTAMPTZ | |
+| connected_at | TIMESTAMPTZ | |
+
 #### `system_settings` — Global config (key-value)
 | Key | Purpose |
 |-----|---------|
@@ -491,6 +503,27 @@ All require authentication via `(app)/layout.tsx` server-side check.
 **GET `/api/gmail/force-refresh`** — Force immediate token refresh
 **POST `/api/gmail/check-all-tokens`** — Admin: check/refresh all user tokens
 **POST `/api/gmail/cron-refresh`** — Cron: batch refresh expiring tokens
+
+### Twitter/X OAuth & DM Sending
+
+**GET `/api/twitter/authorize`** — Initiate Twitter OAuth 2.0 PKCE flow
+- Scopes: dm.read, dm.write, tweet.read, users.read, offline.access
+- State param includes userId + optional campaignId
+- Stores code_verifier in HttpOnly cookie
+
+**GET `/api/twitter/oauth-callback`** — Handle Twitter OAuth callback
+- Exchanges code+verifier for tokens, gets user profile
+- Upserts to twitter_tokens, redirects to /outreach with params
+
+**GET `/api/twitter/status`** — Check Twitter connection status
+**POST `/api/twitter/refresh`** — Refresh expired token
+
+**POST `/api/dm-campaigns/[id]/send-dm`** — Send DM via Twitter API
+- Auth: Required (validates campaign ownership)
+- Body: `{ recipientId }`
+- Resolves merge tags, looks up Twitter user ID, sends DM
+- Auto-creates pipeline entry + logs interaction
+- Caches Twitter user ID in campaign_recipients.twitter_user_id
 
 ### Email Tracking
 
@@ -631,18 +664,39 @@ Two formats supported: `((Tag Name))` (primary) and `{{tag_name}}` (backwards co
 
 ## 9. DM Campaign System
 
-DM campaigns are a **manual assist** workflow — the app prepares personalized messages but the athlete sends them manually via Twitter/X.
+DM campaigns support two modes: **manual assist** (copy + paste) and **auto-send** via the Twitter/X API.
 
-### Flow
+### Manual Flow
 1. Athlete creates DM campaign (type="dm") with coach recipients who have `twitter_dm_open = true`
 2. Writes a DM template with merge tags
-3. Opens DM Queue page (`/outreach/dm/[id]`)
-4. For each coach: sees resolved message, clicks "Mark as Sent" after manually DMing
-5. Marking as sent:
-   - Updates `campaign_recipients.dm_sent_at` and status
-   - Auto-creates `pipeline_entry` if none exists (stage = "Initial Contact")
-   - Logs `interaction` (type: "dm_sent", direction: "outbound")
-6. Campaign auto-completes when all recipients are marked sent
+3. In DM Queue (step 4 of campaign overlay, or standalone `/outreach/dm/[id]`)
+4. For each coach: sees resolved message, copies it, opens X, pastes, clicks "Mark as Sent"
+
+### Auto-Send Flow (requires Twitter/X API connection)
+1. Athlete connects X account via OAuth 2.0 PKCE (`/api/twitter/authorize`)
+2. Tokens stored in `twitter_tokens` table
+3. In DM Queue: "Send DM" button appears per coach, "Send All" button for batch
+4. `/api/dm-campaigns/[id]/send-dm` resolves merge tags, looks up Twitter user ID, sends via API
+5. Recipient Twitter user IDs cached in `campaign_recipients.twitter_user_id`
+
+### Shared Behavior (both modes)
+- Updates `campaign_recipients.dm_sent_at` and status
+- Auto-creates `pipeline_entry` if none exists (stage = "Initial Contact")
+- Logs `interaction` (type: "dm_sent", direction: "outbound")
+- Campaign auto-completes when all recipients are marked/confirmed sent
+
+### Twitter/X OAuth
+- OAuth 2.0 with PKCE (code_verifier stored in HttpOnly cookie)
+- Scopes: `dm.read dm.write tweet.read users.read offline.access`
+- Tokens stored in `twitter_tokens` table (UNIQUE per user_id)
+- Token refresh via `/api/twitter/refresh`
+- Status check via `/api/twitter/status`
+- Env vars: `TWITTER_CLIENT_ID`, `TWITTER_CLIENT_SECRET`
+
+### Twitter API Rate Limits (Basic tier, $100/month)
+- DM sends: ~200/day
+- User lookups: 100/request, 300 requests/15 min
+- 1.5s delay between auto-sends to stay safe
 
 ---
 
@@ -758,6 +812,8 @@ DM campaigns are a **manual assist** workflow — the app prepares personalized 
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
 | `CRON_SECRET` | Auth for cron endpoints |
+| `TWITTER_CLIENT_ID` | Twitter/X API OAuth client ID |
+| `TWITTER_CLIENT_SECRET` | Twitter/X API OAuth client secret |
 
 ### Required (Scripts)
 | Variable | Purpose |

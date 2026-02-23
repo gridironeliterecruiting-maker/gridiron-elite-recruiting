@@ -77,6 +77,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
   const [showSaveDraftDialog, setShowSaveDraftDialog] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [dmCampaignId, setDmCampaignId] = useState<string | null>(null)
+  const [dmAllSent, setDmAllSent] = useState(false)
 
   // Target step navigation state persistence
   const [targetNavState, setTargetNavState] = useState<{
@@ -297,6 +298,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
           <div className="flex items-center gap-0">
             {steps.map((step, i) => {
               const canNavigate = step.number <= maxStepReached
+              const isCompleted = currentStep > step.number || (step.number === steps.length && dmAllSent)
               return (
                 <div key={step.number} className="flex flex-1 items-center">
                   <button
@@ -309,14 +311,14 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
                   >
                     <div
                       className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${
-                        currentStep > step.number
+                        isCompleted
                           ? "bg-primary text-primary-foreground"
                           : currentStep === step.number
                             ? "bg-primary text-primary-foreground ring-2 ring-primary/30"
                             : "bg-secondary text-muted-foreground"
                       }`}
                     >
-                      {currentStep > step.number ? <Check className="h-3.5 w-3.5" /> : step.number}
+                      {isCompleted ? <Check className="h-3.5 w-3.5" /> : step.number}
                     </div>
                     <span
                       className={`text-xs font-semibold uppercase tracking-wider ${
@@ -417,6 +419,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
             campaignId={dmCampaignId}
             onClose={onClose}
             embedded
+            onAllSent={() => setDmAllSent(true)}
           />
         )}
       </div>

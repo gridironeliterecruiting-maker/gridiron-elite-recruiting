@@ -107,10 +107,13 @@ interface OutreachClientProps {
   gmailTier: string | null
   hasGmailToken: boolean
   gmailTokenExpired: boolean
+  twitterHandle: string | null
+  hasTwitterToken: boolean
   campaigns: Campaign[]
   resumeCampaignId?: string
   resumeStep?: string
   gmailStatus?: string
+  twitterStatus?: string
 }
 
 export function OutreachClient({
@@ -121,10 +124,13 @@ export function OutreachClient({
   gmailTier,
   hasGmailToken,
   gmailTokenExpired,
+  twitterHandle,
+  hasTwitterToken,
   campaigns,
   resumeCampaignId,
   resumeStep,
   gmailStatus,
+  twitterStatus,
 }: OutreachClientProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -356,8 +362,42 @@ export function OutreachClient({
         />
       )}
 
-      {/* Gmail connection status removed — users already logged in with Google.
-         Gmail sending permissions will be requested just-in-time at campaign launch. */}
+      {/* Twitter/X connection status */}
+      {hasTwitterToken && twitterHandle && (
+        <Card className="border-primary/20 bg-primary/[0.03]">
+          <CardContent className="flex items-center gap-3 p-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <MessageCircle className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-foreground">X Connected — @{twitterHandle}</p>
+              <p className="text-[11px] text-muted-foreground">DMs can be sent automatically via the X API</p>
+            </div>
+            <Badge className="border-0 bg-green-100 text-green-700 text-[10px]">
+              <CheckCircle2 className="mr-1 h-3 w-3" />
+              Connected
+            </Badge>
+          </CardContent>
+        </Card>
+      )}
+
+      {twitterStatus === 'connected' && !hasTwitterToken && (
+        <Card className="border-green-200 bg-green-50/50">
+          <CardContent className="flex items-center gap-3 p-3">
+            <CheckCircle2 className="h-5 w-5 text-green-500" />
+            <p className="text-xs font-semibold text-green-700">X account connected successfully! Refresh the page to see the status.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {twitterStatus === 'error' && (
+        <Card className="border-red-200 bg-red-50/50">
+          <CardContent className="flex items-center gap-3 p-3">
+            <AlertCircle className="h-5 w-5 text-red-500" />
+            <p className="text-xs font-semibold text-red-700">Failed to connect X account. Please try again.</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">

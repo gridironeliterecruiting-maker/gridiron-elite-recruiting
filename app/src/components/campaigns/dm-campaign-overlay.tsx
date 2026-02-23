@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import {
   ArrowLeft,
   MessageCircle,
@@ -11,6 +11,10 @@ import {
   Clock,
   Users,
   Loader2,
+  Send,
+  Zap,
+  AlertCircle,
+  Link2,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +26,7 @@ interface DmCampaignOverlayProps {
   campaignId: string
   onClose: () => void
   embedded?: boolean
+  onAllSent?: () => void
 }
 
 interface Recipient {
@@ -132,7 +137,7 @@ async function fetchCoachAndProgram(
   return { coach: coachData, program }
 }
 
-export function DmCampaignOverlay({ campaignId, onClose, embedded = false }: DmCampaignOverlayProps) {
+export function DmCampaignOverlay({ campaignId, onClose, embedded = false, onAllSent }: DmCampaignOverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [loading, setLoading] = useState(true)
   const [campaign, setCampaign] = useState<Campaign | null>(null)
@@ -144,6 +149,14 @@ export function DmCampaignOverlay({ campaignId, onClose, embedded = false }: DmC
   const [selectedCoachData, setSelectedCoachData] = useState<{ coach: any; program: any } | null>(null)
   const [loadingCoach, setLoadingCoach] = useState<string | null>(null)
 
+  // Twitter API auto-send state
+  const [twitterConnected, setTwitterConnected] = useState(false)
+  const [twitterHandle, setTwitterHandle] = useState<string | null>(null)
+  const [sendingDmId, setSendingDmId] = useState<string | null>(null)
+  const [sendingAll, setSendingAll] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
+  const sendingAllRef = useRef(false)
+
   useEffect(() => {
     if (embedded) return
     document.body.style.overflow = "hidden"
@@ -152,6 +165,19 @@ export function DmCampaignOverlay({ campaignId, onClose, embedded = false }: DmC
 
   useEffect(() => { fetchData() }, [campaignId])
   useEffect(() => { containerRef.current?.scrollTo(0, 0) }, [campaignId])
+
+  // Check Twitter connection status
+  useEffect(() => {
+    fetch('/api/twitter/status')
+      .then(res => res.json())
+      .then(data => {
+        if (data.connected && !data.expired) {
+          setTwitterConnected(true)
+          setTwitterHandle(data.handle)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const fetchData = async () => {
     try {
@@ -242,6 +268,75 @@ export function DmCampaignOverlay({ campaignId, onClose, embedded = false }: DmC
     }
   }
 
+  /** Send a single DM via the Twitter API */
+  const handleSendDm = useCallback(async (recipientId: string) => {
+    setSendingDmId(recipientId)
+    setSendError(null)
+    try {
+      const res = await fetch(`/api/dm-campaigns/${campaignId}/send-dm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipientId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setSendError(data.error || 'Failed to send DM')
+        return false
+      }
+      // Update local state
+      setRecipients(prev =>
+        prev.map(r =>
+          r.id === recipientId
+            ? { ...r, dm_sent_at: new Date().toISOString(), status: "sent" }
+            : r
+        )
+      )
+      return true
+    } catch (error: any) {
+      setSendError(error.message || 'Failed to send DM')
+      return false
+    } finally {
+      setSendingDmId(null)
+    }
+  }, [campaignId])
+
+  /** Send all pending DMs sequentially via the Twitter API */
+  const handleSendAll = useCallback(async () => {
+    const pending = recipients.filter(r => !r.dm_sent_at && r.twitter_handle)
+    if (pending.length === 0) return
+
+    setSendingAll(true)
+    sendingAllRef.current = true
+    setSendError(null)
+
+    for (const recipient of pending) {
+      if (!sendingAllRef.current) break // User cancelled
+
+      setSendingDmId(recipient.id)
+      const success = await handleSendDm(recipient.id)
+
+      if (!success) {
+        // Stop on first error
+        break
+      }
+
+      // Brief delay between sends to avoid rate limits
+      if (sendingAllRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 1500))
+      }
+    }
+
+    setSendingAll(false)
+    sendingAllRef.current = false
+    setSendingDmId(null)
+  }, [recipients, handleSendDm])
+
+  const handleStopSendAll = () => {
+    sendingAllRef.current = false
+    setSendingAll(false)
+    setSendingDmId(null)
+  }
+
   const handleCoachClick = async (e: React.MouseEvent, recipient: Recipient) => {
     e.stopPropagation()
     if (loadingCoach) return
@@ -257,6 +352,17 @@ export function DmCampaignOverlay({ campaignId, onClose, embedded = false }: DmC
     }
   }
 
+  const handleConnectTwitter = () => {
+    window.location.href = `/api/twitter/authorize?campaign=${campaignId}`
+  }
+
+  // Notify parent when all DMs have been sent
+  useEffect(() => {
+    if (recipients.length > 0 && recipients.every(r => r.dm_sent_at)) {
+      onAllSent?.()
+    }
+  }, [recipients, onAllSent])
+
   const progressPercent = stats.total > 0 ? Math.round((stats.sent / stats.total) * 100) : 0
 
   // Shared queue content (used in both embedded and standalone modes)
@@ -268,7 +374,30 @@ export function DmCampaignOverlay({ campaignId, onClose, embedded = false }: DmC
         </div>
       ) : campaign ? (
         <div className="flex flex-col gap-6">
-          {/* Progress */}
+          {/* Twitter Connection Banner */}
+          {!twitterConnected && (
+            <Card className="border-primary/20 bg-primary/[0.03] p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Zap className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-foreground">Auto-Send DMs via X API</p>
+                  <p className="text-xs text-muted-foreground">Connect your X account to send DMs automatically instead of copying manually.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleConnectTwitter}
+                  className="flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                >
+                  <Link2 className="h-3 w-3" />
+                  Connect X
+                </button>
+              </div>
+            </Card>
+          )}
+
+          {/* Progress + Send All */}
           <Card className="p-4">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-4 text-sm">
@@ -288,7 +417,30 @@ export function DmCampaignOverlay({ campaignId, onClose, embedded = false }: DmC
                   <span className="text-muted-foreground">pending</span>
                 </div>
               </div>
-              <span className="text-sm font-bold text-primary">{progressPercent}%</span>
+              <div className="flex items-center gap-2">
+                {twitterConnected && stats.pending > 0 && (
+                  sendingAll ? (
+                    <button
+                      type="button"
+                      onClick={handleStopSendAll}
+                      className="flex items-center gap-1.5 rounded-md bg-red-100 px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-200"
+                    >
+                      Stop
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSendAll}
+                      disabled={!!sendingDmId}
+                      className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
+                    >
+                      <Zap className="h-3 w-3" />
+                      Send All ({stats.pending})
+                    </button>
+                  )
+                )}
+                <span className="text-sm font-bold text-primary">{progressPercent}%</span>
+              </div>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-secondary">
               <div
@@ -296,7 +448,29 @@ export function DmCampaignOverlay({ campaignId, onClose, embedded = false }: DmC
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
+            {twitterConnected && (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Connected as @{twitterHandle}
+              </p>
+            )}
           </Card>
+
+          {/* Error Banner */}
+          {sendError && (
+            <Card className="border-red-200 bg-red-50/50 p-3">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+                <p className="text-xs text-red-700">{sendError}</p>
+                <button
+                  type="button"
+                  onClick={() => setSendError(null)}
+                  className="ml-auto text-xs font-medium text-red-500 hover:text-red-700"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </Card>
+          )}
 
           {/* Filter Tabs */}
           <div className="flex gap-2">
@@ -326,13 +500,14 @@ export function DmCampaignOverlay({ campaignId, onClose, embedded = false }: DmC
               const message = resolveMessage(recipient)
               const isCopied = copiedId === recipient.id
               const isMarking = markingId === recipient.id
+              const isSending = sendingDmId === recipient.id
               const coachKey = recipient.coach_id || recipient.coach_name
               const isLoadingCoach = loadingCoach === coachKey
 
               return (
                 <Card
                   key={recipient.id}
-                  className={`overflow-hidden transition-all ${isSent ? "border-green-200 bg-green-50/30" : ""}`}
+                  className={`overflow-hidden transition-all ${isSent ? "border-green-200 bg-green-50/30" : ""} ${isSending ? "ring-2 ring-primary/30" : ""}`}
                 >
                   <div className="p-4">
                     {/* Coach Info Row — clickable */}
@@ -370,12 +545,20 @@ export function DmCampaignOverlay({ campaignId, onClose, embedded = false }: DmC
                           )}
                         </div>
                       </button>
-                      {isSent && (
-                        <Badge className="border-0 bg-green-100 text-green-700">
-                          <CheckCircle2 className="mr-1 h-3 w-3" />
-                          Sent
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {isSending && (
+                          <Badge className="border-0 bg-primary/10 text-primary">
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            Sending...
+                          </Badge>
+                        )}
+                        {isSent && !isSending && (
+                          <Badge className="border-0 bg-green-100 text-green-700">
+                            <CheckCircle2 className="mr-1 h-3 w-3" />
+                            Sent
+                          </Badge>
+                        )}
+                      </div>
                     </div>
 
                     {/* Message Preview */}
@@ -387,13 +570,32 @@ export function DmCampaignOverlay({ campaignId, onClose, embedded = false }: DmC
 
                     {/* Action Buttons */}
                     <div className="flex items-center gap-2">
+                      {/* Auto-send via API (primary action when Twitter connected and not yet sent) */}
+                      {twitterConnected && !isSent && recipient.twitter_handle && (
+                        <button
+                          type="button"
+                          onClick={() => handleSendDm(recipient.id)}
+                          disabled={!!sendingDmId || isSending}
+                          className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
+                        >
+                          {isSending ? (
+                            <><Loader2 className="h-3 w-3 animate-spin" /> Sending...</>
+                          ) : (
+                            <><Send className="h-3 w-3" /> Send DM</>
+                          )}
+                        </button>
+                      )}
+
+                      {/* Copy message (always available) */}
                       <button
                         type="button"
                         onClick={() => handleCopy(recipient)}
                         className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
                           isCopied
                             ? "bg-green-100 text-green-700"
-                            : "bg-primary text-primary-foreground hover:bg-primary/90"
+                            : twitterConnected && !isSent
+                              ? "bg-secondary text-muted-foreground hover:text-foreground"
+                              : "bg-primary text-primary-foreground hover:bg-primary/90"
                         }`}
                       >
                         {isCopied ? (
@@ -418,7 +620,7 @@ export function DmCampaignOverlay({ campaignId, onClose, embedded = false }: DmC
                         <input
                           type="checkbox"
                           checked={isSent}
-                          disabled={isMarking}
+                          disabled={isMarking || isSending}
                           onChange={() => handleMarkSent(recipient.id, !isSent)}
                           className="h-4 w-4 rounded border-border text-primary accent-primary"
                         />

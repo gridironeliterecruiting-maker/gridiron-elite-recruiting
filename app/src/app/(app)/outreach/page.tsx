@@ -4,7 +4,7 @@ import { OutreachClient } from "./outreach-client"
 export default async function OutreachPage({
   searchParams,
 }: {
-  searchParams: { campaign?: string; gmail?: string; resume?: string }
+  searchParams: { campaign?: string; gmail?: string; twitter?: string; resume?: string }
 }) {
   const supabase = await createClient()
 
@@ -14,11 +14,13 @@ export default async function OutreachPage({
     { data: templates },
     { data: programs },
     { data: gmailToken },
+    { data: twitterToken },
     { data: campaigns },
   ] = await Promise.all([
     supabase.from("email_templates").select("*").order("name"),
     supabase.from("programs").select("id, school_name, division, conference, logo_url").order("school_name"),
     supabase.from("gmail_tokens").select("email, connected_at, account_tier, token_expiry").eq("user_id", user!.id).single(),
+    supabase.from("twitter_tokens").select("twitter_handle, connected_at, token_expiry").eq("user_id", user!.id).single(),
     supabase.from("campaigns").select("*").eq("user_id", user!.id).order("created_at", { ascending: false }),
   ])
 
@@ -118,6 +120,8 @@ export default async function OutreachPage({
       gmailTier={gmailToken?.account_tier || null}
       hasGmailToken={!!gmailToken}
       gmailTokenExpired={gmailToken ? new Date(gmailToken.token_expiry) <= new Date() : false}
+      twitterHandle={twitterToken?.twitter_handle || null}
+      hasTwitterToken={!!twitterToken}
       campaigns={(campaigns || []).map((c) => ({
         ...c,
         stats: campaignStats[c.id] || { total: 0, sent: 0, opened: 0, clicked: 0, replied: 0, error: 0 },
@@ -125,6 +129,7 @@ export default async function OutreachPage({
       resumeCampaignId={searchParams.campaign}
       resumeStep={searchParams.resume}
       gmailStatus={searchParams.gmail}
+      twitterStatus={searchParams.twitter}
     />
   )
 }
