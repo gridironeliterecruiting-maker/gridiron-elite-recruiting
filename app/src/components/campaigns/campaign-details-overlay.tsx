@@ -1,15 +1,47 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Send, Users, MailOpen, Reply, XCircle, Loader2, Pause, Play, CheckCircle2, Calendar, Mail, ChevronDown, ChevronUp } from "lucide-react"
+import {
+  X,
+  Users,
+  MailOpen,
+  Reply,
+  Loader2,
+  Pause,
+  Play,
+  CheckCircle2,
+  Mail,
+  ChevronRight,
+  MousePointerClick,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
+import { createClient } from "@/lib/supabase/client"
+import { CoachDetail } from "@/components/programs/coach-detail"
 
 interface CampaignDetailsProps {
   campaignId: string
   onClose: () => void
   onStatusChange?: () => void
+}
+
+interface CoachRecipient {
+  id: string
+  coach_id: string | null
+  coach_name: string
+  coach_email: string
+  status: string
+  sent_at: string | null
+  opened_at: string | null
+  clicked_at: string | null
+  replied_at: string | null
+}
+
+interface ProgramGroup {
+  program_name: string
+  program_id: string | null
+  logo_url: string | null
+  coaches: CoachRecipient[]
 }
 
 interface CampaignDetails {
@@ -22,6 +54,7 @@ interface CampaignDetails {
     total: number
     sent: number
     opened: number
+    clicked: number
     replied: number
     error: number
   }
@@ -31,18 +64,7 @@ interface CampaignDetails {
     subject: string
     send_after_days: number
   }>
-  programsWithRecipients: Array<{
-    program_name: string
-    coaches: Array<{
-      id: string
-      coach_name: string
-      coach_email: string
-      status: string
-      sent_at: string | null
-      opened_at: string | null
-      replied_at: string | null
-    }>
-  }>
+  programsWithRecipients: ProgramGroup[]
 }
 
 const statusColors: Record<string, string> = {
@@ -61,10 +83,38 @@ const goalLabels: Record<string, string> = {
   other: "Other",
 }
 
+function ProgramLogo({ logoUrl, schoolName }: { logoUrl: string | null; schoolName: string }) {
+  const [hasError, setHasError] = useState(false)
+  const initials = schoolName.slice(0, 2).toUpperCase()
+
+  if (!logoUrl || hasError) {
+    return (
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[10px] font-bold text-primary ring-1 ring-primary/20">
+        {initials}
+      </div>
+    )
+  }
+
+  return (
+    <img
+      src={logoUrl}
+      alt={schoolName}
+      className="h-8 w-8 shrink-0 rounded-lg object-contain ring-1 ring-primary/20"
+      onError={() => setHasError(true)}
+    />
+  )
+}
+
 export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: CampaignDetailsProps) {
   const [campaign, setCampaign] = useState<CampaignDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState(false)
+  const [expandedProgram, setExpandedProgram] = useState<string | null>(null)
+  const [selectedCoachData, setSelectedCoachData] = useState<{
+    coach: any
+    program: any
+  } | null>(null)
+  const [loadingCoach, setLoadingCoach] = useState<string | null>(null)
 
   useEffect(() => {
     fetchCampaignDetails()
@@ -87,17 +137,17 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
 
   const handleToggleStatus = async () => {
     if (!campaign || toggling) return
-    
+
     setToggling(true)
     const newStatus = campaign.status === 'active' ? 'paused' : 'active'
-    
+
     try {
       const res = await fetch(`/api/campaigns/${campaignId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       })
-      
+
       if (res.ok) {
         setCampaign(prev => prev ? { ...prev, status: newStatus } : null)
         onStatusChange?.()
@@ -109,173 +159,244 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
     }
   }
 
+  const handleCoachClick = async (coachId: string | null) => {
+    if (!coachId) return
+    setLoadingCoach(coachId)
+
+    try {
+      const supabase = createClient()
+
+      const { data: coach } = await supabase
+        .from('coaches')
+        .select('*')
+        .eq('id', coachId)
+        .single()
+
+      if (coach) {
+        const { data: program } = await supabase
+          .from('programs')
+          .select('id, school_name, division, conference')
+          .eq('id', coach.program_id)
+          .single()
+
+        if (program) {
+          setSelectedCoachData({ coach, program })
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch coach data:', err)
+    } finally {
+      setLoadingCoach(null)
+    }
+  }
+
+  const handleProgramToggle = (programName: string) => {
+    setExpandedProgram(prev => prev === programName ? null : programName)
+  }
+
+  // Calculate per-program rolled-up stats
+  const getProgramStats = (coaches: CoachRecipient[]) => {
+    const total = coaches.length
+    const opened = coaches.filter(c => c.opened_at).length
+    const clicked = coaches.filter(c => c.clicked_at).length
+    const replied = coaches.filter(c => c.replied_at).length
+    const openRate = total > 0 ? Math.round((opened / total) * 100) : 0
+    return { total, opened, openRate, clicked, replied }
+  }
+
+  const openRate = campaign && campaign.stats.sent > 0
+    ? Math.round((campaign.stats.opened / campaign.stats.sent) * 100)
+    : 0
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
-      
-      {/* Modal */}
-      <div className="relative z-10 w-full max-w-3xl rounded-xl border bg-background shadow-2xl">
-        {loading ? (
-          <div className="flex h-96 items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : campaign ? (
-          <>
-            {/* Header */}
-            <div className="border-b px-6 py-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold">{campaign.name}</h2>
-                  <div className="mt-1 flex items-center gap-2">
-                    <Badge className={`${statusColors[campaign.status] || statusColors.draft} border-0 text-xs`}>
+    <>
+      <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-50 overflow-y-auto duration-200">
+        {/* Dimmed backdrop */}
+        <div
+          className="absolute inset-0 bg-foreground/20 backdrop-blur-sm"
+          onClick={onClose}
+          role="button"
+          tabIndex={0}
+          aria-label="Close campaign details"
+        />
+
+        {/* Slide-in panel */}
+        <div className="absolute inset-y-0 right-0 flex w-full max-w-2xl flex-col bg-card shadow-2xl sm:rounded-l-2xl">
+          {loading ? (
+            <div className="flex h-full items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : campaign ? (
+            <>
+              {/* Header */}
+              <div className="flex items-center gap-3 border-b border-border px-5 py-4">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h2 className="truncate font-display text-lg font-bold uppercase tracking-tight text-foreground">
+                      {campaign.name}
+                    </h2>
+                    <Badge className={`${statusColors[campaign.status] || statusColors.draft} shrink-0 border-0 text-[10px] font-semibold`}>
                       {campaign.status}
                     </Badge>
-                    <span className="text-sm text-muted-foreground">
-                      {goalLabels[campaign.goal] || campaign.goal}
-                    </span>
                   </div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {goalLabels[campaign.goal] || campaign.goal} · {new Date(campaign.created_at).toLocaleDateString()}
+                  </p>
                 </div>
-                <button
-                  onClick={onClose}
-                  className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                >
-                  <X className="h-5 w-5" />
-                </button>
               </div>
-            </div>
 
-            {/* Content */}
-            <div className="max-h-[calc(100vh-12rem)] overflow-y-auto p-6">
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                <Card className="border-border/50">
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-2xl font-semibold">{campaign.stats.total}</p>
-                        <p className="text-xs text-muted-foreground">Recipients</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="border-border/50">
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-2">
-                      <Send className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-2xl font-semibold">{campaign.stats.sent}</p>
-                        <p className="text-xs text-muted-foreground">Sent</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border/50">
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-2">
-                      <MailOpen className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-2xl font-semibold">{campaign.stats.opened}</p>
-                        <p className="text-xs text-muted-foreground">Opened</p>
-                        {campaign.stats.sent > 0 && (
-                          <p className="text-[10px] text-muted-foreground">
-                            {Math.round((campaign.stats.opened / campaign.stats.sent) * 100)}%
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border/50">
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-2">
-                      <Reply className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-2xl font-semibold">{campaign.stats.replied}</p>
-                        <p className="text-xs text-muted-foreground">Replied</p>
-                        {campaign.stats.sent > 0 && (
-                          <p className="text-[10px] text-muted-foreground">
-                            {Math.round((campaign.stats.replied / campaign.stats.sent) * 100)}%
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {campaign.stats.error > 0 && (
-                  <Card className="border-red-200 bg-red-50">
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-2">
-                        <XCircle className="h-4 w-4 text-red-500" />
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-5">
+                <div className="flex flex-col gap-5">
+                  {/* Stats Row */}
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {[
+                      { label: "Recipients", value: campaign.stats.total, icon: Users },
+                      { label: "Open %", value: `${openRate}%`, icon: MailOpen },
+                      { label: "Clicks", value: campaign.stats.clicked, icon: MousePointerClick },
+                      { label: "Replies", value: campaign.stats.replied, icon: Reply },
+                    ].map((stat) => (
+                      <div key={stat.label} className="flex items-center gap-3 rounded-lg border border-border/50 p-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <stat.icon className="h-4 w-4" />
+                        </div>
                         <div>
-                          <p className="text-2xl font-semibold text-red-700">{campaign.stats.error}</p>
-                          <p className="text-xs text-red-600">Errors</p>
+                          <p className="text-lg font-bold text-foreground">{stat.value}</p>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{stat.label}</p>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-
-              {/* Campaign Info */}
-              <div className="mt-6 space-y-4">
-                <div>
-                  <h3 className="text-sm font-semibold">Campaign Details</h3>
-                  <div className="mt-2 space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Created</span>
-                      <span>{new Date(campaign.created_at).toLocaleString()}</span>
-                    </div>
+                    ))}
                   </div>
+
+                  {/* Email Sequence */}
+                  {campaign.emails.length > 0 && (
+                    <div>
+                      <h3 className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                        <div className="h-px flex-1 bg-border" />
+                        Email Sequence
+                        <div className="h-px flex-1 bg-border" />
+                      </h3>
+                      <div className="flex flex-col gap-2">
+                        {campaign.emails.map((email) => (
+                          <div key={email.id} className="flex items-center gap-3 rounded-lg border border-border/50 p-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">
+                              {email.step_number}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-foreground">{email.subject}</p>
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                {email.send_after_days === 0
+                                  ? 'Send immediately'
+                                  : `Send after ${email.send_after_days} day${email.send_after_days > 1 ? 's' : ''}`}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Campaign Results */}
+                  {campaign.programsWithRecipients && campaign.programsWithRecipients.length > 0 && (
+                    <div>
+                      <h3 className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                        <div className="h-px flex-1 bg-border" />
+                        Campaign Results
+                        <div className="h-px flex-1 bg-border" />
+                      </h3>
+                      <div className="overflow-hidden rounded-lg border border-border">
+                        {campaign.programsWithRecipients.map((program, index) => {
+                          const pStats = getProgramStats(program.coaches)
+                          const isExpanded = expandedProgram === program.program_name
+
+                          return (
+                            <div key={program.program_name} className={index > 0 ? 'border-t border-border' : ''}>
+                              {/* Program row */}
+                              <button
+                                onClick={() => handleProgramToggle(program.program_name)}
+                                className="flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-secondary/50"
+                              >
+                                <ProgramLogo logoUrl={program.logo_url} schoolName={program.program_name} />
+                                <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+                                  {program.program_name}
+                                </span>
+
+                                {/* Rolled-up stats */}
+                                <div className="hidden shrink-0 items-center gap-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:flex">
+                                  <span>{pStats.total} rec</span>
+                                  <span>{pStats.openRate}% open</span>
+                                  <span>{pStats.clicked} click{pStats.clicked !== 1 ? 's' : ''}</span>
+                                  <span>{pStats.replied} repl{pStats.replied !== 1 ? 'ies' : 'y'}</span>
+                                </div>
+
+                                <ChevronRight className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                              </button>
+
+                              {/* Expanded coach rows */}
+                              {isExpanded && (
+                                <div className="border-t border-border bg-secondary/30">
+                                  {/* Column headers */}
+                                  <div className="grid grid-cols-[1fr_60px_60px_60px] items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground sm:grid-cols-[1fr_80px_80px_80px]">
+                                    <span>Coach</span>
+                                    <span className="text-center">Opened</span>
+                                    <span className="text-center">Clicked</span>
+                                    <span className="text-center">Replied</span>
+                                  </div>
+
+                                  {program.coaches.map((coach) => (
+                                    <div
+                                      key={coach.id}
+                                      className="grid grid-cols-[1fr_60px_60px_60px] items-center gap-2 border-t border-border/50 px-3 py-2 sm:grid-cols-[1fr_80px_80px_80px]"
+                                    >
+                                      <button
+                                        onClick={() => handleCoachClick(coach.coach_id)}
+                                        disabled={!coach.coach_id || loadingCoach === coach.coach_id}
+                                        className="min-w-0 text-left"
+                                      >
+                                        <span className={`truncate text-sm font-medium ${coach.coach_id ? 'text-foreground transition-colors hover:text-primary hover:underline' : 'text-foreground'}`}>
+                                          {loadingCoach === coach.coach_id ? (
+                                            <span className="flex items-center gap-1.5">
+                                              <Loader2 className="h-3 w-3 animate-spin" />
+                                              {coach.coach_name}
+                                            </span>
+                                          ) : (
+                                            coach.coach_name
+                                          )}
+                                        </span>
+                                      </button>
+                                      <div className="flex justify-center">
+                                        {coach.opened_at && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                                      </div>
+                                      <div className="flex justify-center">
+                                        {coach.clicked_at && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                                      </div>
+                                      <div className="flex justify-center">
+                                        {coach.replied_at && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-
-                {/* Email Steps */}
-                {campaign.emails.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold">Email Sequence</h3>
-                    <div className="mt-2 space-y-2">
-                      {campaign.emails.map((email) => (
-                        <div key={email.id} className="flex items-center gap-3 rounded-lg border border-border/50 p-3">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                            {email.step_number}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium">{email.subject}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {email.send_after_days === 0 
-                                ? 'Send immediately' 
-                                : `Send after ${email.send_after_days} day${email.send_after_days > 1 ? 's' : ''}`}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Targeted Programs & Coaches */}
-                {campaign.programsWithRecipients && campaign.programsWithRecipients.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold">Targeted Programs & Coaches</h3>
-                    <div className="mt-2 space-y-2">
-                      {campaign.programsWithRecipients.map((program, index) => (
-                        <ProgramSection key={index} program={program} />
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
-            </div>
 
-            {/* Footer */}
-            <div className="border-t px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex gap-2">
+              {/* Footer */}
+              <div className="flex items-center justify-between border-t border-border px-5 py-4">
+                <div>
                   {(campaign.status === 'active' || campaign.status === 'paused') && (
                     <Button
                       onClick={handleToggleStatus}
@@ -302,73 +423,23 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
                   Close
                 </Button>
               </div>
+            </>
+          ) : (
+            <div className="flex h-full items-center justify-center p-6 text-center">
+              <p className="text-muted-foreground">Failed to load campaign details</p>
             </div>
-          </>
-        ) : (
-          <div className="p-6 text-center">
-            <p className="text-muted-foreground">Failed to load campaign details</p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
-  )
-}
 
-// Component for expandable program sections
-function ProgramSection({ program }: { program: { program_name: string; coaches: Array<any> } }) {
-  const [isExpanded, setIsExpanded] = useState(false)
-
-  return (
-    <div className="rounded-lg border border-border/50 bg-secondary/30 p-3">
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="flex w-full items-center justify-between text-left"
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold">{program.program_name}</span>
-          <Badge variant="secondary" className="text-xs">
-            {program.coaches.length} Coaches
-          </Badge>
-        </div>
-        {isExpanded ? (
-          <ChevronUp className="h-4 w-4 text-muted-foreground" />
-        ) : (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        )}
-      </button>
-      
-      {isExpanded && (
-        <div className="mt-3 space-y-2 border-t border-border/50 pt-3">
-          {program.coaches.map((coach) => (
-            <div key={coach.id} className="flex items-center justify-between rounded-md bg-background p-2 text-sm">
-              <div className="min-w-0 flex-1">
-                <p className="font-medium">{coach.coach_name}</p>
-                <p className="text-xs text-muted-foreground">{coach.coach_email}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                {coach.sent_at && (
-                  <div className="flex items-center gap-1">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Sent</span>
-                  </div>
-                )}
-                {coach.opened_at && (
-                  <div className="flex items-center gap-1">
-                    <MailOpen className="h-3.5 w-3.5 text-primary" />
-                    <span className="text-xs text-primary">Opened</span>
-                  </div>
-                )}
-                {coach.replied_at && (
-                  <div className="flex items-center gap-1">
-                    <Reply className="h-3.5 w-3.5 text-accent" />
-                    <span className="text-xs text-accent">Replied</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* Coach Detail — layers on top at z-[70] */}
+      {selectedCoachData && (
+        <CoachDetail
+          coach={selectedCoachData.coach}
+          program={selectedCoachData.program}
+          onClose={() => setSelectedCoachData(null)}
+        />
       )}
-    </div>
+    </>
   )
 }

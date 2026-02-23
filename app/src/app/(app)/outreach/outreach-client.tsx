@@ -50,6 +50,7 @@ interface CampaignStats {
   total: number
   sent: number
   opened: number
+  clicked: number
   replied: number
   error: number
 }

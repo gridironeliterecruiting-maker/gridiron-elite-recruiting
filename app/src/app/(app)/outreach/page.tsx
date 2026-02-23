@@ -35,7 +35,7 @@ export default async function OutreachPage({
 
   // Get recipient counts and email event stats per campaign
   const campaignIds = (campaigns || []).map((c) => c.id)
-  let campaignStats: Record<string, { total: number; sent: number; opened: number; replied: number; error: number }> = {}
+  let campaignStats: Record<string, { total: number; sent: number; opened: number; clicked: number; replied: number; error: number }> = {}
 
   if (campaignIds.length > 0) {
     // Get recipients per campaign (include dm_sent_at for DM campaigns)
@@ -67,6 +67,7 @@ export default async function OutreachPage({
           total: cRecipients.length,
           sent: sentCount,
           opened: 0,
+          clicked: 0,
           replied: 0,
           error: 0,
         }
@@ -84,6 +85,11 @@ export default async function OutreachPage({
         )
         const openedCount = openedRecipientIds.size
 
+        const clickedRecipientIds = new Set(
+          cEvents.filter((e) => e.event_type === 'clicked').map((e) => e.recipient_id)
+        )
+        const clickedCount = clickedRecipientIds.size
+
         const repliedRecipientIds = new Set(
           cEvents.filter((e) => e.event_type === 'replied').map((e) => e.recipient_id)
         )
@@ -95,6 +101,7 @@ export default async function OutreachPage({
           total: cRecipients.length,
           sent: sentCount,
           opened: openedCount,
+          clicked: clickedCount,
           replied: repliedCount,
           error: errorCount,
         }
@@ -113,7 +120,7 @@ export default async function OutreachPage({
       gmailTokenExpired={gmailToken ? new Date(gmailToken.token_expiry) <= new Date() : false}
       campaigns={(campaigns || []).map((c) => ({
         ...c,
-        stats: campaignStats[c.id] || { total: 0, sent: 0, opened: 0, replied: 0, error: 0 },
+        stats: campaignStats[c.id] || { total: 0, sent: 0, opened: 0, clicked: 0, replied: 0, error: 0 },
       }))}
       resumeCampaignId={searchParams.campaign}
       resumeStep={searchParams.resume}

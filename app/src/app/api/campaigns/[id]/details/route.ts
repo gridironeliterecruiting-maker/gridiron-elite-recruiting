@@ -33,19 +33,19 @@ export async function GET(
       .eq('campaign_id', id)
       .order('step_number')
 
-    // Get all recipients
+    // Get all recipients (include coach_id)
     const { data: recipients, error: recipientsError } = await supabase
       .from('campaign_recipients')
-      .select('id, coach_name, coach_email, status, program_name')
+      .select('id, coach_id, coach_name, coach_email, status, program_name')
       .eq('campaign_id', id)
       .order('created_at', { ascending: false })
-    
+
     if (recipientsError) {
       console.error('Error fetching recipients:', recipientsError)
       return NextResponse.json({ error: 'Failed to fetch recipients' }, { status: 500 })
     }
 
-    // Get email events for this campaign
+    // Get email events for this campaign (include clicked)
     const { data: events } = await supabase
       .from('email_events')
       .select('recipient_id, event_type, created_at')
@@ -60,13 +60,34 @@ export async function GET(
       eventsByRecipient.get(event.recipient_id)?.push(event)
     })
 
+    // Get unique program names to look up logos
+    const programNames = [...new Set((recipients || []).map(r => r.program_name).filter(Boolean))]
+
+    // Fetch program data (id + logo_url) by school_name
+    let programDataMap: Record<string, { program_id: string; logo_url: string | null }> = {}
+    if (programNames.length > 0) {
+      const { data: programRows } = await supabase
+        .from('programs')
+        .select('id, school_name, logo_url')
+        .in('school_name', programNames)
+
+      if (programRows) {
+        for (const p of programRows) {
+          programDataMap[p.school_name] = { program_id: p.id, logo_url: p.logo_url }
+        }
+      }
+    }
+
     // Group recipients by program
     const programsWithRecipients: Record<string, any> = {}
     recipients?.forEach((r: any) => {
       const programName = r.program_name || 'Unknown Program'
       if (!programsWithRecipients[programName]) {
+        const pData = programDataMap[programName]
         programsWithRecipients[programName] = {
           program_name: programName,
+          program_id: pData?.program_id || null,
+          logo_url: pData?.logo_url || null,
           coaches: []
         }
       }
@@ -74,8 +95,9 @@ export async function GET(
       // Get event timestamps for this recipient
       let sent_at: string | null = null
       let opened_at: string | null = null
+      let clicked_at: string | null = null
       let replied_at: string | null = null
-      
+
       const recipientEvents = eventsByRecipient.get(r.id) || []
       recipientEvents.forEach((event: any) => {
         if (event.event_type === 'sent' && (!sent_at || new Date(event.created_at) < new Date(sent_at))) {
@@ -84,6 +106,9 @@ export async function GET(
         if (event.event_type === 'opened' && (!opened_at || new Date(event.created_at) < new Date(opened_at))) {
           opened_at = event.created_at
         }
+        if (event.event_type === 'clicked' && (!clicked_at || new Date(event.created_at) < new Date(clicked_at))) {
+          clicked_at = event.created_at
+        }
         if (event.event_type === 'replied' && (!replied_at || new Date(event.created_at) < new Date(replied_at))) {
           replied_at = event.created_at
         }
@@ -91,11 +116,13 @@ export async function GET(
 
       programsWithRecipients[programName].coaches.push({
         id: r.id,
+        coach_id: r.coach_id,
         coach_name: r.coach_name,
         coach_email: r.coach_email,
         status: r.status,
         sent_at,
         opened_at,
+        clicked_at,
         replied_at
       })
     })
@@ -105,6 +132,7 @@ export async function GET(
       total: 0,
       sent: 0,
       opened: 0,
+      clicked: 0,
       replied: 0,
       error: 0,
     }
@@ -119,9 +147,8 @@ export async function GET(
 
     // Count events by type
     const eventCounts = events?.reduce((acc, event) => {
-      const key = event.event_type as keyof typeof stats
-      if (key in acc) {
-        // Count unique recipients per event type
+      const key = event.event_type as string
+      if (['sent', 'opened', 'clicked', 'replied', 'error'].includes(key)) {
         if (!acc[`${key}_recipients`]) {
           acc[`${key}_recipients`] = new Set()
         }
@@ -137,6 +164,9 @@ export async function GET(
     if (eventCounts.opened_recipients) {
       stats.opened = eventCounts.opened_recipients.size
     }
+    if (eventCounts.clicked_recipients) {
+      stats.clicked = eventCounts.clicked_recipients.size
+    }
     if (eventCounts.replied_recipients) {
       stats.replied = eventCounts.replied_recipients.size
     }
@@ -151,7 +181,7 @@ export async function GET(
         .select('*', { count: 'exact', head: true })
         .eq('campaign_id', id)
         .eq('status', 'sent')
-      
+
       stats.sent = sentCount || 0
     }
 
