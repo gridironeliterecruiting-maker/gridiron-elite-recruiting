@@ -27,11 +27,11 @@ interface Profile {
 const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
 
-function Field({ label, value, onChange, placeholder, type = "text", span = 1 }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; span?: number
+function Field({ label, value, onChange, placeholder, type = "text" }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string
 }) {
   return (
-    <div className={span === 2 ? "sm:col-span-2" : ""}>
+    <div>
       <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</label>
       <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={inputClass} />
     </div>
@@ -90,17 +90,20 @@ export function ProfileForm({ profile }: { profile: Profile | null }) {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="flex flex-col gap-4">
       {/* Personal Info */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="text-base">Personal Information</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <CardContent className="grid grid-cols-2 gap-3">
           <Field label="First Name" value={form.first_name} onChange={(v) => update("first_name", v)} />
           <Field label="Last Name" value={form.last_name} onChange={(v) => update("last_name", v)} />
-          <Field label="Email" value={form.email} onChange={() => {}} placeholder="Cannot change email" type="email" />
+          <div className="col-span-2">
+            <Field label="Email" value={form.email} onChange={() => {}} placeholder="Cannot change email" type="email" />
+          </div>
           <Field label="Phone" value={form.phone} onChange={(v) => update("phone", v)} placeholder="(555) 123-4567" />
+          <div />
           <Field label="City" value={form.city} onChange={(v) => update("city", v)} placeholder="Cedar Rapids" />
           <Field label="State" value={form.state} onChange={(v) => update("state", v)} placeholder="IA" />
         </CardContent>
@@ -108,32 +111,34 @@ export function ProfileForm({ profile }: { profile: Profile | null }) {
 
       {/* Athletic Info */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="text-base">Athletic Information</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <CardContent className="grid grid-cols-2 gap-3">
           <Field label="Position" value={form.position} onChange={(v) => update("position", v)} placeholder="QB, WR, LB" />
-          <Field label="Graduation Year" value={form.grad_year} onChange={(v) => update("grad_year", v)} placeholder="2027" type="number" />
-          <Field label="High School" value={form.high_school} onChange={(v) => update("high_school", v)} placeholder="Prairie High School" />
+          <Field label="Grad Year" value={form.grad_year} onChange={(v) => update("grad_year", v)} placeholder="2027" type="number" />
+          <div className="col-span-2">
+            <Field label="High School" value={form.high_school} onChange={(v) => update("high_school", v)} placeholder="Prairie High School" />
+          </div>
           <Field label="Height" value={form.height} onChange={(v) => update("height", v)} placeholder={`6'2"`} />
           <Field label="Weight" value={form.weight} onChange={(v) => update("weight", v)} placeholder="185 lbs" />
           <Field label="GPA" value={form.gpa} onChange={(v) => update("gpa", v)} placeholder="3.5" />
         </CardContent>
       </Card>
 
-      {/* Links */}
-      <Card className="lg:col-span-2">
-        <CardHeader>
+      {/* Links & Social */}
+      <Card>
+        <CardHeader className="pb-3">
           <CardTitle className="text-base">Links & Social</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <CardContent className="flex flex-col gap-3">
           <Field label="Hudl Profile URL" value={form.hudl_url} onChange={(v) => update("hudl_url", v)} placeholder="https://www.hudl.com/profile/..." />
           <Field label="Twitter / X Handle" value={form.twitter_handle} onChange={(v) => update("twitter_handle", v)} placeholder="@yourhandle" />
         </CardContent>
       </Card>
 
       {/* Save Button */}
-      <div className="lg:col-span-2 flex justify-end">
+      <div className="flex justify-end">
         <Button onClick={handleSave} disabled={saving} className="bg-accent text-accent-foreground hover:bg-accent/90 min-w-[140px]">
           {saving ? "Saving..." : saved ? <><Check className="mr-2 h-4 w-4" /> Saved</> : <><Save className="mr-2 h-4 w-4" /> Save Profile</>}
         </Button>
