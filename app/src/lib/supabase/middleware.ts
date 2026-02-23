@@ -86,7 +86,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Check if authenticated user needs profile setup
-  if (user && !request.nextUrl.pathname.startsWith('/profile-setup') && !request.nextUrl.pathname.startsWith('/api/') && !request.nextUrl.pathname.startsWith('/auth/')) {
+  if (user && !request.nextUrl.pathname.startsWith('/profile-setup') && !request.nextUrl.pathname.startsWith('/api/') && !request.nextUrl.pathname.startsWith('/auth/') && !request.nextUrl.pathname.startsWith('/recruit')) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('id, first_name, position')

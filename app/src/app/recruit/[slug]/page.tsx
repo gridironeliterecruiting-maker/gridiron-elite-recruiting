@@ -3,11 +3,11 @@ import { notFound } from "next/navigation"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 interface RecruitPageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export default async function RecruitPage({ params }: RecruitPageProps) {
-  const { slug } = params
+  const { slug } = await params
   const admin = createAdminClient()
 
   // Look up athlete by share slug
