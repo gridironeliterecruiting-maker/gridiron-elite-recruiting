@@ -42,7 +42,7 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
       <div className="h-1 bg-[hsl(0,72%,51%)]" />
 
       {/* Header content box */}
-      <header className="px-4 pb-4 pt-6">
+      <header className="px-4 pb-0 pt-3">
         <div className="mx-auto max-w-3xl">
           <div className="flex items-center gap-6 sm:gap-8">
             {/* Logo — left */}
@@ -114,7 +114,7 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
       </header>
 
       {/* Documents section — same max-width as header for alignment */}
-      <main className="mx-auto max-w-3xl px-4 pb-16">
+      <main className="mx-auto max-w-3xl px-4 pb-16 pt-2">
         {hasDocuments ? (
           <div className="flex flex-col gap-6">
             {/* Links & Videos */}
@@ -123,16 +123,16 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
                 <h2 className="mb-3 font-display text-sm font-bold uppercase tracking-wider text-[hsl(224,76%,30%)]">
                   Links & Videos
                 </h2>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1.5">
                   {links.map((doc) => (
                     <a
                       key={doc.id}
                       href={doc.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group flex items-center gap-4 rounded-xl border border-border bg-white p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
+                      className="group flex items-center gap-3 rounded-lg border border-border bg-white px-3 py-2 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
                     >
-                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${
                         doc.type === "video"
                           ? "bg-red-50 text-red-600"
                           : "bg-blue-50 text-blue-600"
@@ -169,7 +169,7 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
                 <h2 className="mb-3 font-display text-sm font-bold uppercase tracking-wider text-[hsl(224,76%,30%)]">
                   Documents
                 </h2>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1.5">
                   {files.map((doc) => {
                     const fileUrl = doc.url || (doc.file_path
                       ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/athlete-documents/${doc.file_path}`
@@ -181,9 +181,9 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
                         href={fileUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group flex items-center gap-4 rounded-xl border border-border bg-white p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
+                        className="group flex items-center gap-3 rounded-lg border border-border bg-white px-3 py-2 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
                       >
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-600">
                           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>

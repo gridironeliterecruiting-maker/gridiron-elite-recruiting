@@ -49,7 +49,7 @@ export function RecruitingDrive() {
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const dragIndexRef = useRef<number | null>(null)
 
   // Load documents and share slug on mount
   useEffect(() => {
@@ -202,52 +202,49 @@ export function RecruitingDrive() {
     }
   }
 
-  function handleDragStart(index: number) {
+  function handleDragStart(e: React.DragEvent, index: number) {
     setDragIndex(index)
+    dragIndexRef.current = index
+    // Use a minimal drag image so the browser ghost doesn't obscure the live reorder
+    const el = e.currentTarget as HTMLElement
+    const ghost = el.cloneNode(true) as HTMLElement
+    ghost.style.position = "absolute"
+    ghost.style.top = "-9999px"
+    document.body.appendChild(ghost)
+    e.dataTransfer.setDragImage(ghost, 0, 0)
+    setTimeout(() => document.body.removeChild(ghost), 0)
   }
 
   function handleDragOver(e: React.DragEvent, index: number) {
     e.preventDefault()
-    if (dragIndex === null || dragIndex === index) return
-    setDragOverIndex(index)
+    const from = dragIndexRef.current
+    if (from === null || from === index) return
+
+    // Live reorder: move the item to its new position immediately
+    setDocuments((prev) => {
+      const updated = [...prev]
+      const [moved] = updated.splice(from, 1)
+      updated.splice(index, 0, moved)
+      return updated
+    })
+    setDragIndex(index)
+    dragIndexRef.current = index
   }
 
-  function handleDragLeave() {
-    setDragOverIndex(null)
-  }
-
-  async function handleDrop(e: React.DragEvent, dropIndex: number) {
-    e.preventDefault()
-    if (dragIndex === null || dragIndex === dropIndex) {
-      setDragIndex(null)
-      setDragOverIndex(null)
-      return
-    }
-
-    // Reorder locally
-    const updated = [...documents]
-    const [moved] = updated.splice(dragIndex, 1)
-    updated.splice(dropIndex, 0, moved)
-
-    // Update display_order for each item
-    const reordered = updated.map((doc, i) => ({ ...doc, display_order: i }))
-    setDocuments(reordered)
+  function handleDragEnd() {
+    // Persist final order to the API
+    const finalDocs = documents.map((doc, i) => ({ ...doc, display_order: i }))
+    setDocuments(finalDocs)
     setDragIndex(null)
-    setDragOverIndex(null)
+    dragIndexRef.current = null
 
-    // Persist all new orders to the API
-    for (const doc of reordered) {
+    for (const doc of finalDocs) {
       fetch("/api/documents", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: doc.id, displayOrder: doc.display_order }),
       }).catch(() => console.error("Failed to save order for", doc.id))
     }
-  }
-
-  function handleDragEnd() {
-    setDragIndex(null)
-    setDragOverIndex(null)
   }
 
   function resetAddForm() {
@@ -469,19 +466,15 @@ export function RecruitingDrive() {
                 <div
                   key={doc.id}
                   draggable
-                  onDragStart={() => handleDragStart(index)}
+                  onDragStart={(e) => handleDragStart(e, index)}
                   onDragOver={(e) => handleDragOver(e, index)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, index)}
                   onDragEnd={handleDragEnd}
-                  className={`group flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-all ${
+                  className={`group flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-transform duration-150 ${
                     dragIndex === index
-                      ? "opacity-40"
-                      : dragOverIndex === index
-                        ? "border-primary bg-primary/5"
-                        : doc.is_visible
-                          ? "border-transparent hover:border-border hover:bg-secondary/30"
-                          : "border-dashed border-border/50 bg-secondary/20 opacity-60"
+                      ? "border-primary bg-primary/5 shadow-md ring-1 ring-primary/30"
+                      : doc.is_visible
+                        ? "border-transparent hover:border-border hover:bg-secondary/30"
+                        : "border-dashed border-border/50 bg-secondary/20 opacity-60"
                   }`}
                 >
                   {/* Drag handle */}
