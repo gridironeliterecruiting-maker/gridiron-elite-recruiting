@@ -9,6 +9,7 @@ import { BuildStep } from "./steps/build-step"
 import { LaunchStep } from "./steps/launch-step"
 import { DmComposeStep } from "./steps/dm-compose-step"
 import { SaveDraftDialog } from "./save-draft-dialog"
+import { DmCampaignOverlay } from "./dm-campaign-overlay"
 import type { CampaignGoal, CampaignType, EmailTemplate, SelectedCoach } from "./types"
 
 export interface CampaignDraft {
@@ -36,6 +37,7 @@ const DM_STEPS = [
   { number: 1, label: "Goal" },
   { number: 2, label: "Target" },
   { number: 3, label: "Compose" },
+  { number: 4, label: "Send" },
 ] as const
 
 interface CreateCampaignOverlayProps {
@@ -74,6 +76,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [showSaveDraftDialog, setShowSaveDraftDialog] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [dmCampaignId, setDmCampaignId] = useState<string | null>(null)
 
   // Target step navigation state persistence
   const [targetNavState, setTargetNavState] = useState<{
@@ -251,8 +254,8 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
 
     const { campaignId } = await response.json()
     setHasUnsavedChanges(false)
-    // Use hard navigation to ensure the DM Queue page loads fresh from the server
-    window.location.href = `/outreach/dm/${campaignId}`
+    setDmCampaignId(campaignId)
+    goToStep(4)
   }
 
   // Header icon and title
@@ -400,6 +403,15 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
             selectedCoaches={draft.selectedCoaches}
             onCreateDmCampaign={handleCreateDmCampaign}
             onBack={() => goToStep(2)}
+          />
+        )}
+
+        {/* DM flow: Send (step 4) — embedded DM queue */}
+        {currentStep === 4 && campaignType === 'dm' && dmCampaignId && (
+          <DmCampaignOverlay
+            campaignId={dmCampaignId}
+            onClose={onClose}
+            embedded
           />
         )}
       </div>
