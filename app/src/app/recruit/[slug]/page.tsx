@@ -30,22 +30,23 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
     .order("display_order", { ascending: true })
 
   const fullName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim()
-  const location = [profile.city, profile.state].filter(Boolean).join(", ")
+  const locationParts = [profile.high_school, [profile.city, profile.state].filter(Boolean).join(", ")].filter(Boolean).join(" / ")
 
   const links = (documents || []).filter((d) => d.type === "link" || d.type === "video")
   const files = (documents || []).filter((d) => d.type === "file")
+  const hasDocuments = links.length > 0 || files.length > 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[hsl(224,76%,20%)] via-[hsl(224,76%,30%)] to-[hsl(220,20%,97%)]">
+    <div className="min-h-screen bg-gradient-to-b from-[hsl(224,76%,20%)] to-[hsl(220,20%,97%)]">
       {/* Top accent stripe */}
       <div className="h-1 bg-[hsl(0,72%,51%)]" />
 
-      {/* Header */}
-      <header className="px-4 pb-12 pt-8 text-center">
-        <div className="mx-auto max-w-2xl">
-          {/* Logo */}
-          <div className="mb-6 flex justify-center">
-            <div className="relative h-20 w-20 drop-shadow-lg">
+      {/* Header content box */}
+      <header className="px-4 pb-8 pt-6">
+        <div className="mx-auto max-w-3xl">
+          <div className="flex items-center gap-6 sm:gap-8">
+            {/* Logo — left */}
+            <div className="relative h-[160px] w-[160px] shrink-0 drop-shadow-lg sm:h-[200px] sm:w-[200px]">
               <Image
                 src="/logo.png"
                 alt="Gridiron Elite Recruiting"
@@ -54,69 +55,67 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
                 priority
               />
             </div>
-          </div>
 
-          {/* Athlete name */}
-          <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-white sm:text-4xl">
-            {fullName}
-          </h1>
+            {/* Info — right, left-justified */}
+            <div className="min-w-0 flex-1">
+              {/* Row 1: Name */}
+              <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-white sm:text-3xl lg:text-4xl">
+                {fullName}
+              </h1>
 
-          {/* Key stats */}
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-sm text-white/70">
-            {profile.position && (
-              <span className="rounded-md bg-white/10 px-3 py-1 font-semibold text-white">
-                {profile.position}
-              </span>
-            )}
-            {profile.grad_year && (
-              <span className="rounded-md bg-white/10 px-3 py-1">
-                Class of {profile.grad_year}
-              </span>
-            )}
-            {profile.high_school && (
-              <span>{profile.high_school}</span>
-            )}
-            {location && <span>{location}</span>}
-          </div>
+              {/* Row 2: Position, Class, School/City */}
+              <p className="mt-1.5 text-sm text-white/70 sm:text-base">
+                {[
+                  profile.position,
+                  profile.grad_year ? `Class of ${profile.grad_year}` : null,
+                  locationParts || null,
+                ].filter(Boolean).join(" \u00B7 ")}
+              </p>
 
-          {/* Physical stats */}
-          {(profile.height || profile.weight || profile.gpa) && (
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm text-white/60">
-              {profile.height && <span>Height: <strong className="text-white/80">{profile.height}</strong></span>}
-              {profile.weight && <span>Weight: <strong className="text-white/80">{profile.weight} lbs</strong></span>}
-              {profile.gpa && <span>GPA: <strong className="text-white/80">{profile.gpa}</strong></span>}
+              {/* Row 3: GPA, Height, Weight */}
+              {(profile.gpa || profile.height || profile.weight) && (
+                <p className="mt-1 text-sm text-white/50">
+                  {[
+                    profile.gpa ? `${profile.gpa} GPA` : null,
+                    profile.height,
+                    profile.weight ? `${profile.weight} lbs` : null,
+                  ].filter(Boolean).join(" \u00B7 ")}
+                </p>
+              )}
+
+              {/* Links row */}
+              {(profile.twitter_handle || profile.hudl_url) && (
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  {profile.twitter_handle && (
+                    <a
+                      href={`https://x.com/${profile.twitter_handle.replace("@", "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-lg bg-white/10 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-white/20"
+                    >
+                      X
+                    </a>
+                  )}
+                  {profile.hudl_url && (
+                    <a
+                      href={profile.hudl_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-lg bg-[hsl(0,72%,51%)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[hsl(0,72%,45%)]"
+                    >
+                      Hudl
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-
-          {/* Quick links */}
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            {profile.hudl_url && (
-              <a
-                href={profile.hudl_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 rounded-lg bg-[hsl(0,72%,51%)] px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[hsl(0,72%,45%)]"
-              >
-                Film / Hudl
-              </a>
-            )}
-            {profile.twitter_handle && (
-              <a
-                href={`https://x.com/${profile.twitter_handle.replace("@", "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 rounded-lg bg-white/10 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-white/20"
-              >
-                @{profile.twitter_handle.replace("@", "")}
-              </a>
-            )}
           </div>
         </div>
       </header>
 
-      {/* Documents section */}
+      {/* Documents section — same max-width as header for alignment */}
       <main className="mx-auto max-w-3xl px-4 pb-16">
-        {(links.length > 0 || files.length > 0) ? (
+        {hasDocuments ? (
           <div className="flex flex-col gap-6">
             {/* Links & Videos */}
             {links.length > 0 && (
