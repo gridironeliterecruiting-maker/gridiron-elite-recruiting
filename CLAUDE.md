@@ -782,7 +782,17 @@ DM campaigns are a **manual assist** workflow — the app prepares personalized 
 - **Production domain**: gridironeliterecruiting.com
 - **Framework**: Auto-detected Next.js
 - **Root directory**: `app/` (since no root package.json)
-- No `vercel.json` — default config
+- **`app/vercel.json`**: Configures Vercel cron job for email queue processing
+
+### Vercel Cron Jobs
+```json
+{
+  "crons": [
+    { "path": "/api/email/process-queue", "schedule": "0 9 * * *" }
+  ]
+}
+```
+Email queue processes daily at 9:00 AM UTC via Vercel Cron.
 
 ### Branch Strategy
 | Branch | Environment | URL |
@@ -864,7 +874,7 @@ All three must pass before any email is sent. This prevents accidental mass-emai
 
 ### Technical Debt
 - Legacy `email_sends` table from migration 001 (now using campaigns + email_events)
-- No `vercel.json` for cron config (email processing relies on external cron triggers)
+- Reply checking (`/api/email/check-replies`) has no cron trigger configured
 - `next.config.ts` is empty (no custom config)
 - Some tables (campaigns, campaign_emails, campaign_recipients, email_events, email_send_log, gmail_tokens, system_settings, email_allowlist, unsubscribes) were created outside migration files
 
