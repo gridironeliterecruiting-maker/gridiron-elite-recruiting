@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     // Insert recipients
     const recipientInserts = recipients.map((r: { coachId: string; coachName: string; email?: string; programName: string; twitterHandle?: string }) => ({
       campaign_id: campaign.id,
-      coach_id: parseInt(r.coachId) || null,
+      coach_id: r.coachId || null,
       coach_name: r.coachName,
       coach_email: r.email || null,
       program_name: r.programName,

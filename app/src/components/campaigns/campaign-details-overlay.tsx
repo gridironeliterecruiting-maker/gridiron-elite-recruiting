@@ -186,37 +186,62 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
     }
   }
 
-  const handleCoachClick = async (e: React.MouseEvent, coachId: string | null) => {
+  const handleCoachClick = async (e: React.MouseEvent, coach: CoachRecipient, programName: string) => {
     e.stopPropagation()
-    if (!coachId || loadingCoach) return
-    setLoadingCoach(coachId)
+    if (loadingCoach) return
+    const loadingKey = coach.coach_id || coach.id
+    setLoadingCoach(loadingKey)
 
     try {
       const supabase = createClient()
 
-      const { data: coach, error: coachError } = await supabase
-        .from('coaches')
-        .select('*')
-        .eq('id', coachId)
-        .single()
+      let coachData: any = null
 
-      if (coachError || !coach) {
-        console.error('Failed to fetch coach:', coachError)
+      // Try by coach_id first
+      if (coach.coach_id) {
+        const { data } = await supabase
+          .from('coaches')
+          .select('*')
+          .eq('id', coach.coach_id)
+          .single()
+        coachData = data
+      }
+
+      // Fallback: look up by name + program
+      if (!coachData && coach.coach_name) {
+        const nameParts = coach.coach_name.trim().split(/\s+/)
+        const firstName = nameParts[0]
+        const lastName = nameParts.slice(1).join(' ')
+
+        if (firstName && lastName) {
+          const { data } = await supabase
+            .from('coaches')
+            .select('*, programs!inner(school_name)')
+            .eq('first_name', firstName)
+            .eq('last_name', lastName)
+            .eq('programs.school_name', programName)
+            .single()
+          coachData = data
+        }
+      }
+
+      if (!coachData) {
+        console.error('Could not find coach')
         return
       }
 
-      const { data: program, error: programError } = await supabase
+      const { data: program } = await supabase
         .from('programs')
         .select('id, school_name, division, conference')
-        .eq('id', coach.program_id)
+        .eq('id', coachData.program_id)
         .single()
 
-      if (programError || !program) {
-        console.error('Failed to fetch program:', programError)
+      if (!program) {
+        console.error('Could not find program')
         return
       }
 
-      setSelectedCoachData({ coach, program })
+      setSelectedCoachData({ coach: coachData, program })
     } catch (err) {
       console.error('Failed to fetch coach data:', err)
     } finally {
@@ -424,25 +449,26 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
                                 </div>
 
                                 {/* Coach rows */}
-                                {program.coaches.map((coach, i) => (
+                                {program.coaches.map((coach, i) => {
+                                  const loadingKey = coach.coach_id || coach.id
+                                  const isLoading = loadingCoach === loadingKey
+                                  return (
                                   <button
                                     key={coach.id}
                                     type="button"
-                                    onClick={(e) => handleCoachClick(e, coach.coach_id)}
-                                    disabled={!coach.coach_id || loadingCoach === coach.coach_id}
+                                    onClick={(e) => handleCoachClick(e, coach, program.program_name)}
+                                    disabled={isLoading}
                                     className={`group grid w-full grid-cols-[1fr_72px_72px_72px] items-center px-4 py-3 text-left transition-colors hover:bg-primary/[0.03] sm:grid-cols-[1fr_88px_88px_88px] ${i > 0 ? 'border-t border-border/50' : ''}`}
                                   >
                                     {/* Coach name + ExternalLink on hover */}
                                     <div className="flex min-w-0 items-center gap-2">
-                                      {loadingCoach === coach.coach_id ? (
+                                      {isLoading ? (
                                         <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
                                       ) : null}
                                       <span className="truncate text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
                                         {coach.coach_name}
                                       </span>
-                                      {coach.coach_id && (
-                                        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground/0 transition-colors group-hover:text-primary" />
-                                      )}
+                                      <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground/0 transition-colors group-hover:text-primary" />
                                     </div>
 
                                     {/* Opened */}
@@ -469,7 +495,8 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
                                       }
                                     </div>
                                   </button>
-                                ))}
+                                  )
+                                })}
                               </Card>
                             )}
                           </div>
