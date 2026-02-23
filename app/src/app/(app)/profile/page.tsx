@@ -18,7 +18,7 @@ export default async function ProfilePage() {
           Profile
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Manage your recruiting profile — this info powers your outreach and public portfolio
+          MANAGE YOUR INFO THAT POWERS OUTREACH
         </p>
       </div>
       <ProfileForm profile={profile} />

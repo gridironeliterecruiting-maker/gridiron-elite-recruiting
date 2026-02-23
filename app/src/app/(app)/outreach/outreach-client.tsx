@@ -314,7 +314,7 @@ export function OutreachClient({
           <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
             Outreach Center
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage campaigns, templates, and track your outreach</p>
+          <p className="mt-1 text-sm text-muted-foreground">CREATE, MANAGE, AND TRACK YOUR CAMPAIGNS</p>
         </div>
         <div className="flex items-center gap-2">
           <Button

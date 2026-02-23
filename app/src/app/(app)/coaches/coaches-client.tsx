@@ -334,7 +334,7 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
           <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
             Programs
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">Browse programs and coaching staff</p>
+          <p className="mt-1 text-sm text-muted-foreground">BROWSE COACHING STAFFS</p>
         </div>
 
         {/* Filter Bar */}

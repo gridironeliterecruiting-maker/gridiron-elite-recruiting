@@ -239,7 +239,7 @@ export function PipelineClient({
             Pipeline
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Drag programs between stages to track progress
+            TRACK PROGRESS TOWARDS OFFERS
           </p>
         </div>
         <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>

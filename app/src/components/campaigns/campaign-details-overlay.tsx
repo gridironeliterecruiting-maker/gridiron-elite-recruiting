@@ -388,11 +388,11 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
                   </div>
                 )}
 
-                {/* Campaign Results */}
+                {/* Results by Program */}
                 {campaign.programsWithRecipients && campaign.programsWithRecipients.length > 0 && (
                   <div>
                     <h2 className="mb-4 font-display text-base font-bold uppercase tracking-wider text-foreground">
-                      Campaign Results
+                      RESULTS BY PROGRAM
                     </h2>
                     <div className="flex flex-col gap-4">
                       {campaign.programsWithRecipients.map((program) => {

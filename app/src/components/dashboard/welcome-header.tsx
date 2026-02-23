@@ -20,7 +20,7 @@ export function WelcomeHeader() {
           {greeting}, Paul
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Your recruiting overview at a glance
+          YOUR RECRUITING OVERVIEW AT A GLANCE
         </p>
       </div>
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
