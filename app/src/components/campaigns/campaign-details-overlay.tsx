@@ -119,6 +119,66 @@ function ProgramLogo({ logoUrl, schoolName, size = 40 }: { logoUrl: string | nul
   )
 }
 
+/** Look up a coach by ID or by name+program fallback, then open CoachDetail */
+async function fetchCoachAndProgram(
+  coachId: string | null,
+  coachName: string,
+  programName: string,
+): Promise<{ coach: any; program: any } | null> {
+  const supabase = createClient()
+
+  let coachData: any = null
+
+  // Try by coach_id first
+  if (coachId) {
+    const { data } = await supabase
+      .from('coaches')
+      .select('*')
+      .eq('id', coachId)
+      .single()
+    coachData = data
+  }
+
+  // Fallback: look up program first, then coach by name + program_id
+  if (!coachData && coachName) {
+    const nameParts = coachName.trim().split(/\s+/)
+    const firstName = nameParts[0]
+    const lastName = nameParts.slice(1).join(' ')
+
+    if (firstName && lastName) {
+      // Find the program
+      const { data: prog } = await supabase
+        .from('programs')
+        .select('id')
+        .eq('school_name', programName)
+        .maybeSingle()
+
+      if (prog) {
+        const { data } = await supabase
+          .from('coaches')
+          .select('*')
+          .eq('first_name', firstName)
+          .eq('last_name', lastName)
+          .eq('program_id', prog.id)
+          .maybeSingle()
+        coachData = data
+      }
+    }
+  }
+
+  if (!coachData) return null
+
+  const { data: program } = await supabase
+    .from('programs')
+    .select('id, school_name, division, conference')
+    .eq('id', coachData.program_id)
+    .single()
+
+  if (!program) return null
+
+  return { coach: coachData, program }
+}
+
 export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: CampaignDetailsProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [campaign, setCampaign] = useState<CampaignDetails | null>(null)
@@ -131,30 +191,19 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
   } | null>(null)
   const [loadingCoach, setLoadingCoach] = useState<string | null>(null)
 
-  // Lock body scroll when overlay is open
   useEffect(() => {
     document.body.style.overflow = "hidden"
-    return () => {
-      document.body.style.overflow = ""
-    }
+    return () => { document.body.style.overflow = "" }
   }, [])
 
-  useEffect(() => {
-    fetchCampaignDetails()
-  }, [campaignId])
-
-  useEffect(() => {
-    containerRef.current?.scrollTo(0, 0)
-  }, [campaignId])
+  useEffect(() => { fetchCampaignDetails() }, [campaignId])
+  useEffect(() => { containerRef.current?.scrollTo(0, 0) }, [campaignId])
 
   const fetchCampaignDetails = async () => {
     try {
       const res = await fetch(`/api/campaigns/${campaignId}/details`)
-      if (!res.ok) {
-        throw new Error('Failed to fetch campaign details')
-      }
-      const data = await res.json()
-      setCampaign(data)
+      if (!res.ok) throw new Error('Failed to fetch campaign details')
+      setCampaign(await res.json())
     } catch (err) {
       console.error('Error fetching campaign details:', err)
     } finally {
@@ -164,17 +213,14 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
 
   const handleToggleStatus = async () => {
     if (!campaign || toggling) return
-
     setToggling(true)
     const newStatus = campaign.status === 'active' ? 'paused' : 'active'
-
     try {
       const res = await fetch(`/api/campaigns/${campaignId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       })
-
       if (res.ok) {
         setCampaign(prev => prev ? { ...prev, status: newStatus } : null)
         onStatusChange?.()
@@ -186,62 +232,14 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
     }
   }
 
-  const handleCoachClick = async (e: React.MouseEvent, coach: CoachRecipient, programName: string) => {
+  const handleCoachClick = async (e: React.MouseEvent, coachId: string | null, coachName: string, programName: string) => {
     e.stopPropagation()
     if (loadingCoach) return
-    const loadingKey = coach.coach_id || coach.id
-    setLoadingCoach(loadingKey)
-
+    const key = coachId || coachName
+    setLoadingCoach(key)
     try {
-      const supabase = createClient()
-
-      let coachData: any = null
-
-      // Try by coach_id first
-      if (coach.coach_id) {
-        const { data } = await supabase
-          .from('coaches')
-          .select('*')
-          .eq('id', coach.coach_id)
-          .single()
-        coachData = data
-      }
-
-      // Fallback: look up by name + program
-      if (!coachData && coach.coach_name) {
-        const nameParts = coach.coach_name.trim().split(/\s+/)
-        const firstName = nameParts[0]
-        const lastName = nameParts.slice(1).join(' ')
-
-        if (firstName && lastName) {
-          const { data } = await supabase
-            .from('coaches')
-            .select('*, programs!inner(school_name)')
-            .eq('first_name', firstName)
-            .eq('last_name', lastName)
-            .eq('programs.school_name', programName)
-            .single()
-          coachData = data
-        }
-      }
-
-      if (!coachData) {
-        console.error('Could not find coach')
-        return
-      }
-
-      const { data: program } = await supabase
-        .from('programs')
-        .select('id, school_name, division, conference')
-        .eq('id', coachData.program_id)
-        .single()
-
-      if (!program) {
-        console.error('Could not find program')
-        return
-      }
-
-      setSelectedCoachData({ coach: coachData, program })
+      const result = await fetchCoachAndProgram(coachId, coachName, programName)
+      if (result) setSelectedCoachData(result)
     } catch (err) {
       console.error('Failed to fetch coach data:', err)
     } finally {
@@ -253,7 +251,6 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
     setExpandedProgram(prev => prev === programName ? null : programName)
   }
 
-  // Calculate per-program rolled-up stats
   const getProgramStats = (coaches: CoachRecipient[]) => {
     const total = coaches.length
     const opened = coaches.filter(c => c.opened_at).length
@@ -269,7 +266,6 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
 
   return (
     <>
-      {/* Full-screen overlay */}
       <div
         ref={containerRef}
         className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[60] overflow-y-auto bg-background duration-300"
@@ -405,7 +401,6 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
 
                         return (
                           <div key={program.program_name}>
-                            {/* Program row */}
                             <button
                               onClick={() => handleProgramToggle(program.program_name)}
                               className="flex w-full items-center gap-3 rounded-lg border border-border bg-card p-4 text-left transition-all hover:border-primary/30 hover:shadow-md"
@@ -417,8 +412,6 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
                                   {pStats.total} recipient{pStats.total !== 1 ? 's' : ''}
                                 </p>
                               </div>
-
-                              {/* Rolled-up stats — evenly spaced */}
                               <div className="hidden shrink-0 sm:grid sm:grid-cols-3 sm:gap-8">
                                 <div className="flex flex-col items-center">
                                   <p className="text-sm font-semibold text-foreground">{pStats.openRate}%</p>
@@ -433,68 +426,45 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
                                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Replies</p>
                                 </div>
                               </div>
-
                               <ChevronRight className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                             </button>
 
-                            {/* Expanded: spreadsheet-style coach table in one box */}
                             {isExpanded && (
                               <Card className="mt-2 overflow-hidden">
-                                {/* Header row */}
                                 <div className="grid grid-cols-[1fr_72px_72px_72px] items-center border-b border-border bg-secondary/50 px-4 py-2 sm:grid-cols-[1fr_88px_88px_88px]">
                                   <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Coach</span>
                                   <span className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Opened</span>
                                   <span className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Clicked</span>
                                   <span className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Replied</span>
                                 </div>
-
-                                {/* Coach rows */}
                                 {program.coaches.map((coach, i) => {
-                                  const loadingKey = coach.coach_id || coach.id
-                                  const isLoading = loadingCoach === loadingKey
+                                  const key = coach.coach_id || coach.coach_name
+                                  const isLoading = loadingCoach === key
                                   return (
-                                  <button
-                                    key={coach.id}
-                                    type="button"
-                                    onClick={(e) => handleCoachClick(e, coach, program.program_name)}
-                                    disabled={isLoading}
-                                    className={`group grid w-full grid-cols-[1fr_72px_72px_72px] items-center px-4 py-3 text-left transition-colors hover:bg-primary/[0.03] sm:grid-cols-[1fr_88px_88px_88px] ${i > 0 ? 'border-t border-border/50' : ''}`}
-                                  >
-                                    {/* Coach name + ExternalLink on hover */}
-                                    <div className="flex min-w-0 items-center gap-2">
-                                      {isLoading ? (
-                                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
-                                      ) : null}
-                                      <span className="truncate text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
-                                        {coach.coach_name}
-                                      </span>
-                                      <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground/0 transition-colors group-hover:text-primary" />
-                                    </div>
-
-                                    {/* Opened */}
-                                    <div className="flex justify-center">
-                                      {coach.opened_at
-                                        ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                                        : <Minus className="h-4 w-4 text-muted-foreground/30" />
-                                      }
-                                    </div>
-
-                                    {/* Clicked */}
-                                    <div className="flex justify-center">
-                                      {coach.clicked_at
-                                        ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                                        : <Minus className="h-4 w-4 text-muted-foreground/30" />
-                                      }
-                                    </div>
-
-                                    {/* Replied */}
-                                    <div className="flex justify-center">
-                                      {coach.replied_at
-                                        ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                                        : <Minus className="h-4 w-4 text-muted-foreground/30" />
-                                      }
-                                    </div>
-                                  </button>
+                                    <button
+                                      key={coach.id}
+                                      type="button"
+                                      onClick={(e) => handleCoachClick(e, coach.coach_id, coach.coach_name, program.program_name)}
+                                      disabled={isLoading}
+                                      className={`group grid w-full grid-cols-[1fr_72px_72px_72px] items-center px-4 py-3 text-left transition-colors hover:bg-primary/[0.03] sm:grid-cols-[1fr_88px_88px_88px] ${i > 0 ? 'border-t border-border/50' : ''}`}
+                                    >
+                                      <div className="flex min-w-0 items-center gap-2">
+                                        {isLoading && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />}
+                                        <span className="truncate text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
+                                          {coach.coach_name}
+                                        </span>
+                                        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground/0 transition-colors group-hover:text-primary" />
+                                      </div>
+                                      <div className="flex justify-center">
+                                        {coach.opened_at ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Minus className="h-4 w-4 text-muted-foreground/30" />}
+                                      </div>
+                                      <div className="flex justify-center">
+                                        {coach.clicked_at ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Minus className="h-4 w-4 text-muted-foreground/30" />}
+                                      </div>
+                                      <div className="flex justify-center">
+                                        {coach.replied_at ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Minus className="h-4 w-4 text-muted-foreground/30" />}
+                                      </div>
+                                    </button>
                                   )
                                 })}
                               </Card>
@@ -515,7 +485,6 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
         )}
       </div>
 
-      {/* Coach Detail right panel — layers on top at z-[70] */}
       {selectedCoachData && (
         <CoachDetail
           coach={selectedCoachData.coach}

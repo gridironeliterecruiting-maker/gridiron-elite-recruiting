@@ -28,6 +28,7 @@ import {
 import { CreateCampaignOverlay } from "@/components/campaigns/create-campaign-overlay"
 import { CampaignLaunchedOverlay } from "@/components/campaigns/campaign-launched-overlay"
 import { CampaignDetailsOverlay } from "@/components/campaigns/campaign-details-overlay"
+import { DmCampaignOverlay } from "@/components/campaigns/dm-campaign-overlay"
 import { CampaignCard } from "@/components/campaigns/campaign-card"
 
 interface EmailTemplate {
@@ -147,6 +148,7 @@ export function OutreachClient({
     programCount: number
   } | null>(null)
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
+  const [selectedDmCampaignId, setSelectedDmCampaignId] = useState<string | null>(null)
   
   // Check if we just launched successfully
   useEffect(() => {
@@ -413,7 +415,7 @@ export function OutreachClient({
                   campaign={campaign}
                   onClick={() => {
                     if (campaign.type === 'dm') {
-                      router.push(`/outreach/dm/${campaign.id}`)
+                      setSelectedDmCampaignId(campaign.id)
                     } else {
                       setSelectedCampaignId(campaign.id)
                     }
@@ -573,6 +575,13 @@ export function OutreachClient({
           onStatusChange={() => {
             window.location.reload()
           }}
+        />
+      )}
+
+      {selectedDmCampaignId && (
+        <DmCampaignOverlay
+          campaignId={selectedDmCampaignId}
+          onClose={() => setSelectedDmCampaignId(null)}
         />
       )}
     </div>
