@@ -248,6 +248,10 @@ export function OutreachClient({
     const isQuickDm = searchParams.get('quickDm') === 'true'
 
     if (isQuickEmail && goal && coachId) {
+      // Close any open campaign overlays first
+      setSelectedCampaignId(null)
+      setSelectedDmCampaignId(null)
+
       setQuickEmailData({ goal, coachId, programId })
       setShowCreateCampaign('email')
 
@@ -259,6 +263,10 @@ export function OutreachClient({
       url.searchParams.delete('quickEmail')
       window.history.replaceState({}, '', url.pathname + url.search)
     } else if (isQuickDm && goal && coachId) {
+      // Close any open campaign overlays first
+      setSelectedCampaignId(null)
+      setSelectedDmCampaignId(null)
+
       setQuickDmData({ goal, coachId, programId })
       setShowCreateCampaign('dm')
 
