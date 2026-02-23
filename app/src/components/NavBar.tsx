@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+  { label: "Hub", icon: LayoutDashboard, href: "/dashboard" },
   { label: "Programs", icon: Users, href: "/coaches" },
   { label: "Pipeline", icon: GitBranch, href: "/pipeline" },
   { label: "Outreach", icon: Mail, href: "/outreach" },

@@ -1,27 +1,42 @@
 import { createClient } from "@/lib/supabase/server"
-import { DashboardClient } from "./dashboard-client"
+import { HubClient } from "./hub-client"
 
-export default async function DashboardPage() {
+export default async function HubPage() {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
 
   const [
-    { count: programCount },
-    { count: coachCount },
+    { data: profile },
     { count: pipelineCount },
     { data: pipelineStages },
-    { data: profile },
+    { data: campaigns },
+    { data: twitterToken },
   ] = await Promise.all([
-    supabase.from("programs").select("*", { count: "exact", head: true }),
-    supabase.from("coaches").select("*", { count: "exact", head: true }).eq("is_active", true),
+    user
+      ? supabase
+          .from("profiles")
+          .select("first_name, last_name, position, grad_year, high_school, hudl_url, city, state, twitter_handle")
+          .eq("id", user.id)
+          .single()
+      : Promise.resolve({ data: null }),
     supabase.from("pipeline_entries").select("*", { count: "exact", head: true }),
     supabase
       .from("pipeline_stages")
       .select("id, name, display_order")
       .order("display_order"),
     user
-      ? supabase.from("profiles").select("first_name").eq("id", user.id).single()
+      ? supabase
+          .from("campaigns")
+          .select("id, type")
+          .eq("user_id", user.id)
+      : Promise.resolve({ data: null }),
+    user
+      ? supabase
+          .from("twitter_tokens")
+          .select("id")
+          .eq("user_id", user.id)
+          .single()
       : Promise.resolve({ data: null }),
   ])
 
@@ -42,13 +57,52 @@ export default async function DashboardPage() {
     count: stageCounts[stage.id] || 0,
   }))
 
+  // Get outreach stats — emails sent + DMs sent
+  const campaignIds = (campaigns || []).map((c) => c.id)
+  let emailsSent = 0
+  let dmsSent = 0
+
+  if (campaignIds.length > 0) {
+    const { data: recipients } = await supabase
+      .from("campaign_recipients")
+      .select("campaign_id, status, dm_sent_at")
+      .in("campaign_id", campaignIds)
+
+    const campaignTypeMap: Record<string, string> = {}
+    for (const c of (campaigns || [])) {
+      campaignTypeMap[c.id] = c.type || "email"
+    }
+
+    for (const r of (recipients || [])) {
+      if (campaignTypeMap[r.campaign_id] === "dm") {
+        if (r.dm_sent_at) dmsSent++
+      } else {
+        if (r.status === "sent" || r.status === "delivered" || r.status === "opened") {
+          emailsSent++
+        }
+      }
+    }
+  }
+
   return (
-    <DashboardClient
-      firstName={profile?.first_name || "Athlete"}
-      programCount={programCount || 0}
-      coachCount={coachCount || 0}
+    <HubClient
+      profile={profile || {
+        first_name: "Athlete",
+        last_name: null,
+        position: null,
+        grad_year: null,
+        high_school: null,
+        hudl_url: null,
+        city: null,
+        state: null,
+        twitter_handle: null,
+      }}
+      hasTwitterToken={!!twitterToken}
       pipelineCount={pipelineCount || 0}
       stages={stagesWithCounts}
+      emailsSent={emailsSent}
+      dmsSent={dmsSent}
+      campaignCount={campaignIds.length}
     />
   )
 }
