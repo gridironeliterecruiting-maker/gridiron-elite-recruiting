@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function POST(request: Request) {
   try {
@@ -68,13 +67,12 @@ export async function POST(request: Request) {
       }
     }
 
-    // Insert recipients using admin client to bypass RLS
-    // (auth is already validated above, and coach_id FK needs service-role access)
-    const admin = createAdminClient()
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    // Insert recipients
+    // Note: campaign_recipients.coach_id is INTEGER (not UUID), so we pass null here.
+    // Coach lookup in details routes uses name-based fallback instead.
     const recipientInserts = recipients.map((r: { coachId: string; coachName: string; email?: string; programName: string; twitterHandle?: string }) => ({
       campaign_id: campaign.id,
-      coach_id: (r.coachId && uuidRegex.test(r.coachId)) ? r.coachId : null,
+      coach_id: null,
       coach_name: r.coachName,
       coach_email: r.email || null,
       program_name: r.programName,
@@ -83,14 +81,13 @@ export async function POST(request: Request) {
       twitter_handle: campaignType === 'dm' ? (r.twitterHandle || null) : null,
     }))
 
-    const { error: recipientError } = await admin
+    const { error: recipientError } = await supabase
       .from('campaign_recipients')
       .insert(recipientInserts)
 
     if (recipientError) {
       console.error('Failed to insert recipients:', recipientError)
-      console.error('Recipient data:', JSON.stringify(recipientInserts, null, 2))
-      await admin.from('campaigns').delete().eq('id', campaign.id)
+      await supabase.from('campaigns').delete().eq('id', campaign.id)
       return NextResponse.json({ error: 'Failed to add recipients', details: recipientError.message }, { status: 500 })
     }
 
