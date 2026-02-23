@@ -26,7 +26,7 @@ export function HubHeader({ firstName }: HubHeaderProps) {
         </h1>
         <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
           <Flame className="h-3.5 w-3.5 text-accent" />
-          Coaches are watching. Make every post count.
+          COACHES ARE WATCHING. MAKE EVERY POST COUNT.
         </p>
       </div>
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
