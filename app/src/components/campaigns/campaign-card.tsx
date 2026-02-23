@@ -101,46 +101,56 @@ export function CampaignCard({ campaign, onClick, onStatusChange }: CampaignCard
           </p>
         </div>
 
-        {/* Stats — evenly spaced */}
-        {isDm ? (
-          <div className="hidden shrink-0 sm:grid sm:grid-cols-4 sm:gap-6">
-            <div className="col-start-4 flex flex-col items-center">
-              <p className="text-sm font-semibold text-foreground">{campaign.stats.sent}/{campaign.stats.total}</p>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Sent</p>
+        {/* Stats — shared grid so DM and Email columns align */}
+        <div className="hidden shrink-0 sm:grid sm:grid-cols-4 sm:gap-6">
+          <div className="flex flex-col items-center">
+            <div className="flex items-center gap-1">
+              <Users className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-sm font-semibold text-foreground">{campaign.stats.total}</span>
             </div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Recipients</p>
           </div>
-        ) : (
-          <div className="hidden shrink-0 sm:grid sm:grid-cols-4 sm:gap-6">
-            <div className="flex flex-col items-center">
-              <div className="flex items-center gap-1">
-                <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-sm font-semibold text-foreground">{campaign.stats.total}</span>
+
+          {isDm ? (
+            <>
+              <div />
+              <div />
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col items-center">
+                <div className="flex items-center gap-1">
+                  <MailOpen className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-sm font-semibold text-foreground">{openRate}%</span>
+                </div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Open</p>
               </div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Recipients</p>
-            </div>
-            <div className="flex flex-col items-center">
-              <div className="flex items-center gap-1">
-                <MailOpen className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-sm font-semibold text-foreground">{openRate}%</span>
+              <div className="flex flex-col items-center">
+                <div className="flex items-center gap-1">
+                  <MousePointerClick className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-sm font-semibold text-foreground">{campaign.stats.clicked || 0}</span>
+                </div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Clicks</p>
               </div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Open</p>
-            </div>
-            <div className="flex flex-col items-center">
-              <div className="flex items-center gap-1">
-                <MousePointerClick className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-sm font-semibold text-foreground">{campaign.stats.clicked || 0}</span>
-              </div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Clicks</p>
-            </div>
-            <div className="flex flex-col items-center">
-              <div className="flex items-center gap-1">
+            </>
+          )}
+
+          <div className="flex flex-col items-center">
+            <div className="flex items-center gap-1">
+              {isDm ? (
+                <MessageCircle className="h-3.5 w-3.5 text-muted-foreground" />
+              ) : (
                 <Reply className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-sm font-semibold text-foreground">{campaign.stats.replied}</span>
-              </div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Replies</p>
+              )}
+              <span className="text-sm font-semibold text-foreground">
+                {isDm ? `${campaign.stats.sent}/${campaign.stats.total}` : campaign.stats.replied}
+              </span>
             </div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {isDm ? 'Sent' : 'Replies'}
+            </p>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Draft launch button */}
