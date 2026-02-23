@@ -101,48 +101,46 @@ export function CampaignCard({ campaign, onClick, onStatusChange }: CampaignCard
           </p>
         </div>
 
-        {/* Stats */}
-        <div className="hidden shrink-0 items-center gap-4 sm:flex">
-          {isDm ? (
-            <>
-              <div className="text-center">
-                <p className="text-sm font-semibold text-foreground">{campaign.stats.sent}/{campaign.stats.total}</p>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Sent</p>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-1.5">
+        {/* Stats — evenly spaced */}
+        {isDm ? (
+          <div className="hidden shrink-0 sm:flex">
+            <div className="flex flex-col items-center">
+              <p className="text-sm font-semibold text-foreground">{campaign.stats.sent}/{campaign.stats.total}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Sent</p>
+            </div>
+          </div>
+        ) : (
+          <div className="hidden shrink-0 sm:grid sm:grid-cols-4 sm:gap-6">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-1">
                 <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-foreground">{campaign.stats.total}</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Recipients</p>
-                </div>
+                <span className="text-sm font-semibold text-foreground">{campaign.stats.total}</span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Recipients</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-1">
                 <MailOpen className="h-3.5 w-3.5 text-muted-foreground" />
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-foreground">{openRate}%</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Open</p>
-                </div>
+                <span className="text-sm font-semibold text-foreground">{openRate}%</span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Open</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-1">
                 <MousePointerClick className="h-3.5 w-3.5 text-muted-foreground" />
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-foreground">{campaign.stats.clicked || 0}</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Clicks</p>
-                </div>
+                <span className="text-sm font-semibold text-foreground">{campaign.stats.clicked || 0}</span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Clicks</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-1">
                 <Reply className="h-3.5 w-3.5 text-muted-foreground" />
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-foreground">{campaign.stats.replied}</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Replies</p>
-                </div>
+                <span className="text-sm font-semibold text-foreground">{campaign.stats.replied}</span>
               </div>
-            </>
-          )}
-        </div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Replies</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Draft launch button */}

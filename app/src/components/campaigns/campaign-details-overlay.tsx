@@ -10,7 +10,7 @@ import {
   Pause,
   Play,
   CheckCircle2,
-  Mail,
+  Minus,
   ChevronRight,
   MousePointerClick,
   ExternalLink,
@@ -119,13 +119,6 @@ function ProgramLogo({ logoUrl, schoolName, size = 40 }: { logoUrl: string | nul
   )
 }
 
-/** Split "First Last" into { first, last } with fallback */
-function splitName(fullName: string) {
-  const parts = fullName.trim().split(/\s+/)
-  if (parts.length === 1) return { first: parts[0], last: "" }
-  return { first: parts[0], last: parts.slice(1).join(" ") }
-}
-
 export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: CampaignDetailsProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [campaign, setCampaign] = useState<CampaignDetails | null>(null)
@@ -193,30 +186,37 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
     }
   }
 
-  const handleCoachClick = async (coachId: string | null) => {
-    if (!coachId) return
+  const handleCoachClick = async (e: React.MouseEvent, coachId: string | null) => {
+    e.stopPropagation()
+    if (!coachId || loadingCoach) return
     setLoadingCoach(coachId)
 
     try {
       const supabase = createClient()
 
-      const { data: coach } = await supabase
+      const { data: coach, error: coachError } = await supabase
         .from('coaches')
         .select('*')
         .eq('id', coachId)
         .single()
 
-      if (coach) {
-        const { data: program } = await supabase
-          .from('programs')
-          .select('id, school_name, division, conference')
-          .eq('id', coach.program_id)
-          .single()
-
-        if (program) {
-          setSelectedCoachData({ coach, program })
-        }
+      if (coachError || !coach) {
+        console.error('Failed to fetch coach:', coachError)
+        return
       }
+
+      const { data: program, error: programError } = await supabase
+        .from('programs')
+        .select('id, school_name, division, conference')
+        .eq('id', coach.program_id)
+        .single()
+
+      if (programError || !program) {
+        console.error('Failed to fetch program:', programError)
+        return
+      }
+
+      setSelectedCoachData({ coach, program })
     } catch (err) {
       console.error('Failed to fetch coach data:', err)
     } finally {
@@ -244,7 +244,7 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
 
   return (
     <>
-      {/* Full-screen overlay like ProgramDetail */}
+      {/* Full-screen overlay */}
       <div
         ref={containerRef}
         className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[60] overflow-y-auto bg-background duration-300"
@@ -292,7 +292,6 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
                   </div>
                 </div>
 
-                {/* Pause/Resume in header */}
                 {(campaign.status === 'active' || campaign.status === 'paused') && (
                   <Button
                     onClick={handleToggleStatus}
@@ -394,17 +393,17 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
                                 </p>
                               </div>
 
-                              {/* Rolled-up stats */}
-                              <div className="hidden shrink-0 items-center gap-4 sm:flex">
-                                <div className="text-center">
+                              {/* Rolled-up stats — evenly spaced */}
+                              <div className="hidden shrink-0 sm:grid sm:grid-cols-3 sm:gap-8">
+                                <div className="flex flex-col items-center">
                                   <p className="text-sm font-semibold text-foreground">{pStats.openRate}%</p>
                                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Open</p>
                                 </div>
-                                <div className="text-center">
+                                <div className="flex flex-col items-center">
                                   <p className="text-sm font-semibold text-foreground">{pStats.clicked}</p>
                                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Clicks</p>
                                 </div>
-                                <div className="text-center">
+                                <div className="flex flex-col items-center">
                                   <p className="text-sm font-semibold text-foreground">{pStats.replied}</p>
                                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Replies</p>
                                 </div>
@@ -413,80 +412,65 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
                               <ChevronRight className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                             </button>
 
-                            {/* Expanded coach cards */}
+                            {/* Expanded: spreadsheet-style coach table in one box */}
                             {isExpanded && (
-                              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                {program.coaches.map((coach) => {
-                                  const { first, last } = splitName(coach.coach_name)
-                                  const initials = `${first[0] || ''}${last[0] || first[1] || ''}`.toUpperCase()
+                              <Card className="mt-2 overflow-hidden">
+                                {/* Header row */}
+                                <div className="grid grid-cols-[1fr_72px_72px_72px] items-center border-b border-border bg-secondary/50 px-4 py-2 sm:grid-cols-[1fr_88px_88px_88px]">
+                                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Coach</span>
+                                  <span className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Opened</span>
+                                  <span className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Clicked</span>
+                                  <span className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Replied</span>
+                                </div>
 
-                                  return (
-                                    <button
-                                      key={coach.id}
-                                      type="button"
-                                      onClick={() => handleCoachClick(coach.coach_id)}
-                                      disabled={!coach.coach_id}
-                                      className="group text-left"
-                                    >
-                                      <Card className="h-full p-4 transition-all group-hover:border-primary/30 group-hover:shadow-md">
-                                        <div className="flex items-start gap-3">
-                                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground ring-2 ring-primary/20">
-                                            {initials}
-                                          </div>
-                                          <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
-                                              {loadingCoach === coach.coach_id ? (
-                                                <span className="flex items-center gap-1.5">
-                                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                                  {coach.coach_name}
-                                                </span>
-                                              ) : (
-                                                coach.coach_name
-                                              )}
-                                            </p>
-                                            {/* Event status indicators */}
-                                            <div className="mt-1 flex items-center gap-2">
-                                              {coach.opened_at && (
-                                                <span className="flex items-center gap-1 text-[11px] text-emerald-600">
-                                                  <CheckCircle2 className="h-3 w-3" />
-                                                  Opened
-                                                </span>
-                                              )}
-                                              {coach.clicked_at && (
-                                                <span className="flex items-center gap-1 text-[11px] text-emerald-600">
-                                                  <CheckCircle2 className="h-3 w-3" />
-                                                  Clicked
-                                                </span>
-                                              )}
-                                              {coach.replied_at && (
-                                                <span className="flex items-center gap-1 text-[11px] text-accent">
-                                                  <CheckCircle2 className="h-3 w-3" />
-                                                  Replied
-                                                </span>
-                                              )}
-                                              {!coach.opened_at && !coach.clicked_at && !coach.replied_at && coach.sent_at && (
-                                                <span className="text-xs text-muted-foreground">Sent</span>
-                                              )}
-                                              {!coach.sent_at && (
-                                                <span className="text-xs text-muted-foreground">Pending</span>
-                                              )}
-                                            </div>
-                                            {coach.coach_email && (
-                                              <div className="mt-2 flex items-center gap-1.5 text-[11px] text-primary">
-                                                <Mail className="h-3 w-3" />
-                                                <span className="truncate">{coach.coach_email}</span>
-                                              </div>
-                                            )}
-                                          </div>
-                                          {coach.coach_id && (
-                                            <ExternalLink className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground/0 transition-colors group-hover:text-primary" />
-                                          )}
-                                        </div>
-                                      </Card>
-                                    </button>
-                                  )
-                                })}
-                              </div>
+                                {/* Coach rows */}
+                                {program.coaches.map((coach, i) => (
+                                  <button
+                                    key={coach.id}
+                                    type="button"
+                                    onClick={(e) => handleCoachClick(e, coach.coach_id)}
+                                    disabled={!coach.coach_id || loadingCoach === coach.coach_id}
+                                    className={`group grid w-full grid-cols-[1fr_72px_72px_72px] items-center px-4 py-3 text-left transition-colors hover:bg-primary/[0.03] sm:grid-cols-[1fr_88px_88px_88px] ${i > 0 ? 'border-t border-border/50' : ''}`}
+                                  >
+                                    {/* Coach name + ExternalLink on hover */}
+                                    <div className="flex min-w-0 items-center gap-2">
+                                      {loadingCoach === coach.coach_id ? (
+                                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
+                                      ) : null}
+                                      <span className="truncate text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
+                                        {coach.coach_name}
+                                      </span>
+                                      {coach.coach_id && (
+                                        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground/0 transition-colors group-hover:text-primary" />
+                                      )}
+                                    </div>
+
+                                    {/* Opened */}
+                                    <div className="flex justify-center">
+                                      {coach.opened_at
+                                        ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                        : <Minus className="h-4 w-4 text-muted-foreground/30" />
+                                      }
+                                    </div>
+
+                                    {/* Clicked */}
+                                    <div className="flex justify-center">
+                                      {coach.clicked_at
+                                        ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                        : <Minus className="h-4 w-4 text-muted-foreground/30" />
+                                      }
+                                    </div>
+
+                                    {/* Replied */}
+                                    <div className="flex justify-center">
+                                      {coach.replied_at
+                                        ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                        : <Minus className="h-4 w-4 text-muted-foreground/30" />
+                                      }
+                                    </div>
+                                  </button>
+                                ))}
+                              </Card>
                             )}
                           </div>
                         )
