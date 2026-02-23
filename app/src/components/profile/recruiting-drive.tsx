@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -48,8 +48,19 @@ export function RecruitingDrive() {
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [dragIndex, setDragIndex] = useState<number | null>(null)
-  const dragIndexRef = useRef<number | null>(null)
+
+  // Drag state
+  const [dragState, setDragState] = useState<{
+    active: boolean
+    index: number
+    startY: number
+    currentY: number
+    rowHeight: number
+  } | null>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const rowHeightsRef = useRef<number[]>([])
+  const documentsRef = useRef(documents)
+  documentsRef.current = documents
 
   // Load documents and share slug on mount
   useEffect(() => {
@@ -202,41 +213,106 @@ export function RecruitingDrive() {
     }
   }
 
-  function handleDragStart(e: React.DragEvent, index: number) {
-    setDragIndex(index)
-    dragIndexRef.current = index
-    // Use a minimal drag image so the browser ghost doesn't obscure the live reorder
-    const el = e.currentTarget as HTMLElement
-    const ghost = el.cloneNode(true) as HTMLElement
-    ghost.style.position = "absolute"
-    ghost.style.top = "-9999px"
-    document.body.appendChild(ghost)
-    e.dataTransfer.setDragImage(ghost, 0, 0)
-    setTimeout(() => document.body.removeChild(ghost), 0)
-  }
+  function handlePointerDown(e: React.PointerEvent, index: number) {
+    // Only start drag from the grip handle
+    const target = e.target as HTMLElement
+    if (!target.closest("[data-drag-handle]")) return
 
-  function handleDragOver(e: React.DragEvent, index: number) {
     e.preventDefault()
-    const from = dragIndexRef.current
-    if (from === null || from === index) return
+    const listEl = listRef.current
+    if (!listEl) return
 
-    // Live reorder: move the item to its new position immediately
-    setDocuments((prev) => {
-      const updated = [...prev]
-      const [moved] = updated.splice(from, 1)
-      updated.splice(index, 0, moved)
-      return updated
+    // Measure row heights
+    const rows = listEl.querySelectorAll("[data-drag-row]")
+    rowHeightsRef.current = Array.from(rows).map((r) => (r as HTMLElement).offsetHeight + 6) // 6px = gap
+
+    const row = rows[index] as HTMLElement
+    const rect = row.getBoundingClientRect()
+
+    setDragState({
+      active: true,
+      index,
+      startY: e.clientY,
+      currentY: e.clientY,
+      rowHeight: rect.height,
     })
-    setDragIndex(index)
-    dragIndexRef.current = index
+
+    // Capture pointer for smooth tracking
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
   }
 
-  function handleDragEnd() {
-    // Persist final order to the API
-    const finalDocs = documents.map((doc, i) => ({ ...doc, display_order: i }))
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragState?.active) return
+    e.preventDefault()
+
+    const newY = e.clientY
+    const delta = newY - dragState.startY
+    const heights = rowHeightsRef.current
+    const fromIndex = dragState.index
+
+    // Calculate how many positions to shift based on delta
+    let newIndex = fromIndex
+    let accumulated = 0
+
+    if (delta > 0) {
+      // Moving down
+      for (let i = fromIndex + 1; i < documents.length; i++) {
+        accumulated += heights[i]
+        if (delta > accumulated - heights[i] / 2) {
+          newIndex = i
+        } else {
+          break
+        }
+      }
+    } else {
+      // Moving up
+      for (let i = fromIndex - 1; i >= 0; i--) {
+        accumulated -= heights[i]
+        if (delta < accumulated + heights[i] / 2) {
+          newIndex = i
+        } else {
+          break
+        }
+      }
+    }
+
+    if (newIndex !== fromIndex) {
+      // Reorder the list
+      setDocuments((prev) => {
+        const updated = [...prev]
+        const [moved] = updated.splice(fromIndex, 1)
+        updated.splice(newIndex, 0, moved)
+        return updated
+      })
+
+      // Recalculate start position so delta stays correct relative to new position
+      const shiftDir = newIndex > fromIndex ? 1 : -1
+      let shiftAmount = 0
+      const minI = Math.min(fromIndex, newIndex)
+      const maxI = Math.max(fromIndex, newIndex)
+      for (let i = minI; i <= maxI; i++) {
+        if (i !== fromIndex) shiftAmount += heights[i]
+      }
+
+      setDragState((prev) => prev ? {
+        ...prev,
+        index: newIndex,
+        startY: prev.startY + shiftDir * shiftAmount,
+        currentY: newY,
+      } : null)
+    } else {
+      setDragState((prev) => prev ? { ...prev, currentY: newY } : null)
+    }
+  }, [dragState, documents])
+
+  const handlePointerUp = useCallback(() => {
+    if (!dragState?.active) return
+
+    setDragState(null)
+
+    // Persist final order
+    const finalDocs = documentsRef.current.map((doc, i) => ({ ...doc, display_order: i }))
     setDocuments(finalDocs)
-    setDragIndex(null)
-    dragIndexRef.current = null
 
     for (const doc of finalDocs) {
       fetch("/api/documents", {
@@ -245,7 +321,7 @@ export function RecruitingDrive() {
         body: JSON.stringify({ id: doc.id, displayOrder: doc.display_order }),
       }).catch(() => console.error("Failed to save order for", doc.id))
     }
-  }
+  }, [dragState])
 
   function resetAddForm() {
     setShowAddForm(false)
@@ -461,24 +537,43 @@ export function RecruitingDrive() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col gap-1.5">
-              {documents.map((doc, index) => (
+            <div
+              ref={listRef}
+              className="relative flex flex-col gap-1.5"
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+            >
+              {documents.map((doc, index) => {
+                const isDragging = dragState?.active && dragState.index === index
+                const dragOffset = isDragging ? dragState.currentY - dragState.startY : 0
+
+                return (
                 <div
                   key={doc.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onDragOver={(e) => handleDragOver(e, index)}
-                  onDragEnd={handleDragEnd}
-                  className={`group flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-transform duration-150 ${
-                    dragIndex === index
-                      ? "border-primary bg-primary/5 shadow-md ring-1 ring-primary/30"
-                      : doc.is_visible
-                        ? "border-transparent hover:border-border hover:bg-secondary/30"
-                        : "border-dashed border-border/50 bg-secondary/20 opacity-60"
+                  data-drag-row
+                  onPointerDown={(e) => handlePointerDown(e, index)}
+                  style={isDragging ? {
+                    position: "relative",
+                    zIndex: 50,
+                    transform: `translateY(${dragOffset}px)`,
+                    pointerEvents: "none",
+                  } : undefined}
+                  className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 select-none ${
+                    isDragging
+                      ? "border-primary bg-card shadow-lg ring-1 ring-primary/30"
+                      : dragState?.active
+                        ? "transition-transform duration-200"
+                        : "group"
+                  } ${
+                    !isDragging && doc.is_visible
+                      ? "border-transparent hover:border-border hover:bg-secondary/30"
+                      : !isDragging
+                        ? "border-dashed border-border/50 bg-secondary/20 opacity-60"
+                        : ""
                   }`}
                 >
                   {/* Drag handle */}
-                  <div className="shrink-0 cursor-grab text-muted-foreground/30 transition-colors hover:text-muted-foreground active:cursor-grabbing">
+                  <div data-drag-handle className="shrink-0 cursor-grab text-muted-foreground/30 transition-colors hover:text-muted-foreground active:cursor-grabbing touch-none">
                     <GripVertical className="h-4 w-4" />
                   </div>
 
@@ -501,7 +596,7 @@ export function RecruitingDrive() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className={`flex shrink-0 items-center gap-1 transition-opacity ${isDragging ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}>
                     {doc.url && (
                       <a href={doc.url} target="_blank" rel="noopener noreferrer">
                         <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
@@ -532,7 +627,8 @@ export function RecruitingDrive() {
                     </Button>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>
