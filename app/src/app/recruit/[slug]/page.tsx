@@ -42,7 +42,7 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
       <div className="h-1 bg-[hsl(0,72%,51%)]" />
 
       {/* Header content box */}
-      <header className="px-4 pb-8 pt-6">
+      <header className="px-4 pb-4 pt-6">
         <div className="mx-auto max-w-3xl">
           <div className="flex items-center gap-6 sm:gap-8">
             {/* Logo — left */}

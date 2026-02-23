@@ -48,6 +48,8 @@ export function RecruitingDrive() {
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   // Load documents and share slug on mount
   useEffect(() => {
@@ -198,6 +200,54 @@ export function RecruitingDrive() {
     } catch {
       console.error("Failed to delete document")
     }
+  }
+
+  function handleDragStart(index: number) {
+    setDragIndex(index)
+  }
+
+  function handleDragOver(e: React.DragEvent, index: number) {
+    e.preventDefault()
+    if (dragIndex === null || dragIndex === index) return
+    setDragOverIndex(index)
+  }
+
+  function handleDragLeave() {
+    setDragOverIndex(null)
+  }
+
+  async function handleDrop(e: React.DragEvent, dropIndex: number) {
+    e.preventDefault()
+    if (dragIndex === null || dragIndex === dropIndex) {
+      setDragIndex(null)
+      setDragOverIndex(null)
+      return
+    }
+
+    // Reorder locally
+    const updated = [...documents]
+    const [moved] = updated.splice(dragIndex, 1)
+    updated.splice(dropIndex, 0, moved)
+
+    // Update display_order for each item
+    const reordered = updated.map((doc, i) => ({ ...doc, display_order: i }))
+    setDocuments(reordered)
+    setDragIndex(null)
+    setDragOverIndex(null)
+
+    // Persist all new orders to the API
+    for (const doc of reordered) {
+      fetch("/api/documents", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: doc.id, displayOrder: doc.display_order }),
+      }).catch(() => console.error("Failed to save order for", doc.id))
+    }
+  }
+
+  function handleDragEnd() {
+    setDragIndex(null)
+    setDragOverIndex(null)
   }
 
   function resetAddForm() {
@@ -415,15 +465,30 @@ export function RecruitingDrive() {
             </div>
           ) : (
             <div className="flex flex-col gap-1.5">
-              {documents.map((doc) => (
+              {documents.map((doc, index) => (
                 <div
                   key={doc.id}
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onDragEnd={handleDragEnd}
                   className={`group flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-all ${
-                    doc.is_visible
-                      ? "border-transparent hover:border-border hover:bg-secondary/30"
-                      : "border-dashed border-border/50 bg-secondary/20 opacity-60"
+                    dragIndex === index
+                      ? "opacity-40"
+                      : dragOverIndex === index
+                        ? "border-primary bg-primary/5"
+                        : doc.is_visible
+                          ? "border-transparent hover:border-border hover:bg-secondary/30"
+                          : "border-dashed border-border/50 bg-secondary/20 opacity-60"
                   }`}
                 >
+                  {/* Drag handle */}
+                  <div className="shrink-0 cursor-grab text-muted-foreground/30 transition-colors hover:text-muted-foreground active:cursor-grabbing">
+                    <GripVertical className="h-4 w-4" />
+                  </div>
+
                   {/* Type icon */}
                   <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${typeColor(doc.type)}`}>
                     {typeIcon(doc.type)}
