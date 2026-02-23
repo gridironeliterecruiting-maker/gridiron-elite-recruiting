@@ -103,8 +103,8 @@ export function CampaignCard({ campaign, onClick, onStatusChange }: CampaignCard
 
         {/* Stats — evenly spaced */}
         {isDm ? (
-          <div className="hidden shrink-0 sm:flex">
-            <div className="flex flex-col items-center">
+          <div className="hidden shrink-0 sm:grid sm:grid-cols-4 sm:gap-6">
+            <div className="col-start-4 flex flex-col items-center">
               <p className="text-sm font-semibold text-foreground">{campaign.stats.sent}/{campaign.stats.total}</p>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Sent</p>
             </div>

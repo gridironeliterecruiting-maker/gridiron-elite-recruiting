@@ -160,6 +160,11 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
       setShowSaveDraftDialog(true)
     } else {
       window.scrollTo(0, 0)
+      if (dmCampaignId) {
+        // DM campaign was created — reload to show it in the campaign list
+        window.location.reload()
+        return
+      }
       onClose()
     }
   }
