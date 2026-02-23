@@ -17,15 +17,17 @@ import {
   ExternalLink,
   GripVertical,
   FolderOpen,
+  Folder,
   Share2,
   Loader2,
+  ChevronRight,
 } from "lucide-react"
 
 interface Document {
   id: string
   title: string
   description: string | null
-  type: "link" | "file" | "video"
+  type: "link" | "file" | "video" | "folder"
   url: string | null
   file_path: string | null
   file_name: string | null
@@ -33,6 +35,7 @@ interface Document {
   file_type: string | null
   display_order: number
   is_visible: boolean
+  folder_id: string | null
 }
 
 export function RecruitingDrive() {
@@ -45,9 +48,16 @@ export function RecruitingDrive() {
   const [addTitle, setAddTitle] = useState("")
   const [addDescription, setAddDescription] = useState("")
   const [addUrl, setAddUrl] = useState("")
+  const [addFolderId, setAddFolderId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Folder state
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
+  const [showAddFolderForm, setShowAddFolderForm] = useState(false)
+  const [addFolderTitle, setAddFolderTitle] = useState("")
+  const [savingFolder, setSavingFolder] = useState(false)
 
   // Drag state
   const [dragState, setDragState] = useState<{
@@ -56,11 +66,44 @@ export function RecruitingDrive() {
     startY: number
     currentY: number
     rowHeight: number
+    draggedDoc: Document
   } | null>(null)
+  const [dropTarget, setDropTarget] = useState<string | null>(null) // folder id being hovered
   const listRef = useRef<HTMLDivElement>(null)
   const rowHeightsRef = useRef<number[]>([])
   const documentsRef = useRef(documents)
   documentsRef.current = documents
+
+  // Build the flat render list (top-level items + expanded folder children)
+  const folders = documents.filter((d) => d.type === "folder" && d.folder_id === null)
+  const folderContents = new Map<string, Document[]>()
+  for (const doc of documents) {
+    if (doc.folder_id) {
+      const list = folderContents.get(doc.folder_id) || []
+      list.push(doc)
+      folderContents.set(doc.folder_id, list)
+    }
+  }
+  // Sort folder contents by display_order
+  for (const [, items] of folderContents) {
+    items.sort((a, b) => a.display_order - b.display_order)
+  }
+
+  const topLevelDocs = documents
+    .filter((d) => d.folder_id === null)
+    .sort((a, b) => a.display_order - b.display_order)
+
+  // Build flat render list with folder children inline
+  const renderList: { doc: Document; isChild: boolean; parentFolderId?: string }[] = []
+  for (const doc of topLevelDocs) {
+    renderList.push({ doc, isChild: false })
+    if (doc.type === "folder" && expandedFolders.has(doc.id)) {
+      const children = folderContents.get(doc.id) || []
+      for (const child of children) {
+        renderList.push({ doc: child, isChild: true, parentFolderId: doc.id })
+      }
+    }
+  }
 
   // Load documents and share slug on mount
   useEffect(() => {
@@ -107,6 +150,43 @@ export function RecruitingDrive() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  function toggleFolder(folderId: string) {
+    setExpandedFolders((prev) => {
+      const next = new Set(prev)
+      if (next.has(folderId)) {
+        next.delete(folderId)
+      } else {
+        next.add(folderId)
+      }
+      return next
+    })
+  }
+
+  async function handleAddFolder() {
+    if (!addFolderTitle.trim()) return
+    setSavingFolder(true)
+    try {
+      const res = await fetch("/api/documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: addFolderTitle.trim().toUpperCase(),
+          type: "folder",
+        }),
+      })
+      const data = await res.json()
+      if (data.document) {
+        setDocuments((prev) => [...prev, data.document])
+        setAddFolderTitle("")
+        setShowAddFolderForm(false)
+      }
+    } catch {
+      console.error("Failed to create folder")
+    } finally {
+      setSavingFolder(false)
+    }
+  }
+
   async function handleAddLink() {
     if (!addTitle.trim()) return
     if ((addType === "link" || addType === "video") && !addUrl.trim()) return
@@ -121,11 +201,16 @@ export function RecruitingDrive() {
           description: addDescription.trim() || null,
           type: addType,
           url: addUrl.trim(),
+          folderId: addFolderId,
         }),
       })
       const data = await res.json()
       if (data.document) {
         setDocuments((prev) => [...prev, data.document])
+        // If added to a folder, expand it
+        if (addFolderId) {
+          setExpandedFolders((prev) => new Set(prev).add(addFolderId))
+        }
         resetAddForm()
       }
     } catch {
@@ -144,7 +229,6 @@ export function RecruitingDrive() {
 
     setUploading(true)
     try {
-      // Upload file first
       const formData = new FormData()
       formData.append("file", file)
 
@@ -159,7 +243,6 @@ export function RecruitingDrive() {
         return
       }
 
-      // Create document record
       const title = addTitle.trim() || file.name.replace(/\.[^.]+$/, "")
       const res = await fetch("/api/documents", {
         method: "POST",
@@ -173,11 +256,15 @@ export function RecruitingDrive() {
           fileName: uploadData.fileName,
           fileSize: uploadData.fileSize,
           fileType: uploadData.fileType,
+          folderId: addFolderId,
         }),
       })
       const data = await res.json()
       if (data.document) {
         setDocuments((prev) => [...prev, data.document])
+        if (addFolderId) {
+          setExpandedFolders((prev) => new Set(prev).add(addFolderId))
+        }
         resetAddForm()
       }
     } catch {
@@ -204,17 +291,52 @@ export function RecruitingDrive() {
   }
 
   async function handleDelete(doc: Document) {
-    if (!confirm(`Delete "${doc.title}"? This cannot be undone.`)) return
+    const message = doc.type === "folder"
+      ? `Delete folder "${doc.title}"? Items inside will be moved to the top level.`
+      : `Delete "${doc.title}"? This cannot be undone.`
+    if (!confirm(message)) return
     try {
       await fetch(`/api/documents?id=${doc.id}`, { method: "DELETE" })
-      setDocuments((prev) => prev.filter((d) => d.id !== doc.id))
+      if (doc.type === "folder") {
+        // Move children to top-level in local state
+        setDocuments((prev) =>
+          prev
+            .filter((d) => d.id !== doc.id)
+            .map((d) => (d.folder_id === doc.id ? { ...d, folder_id: null } : d))
+        )
+        setExpandedFolders((prev) => {
+          const next = new Set(prev)
+          next.delete(doc.id)
+          return next
+        })
+      } else {
+        setDocuments((prev) => prev.filter((d) => d.id !== doc.id))
+      }
     } catch {
       console.error("Failed to delete document")
     }
   }
 
-  function handlePointerDown(e: React.PointerEvent, index: number) {
-    // Only start drag from the grip handle
+  async function moveToFolder(docId: string, folderId: string | null) {
+    try {
+      await fetch("/api/documents", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: docId, folderId }),
+      })
+      setDocuments((prev) =>
+        prev.map((d) => (d.id === docId ? { ...d, folder_id: folderId } : d))
+      )
+      // Expand the target folder so user sees the item
+      if (folderId) {
+        setExpandedFolders((prev) => new Set(prev).add(folderId))
+      }
+    } catch {
+      console.error("Failed to move document")
+    }
+  }
+
+  function handlePointerDown(e: React.PointerEvent, renderIndex: number) {
     const target = e.target as HTMLElement
     if (!target.closest("[data-drag-handle]")) return
 
@@ -222,22 +344,31 @@ export function RecruitingDrive() {
     const listEl = listRef.current
     if (!listEl) return
 
-    // Measure row heights
     const rows = listEl.querySelectorAll("[data-drag-row]")
-    rowHeightsRef.current = Array.from(rows).map((r) => (r as HTMLElement).offsetHeight + 6) // 6px = gap
+    rowHeightsRef.current = Array.from(rows).map((r) => (r as HTMLElement).offsetHeight + 6)
 
-    const row = rows[index] as HTMLElement
+    const row = rows[renderIndex] as HTMLElement
     const rect = row.getBoundingClientRect()
+    const item = renderList[renderIndex]
+
+    // If dragging an expanded folder, collapse it first
+    if (item.doc.type === "folder" && expandedFolders.has(item.doc.id)) {
+      setExpandedFolders((prev) => {
+        const next = new Set(prev)
+        next.delete(item.doc.id)
+        return next
+      })
+    }
 
     setDragState({
       active: true,
-      index,
+      index: renderIndex,
       startY: e.clientY,
       currentY: e.clientY,
       rowHeight: rect.height,
+      draggedDoc: item.doc,
     })
 
-    // Capture pointer for smooth tracking
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
   }
 
@@ -249,14 +380,46 @@ export function RecruitingDrive() {
     const delta = newY - dragState.startY
     const heights = rowHeightsRef.current
     const fromIndex = dragState.index
+    const currentRenderList = renderList
 
-    // Calculate how many positions to shift based on delta
+    // Determine drop target (middle-zone of folders)
+    let newDropTarget: string | null = null
+    const listEl = listRef.current
+    if (listEl && dragState.draggedDoc.type !== "folder") {
+      const rows = listEl.querySelectorAll("[data-drag-row]")
+      const draggedRect = rows[fromIndex]?.getBoundingClientRect()
+      if (draggedRect) {
+        const dragCenter = draggedRect.top + delta + draggedRect.height / 2
+        for (let i = 0; i < currentRenderList.length; i++) {
+          if (i === fromIndex) continue
+          const item = currentRenderList[i]
+          if (item.doc.type !== "folder") continue
+          const row = rows[i] as HTMLElement
+          if (!row) continue
+          const rect = row.getBoundingClientRect()
+          const top33 = rect.top + rect.height * 0.33
+          const bottom33 = rect.top + rect.height * 0.67
+          if (dragCenter > top33 && dragCenter < bottom33) {
+            newDropTarget = item.doc.id
+            break
+          }
+        }
+      }
+    }
+    setDropTarget(newDropTarget)
+
+    // If hovering over a folder's middle zone, don't reorder
+    if (newDropTarget) {
+      setDragState((prev) => prev ? { ...prev, currentY: newY } : null)
+      return
+    }
+
+    // Calculate new position
     let newIndex = fromIndex
     let accumulated = 0
 
     if (delta > 0) {
-      // Moving down
-      for (let i = fromIndex + 1; i < documents.length; i++) {
+      for (let i = fromIndex + 1; i < currentRenderList.length; i++) {
         accumulated += heights[i]
         if (delta > accumulated - heights[i] / 2) {
           newIndex = i
@@ -265,7 +428,6 @@ export function RecruitingDrive() {
         }
       }
     } else {
-      // Moving up
       for (let i = fromIndex - 1; i >= 0; i--) {
         accumulated -= heights[i]
         if (delta < accumulated + heights[i] / 2) {
@@ -277,15 +439,36 @@ export function RecruitingDrive() {
     }
 
     if (newIndex !== fromIndex) {
-      // Reorder the list
+      // For the render list reorder, we need to update the underlying documents array
+      const draggedItem = currentRenderList[fromIndex]
+      const targetItem = currentRenderList[newIndex]
+
+      // If the dragged item is a child being dragged out of its folder
+      if (draggedItem.isChild && !targetItem.isChild && targetItem.parentFolderId !== draggedItem.parentFolderId) {
+        // Move item to top-level
+        setDocuments((prev) =>
+          prev.map((d) => d.id === draggedItem.doc.id ? { ...d, folder_id: null } : d)
+        )
+        // Persist
+        fetch("/api/documents", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: draggedItem.doc.id, folderId: null }),
+        }).catch(() => {})
+      }
+
+      // Swap display_order values to reorder
       setDocuments((prev) => {
         const updated = [...prev]
-        const [moved] = updated.splice(fromIndex, 1)
-        updated.splice(newIndex, 0, moved)
+        const draggedIdx = updated.findIndex((d) => d.id === draggedItem.doc.id)
+        const targetIdx = updated.findIndex((d) => d.id === targetItem.doc.id)
+        if (draggedIdx === -1 || targetIdx === -1) return prev
+
+        const [moved] = updated.splice(draggedIdx, 1)
+        updated.splice(targetIdx, 0, moved)
         return updated
       })
 
-      // Recalculate start position so delta stays correct relative to new position
       const shiftDir = newIndex > fromIndex ? 1 : -1
       let shiftAmount = 0
       const minI = Math.min(fromIndex, newIndex)
@@ -303,12 +486,22 @@ export function RecruitingDrive() {
     } else {
       setDragState((prev) => prev ? { ...prev, currentY: newY } : null)
     }
-  }, [dragState, documents])
+  }, [dragState, renderList])
 
   const handlePointerUp = useCallback(() => {
     if (!dragState?.active) return
 
+    const droppedOnFolder = dropTarget
+    const draggedDoc = dragState.draggedDoc
+
     setDragState(null)
+    setDropTarget(null)
+
+    // If dropped onto a folder's middle zone
+    if (droppedOnFolder && draggedDoc.type !== "folder") {
+      moveToFolder(draggedDoc.id, droppedOnFolder)
+      return
+    }
 
     // Persist final order
     const finalDocs = documentsRef.current.map((doc, i) => ({ ...doc, display_order: i }))
@@ -321,7 +514,7 @@ export function RecruitingDrive() {
         body: JSON.stringify({ id: doc.id, displayOrder: doc.display_order }),
       }).catch(() => console.error("Failed to save order for", doc.id))
     }
-  }, [dragState])
+  }, [dragState, dropTarget])
 
   function resetAddForm() {
     setShowAddForm(false)
@@ -329,6 +522,7 @@ export function RecruitingDrive() {
     setAddTitle("")
     setAddDescription("")
     setAddUrl("")
+    setAddFolderId(null)
   }
 
   function formatFileSize(bytes: number): string {
@@ -341,6 +535,7 @@ export function RecruitingDrive() {
     switch (type) {
       case "video": return <Video className="h-4 w-4" />
       case "file": return <FileText className="h-4 w-4" />
+      case "folder": return <Folder className="h-4 w-4" />
       default: return <Link2 className="h-4 w-4" />
     }
   }
@@ -349,8 +544,134 @@ export function RecruitingDrive() {
     switch (type) {
       case "video": return "bg-red-50 text-red-600"
       case "file": return "bg-amber-50 text-amber-600"
+      case "folder": return "bg-blue-50 text-blue-600"
       default: return "bg-blue-50 text-blue-600"
     }
+  }
+
+  function renderDocRow(
+    doc: Document,
+    renderIndex: number,
+    isChild: boolean,
+  ) {
+    const isDragging = dragState?.active && dragState.index === renderIndex
+    const dragOffset = isDragging ? dragState.currentY - dragState.startY : 0
+    const isDropTarget = dropTarget === doc.id
+    const isFolder = doc.type === "folder"
+    const isExpanded = expandedFolders.has(doc.id)
+    const childCount = folderContents.get(doc.id)?.length || 0
+
+    return (
+      <div
+        key={doc.id}
+        data-drag-row
+        onPointerDown={(e) => handlePointerDown(e, renderIndex)}
+        style={isDragging ? {
+          position: "relative",
+          zIndex: 50,
+          transform: `translateY(${dragOffset}px)`,
+          pointerEvents: "none",
+        } : undefined}
+        className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 select-none ${
+          isChild ? "ml-8" : ""
+        } ${
+          isDragging
+            ? "border-primary bg-card shadow-lg ring-1 ring-primary/30"
+            : dragState?.active
+              ? "transition-transform duration-200"
+              : "group"
+        } ${
+          isDropTarget
+            ? "border-blue-400 bg-blue-50/50 ring-2 ring-blue-400/50"
+            : !isDragging && doc.is_visible
+              ? "border-transparent hover:border-border hover:bg-secondary/30"
+              : !isDragging
+                ? "border-dashed border-border/50 bg-secondary/20 opacity-60"
+                : ""
+        }`}
+      >
+        {/* Drag handle */}
+        <div data-drag-handle className="shrink-0 cursor-grab text-muted-foreground/30 transition-colors hover:text-muted-foreground active:cursor-grabbing touch-none">
+          <GripVertical className="h-4 w-4" />
+        </div>
+
+        {/* Folder expand/collapse chevron OR type icon */}
+        {isFolder ? (
+          <button
+            type="button"
+            onClick={() => toggleFolder(doc.id)}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 transition-colors hover:bg-blue-100"
+          >
+            <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
+          </button>
+        ) : (
+          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${typeColor(doc.type)}`}>
+            {typeIcon(doc.type)}
+          </div>
+        )}
+
+        {/* Content */}
+        {isFolder ? (
+          <button
+            type="button"
+            onClick={() => toggleFolder(doc.id)}
+            className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          >
+            <Folder className="h-4 w-4 shrink-0 text-blue-600" />
+            <span className="text-sm font-bold uppercase tracking-wide text-foreground">
+              {doc.title}
+            </span>
+            <span className="ml-auto shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              {childCount}
+            </span>
+          </button>
+        ) : (
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-foreground">{doc.title}</p>
+            {doc.description && (
+              <p className="text-[11px] text-muted-foreground">{doc.description}</p>
+            )}
+            {doc.file_name && doc.file_size && (
+              <p className="text-[10px] text-muted-foreground">
+                {doc.file_name} · {formatFileSize(doc.file_size)}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className={`flex shrink-0 items-center gap-1 transition-opacity ${isDragging ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}>
+          {!isFolder && doc.url && (
+            <a href={doc.url} target="_blank" rel="noopener noreferrer">
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Button>
+            </a>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={() => handleToggleVisibility(doc)}
+            title={doc.is_visible ? "Hide from coaches" : "Show to coaches"}
+          >
+            {doc.is_visible ? (
+              <Eye className="h-3.5 w-3.5" />
+            ) : (
+              <EyeOff className="h-3.5 w-3.5" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+            onClick={() => handleDelete(doc)}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -412,17 +733,61 @@ export function RecruitingDrive() {
             </div>
             <CardTitle className="text-base">Recruiting Drive</CardTitle>
           </div>
-          <Button
-            size="sm"
-            onClick={() => setShowAddForm(true)}
-            className="bg-accent text-accent-foreground hover:bg-accent/90"
-          >
-            <Plus className="mr-1 h-3.5 w-3.5" />
-            Add Item
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { setShowAddFolderForm(true); setShowAddForm(false) }}
+              className="text-blue-600 border-blue-200 hover:bg-blue-50"
+            >
+              <Folder className="mr-1 h-3.5 w-3.5" />
+              Add Folder
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => { setShowAddForm(true); setShowAddFolderForm(false) }}
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              Add Item
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="pt-0">
-          {/* Add form */}
+          {/* Add folder form */}
+          {showAddFolderForm && (
+            <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50/30 p-4">
+              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-blue-600">New Folder</p>
+              <input
+                type="text"
+                value={addFolderTitle}
+                onChange={(e) => setAddFolderTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAddFolder() }}
+                placeholder="Folder name (e.g., Film)"
+                autoFocus
+                className="mb-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-bold uppercase text-foreground placeholder:normal-case placeholder:font-normal placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-400/40"
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleAddFolder}
+                  disabled={savingFolder || !addFolderTitle.trim()}
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  {savingFolder ? "Creating..." : "Create Folder"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => { setShowAddFolderForm(false); setAddFolderTitle("") }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Add item form */}
           {showAddForm && (
             <div className="mb-4 rounded-lg border border-border bg-secondary/30 p-4">
               {/* Type selector */}
@@ -443,6 +808,22 @@ export function RecruitingDrive() {
                   </button>
                 ))}
               </div>
+
+              {/* Folder selector */}
+              {folders.length > 0 && (
+                <div className="mb-2">
+                  <select
+                    value={addFolderId || ""}
+                    onChange={(e) => setAddFolderId(e.target.value || null)}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="">No Folder (top level)</option>
+                    {folders.map((f) => (
+                      <option key={f.id} value={f.id}>{f.title}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Title */}
               <input
@@ -543,92 +924,9 @@ export function RecruitingDrive() {
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
             >
-              {documents.map((doc, index) => {
-                const isDragging = dragState?.active && dragState.index === index
-                const dragOffset = isDragging ? dragState.currentY - dragState.startY : 0
-
-                return (
-                <div
-                  key={doc.id}
-                  data-drag-row
-                  onPointerDown={(e) => handlePointerDown(e, index)}
-                  style={isDragging ? {
-                    position: "relative",
-                    zIndex: 50,
-                    transform: `translateY(${dragOffset}px)`,
-                    pointerEvents: "none",
-                  } : undefined}
-                  className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 select-none ${
-                    isDragging
-                      ? "border-primary bg-card shadow-lg ring-1 ring-primary/30"
-                      : dragState?.active
-                        ? "transition-transform duration-200"
-                        : "group"
-                  } ${
-                    !isDragging && doc.is_visible
-                      ? "border-transparent hover:border-border hover:bg-secondary/30"
-                      : !isDragging
-                        ? "border-dashed border-border/50 bg-secondary/20 opacity-60"
-                        : ""
-                  }`}
-                >
-                  {/* Drag handle */}
-                  <div data-drag-handle className="shrink-0 cursor-grab text-muted-foreground/30 transition-colors hover:text-muted-foreground active:cursor-grabbing touch-none">
-                    <GripVertical className="h-4 w-4" />
-                  </div>
-
-                  {/* Type icon */}
-                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${typeColor(doc.type)}`}>
-                    {typeIcon(doc.type)}
-                  </div>
-
-                  {/* Content */}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-foreground">{doc.title}</p>
-                    {doc.description && (
-                      <p className="text-[11px] text-muted-foreground">{doc.description}</p>
-                    )}
-                    {doc.file_name && doc.file_size && (
-                      <p className="text-[10px] text-muted-foreground">
-                        {doc.file_name} · {formatFileSize(doc.file_size)}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className={`flex shrink-0 items-center gap-1 transition-opacity ${isDragging ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}>
-                    {doc.url && (
-                      <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </Button>
-                      </a>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      onClick={() => handleToggleVisibility(doc)}
-                      title={doc.is_visible ? "Hide from coaches" : "Show to coaches"}
-                    >
-                      {doc.is_visible ? (
-                        <Eye className="h-3.5 w-3.5" />
-                      ) : (
-                        <EyeOff className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(doc)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-                )
-              })}
+              {renderList.map((item, index) =>
+                renderDocRow(item.doc, index, item.isChild)
+              )}
             </div>
           )}
         </CardContent>

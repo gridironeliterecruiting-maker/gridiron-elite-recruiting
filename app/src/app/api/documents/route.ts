@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { title, description, type, url, filePath, fileName, fileSize, fileType } = body
+    const { title, description, type, url, filePath, fileName, fileSize, fileType, folderId } = body
 
     if (!title || !type) {
       return NextResponse.json({ error: "Title and type are required" }, { status: 400 })
@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
         file_size: fileSize || null,
         file_type: fileType || null,
         display_order: nextOrder,
+        folder_id: type === "folder" ? null : (folderId || null),
       })
       .select()
       .single()
@@ -96,7 +97,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, title, description, url, isVisible, displayOrder } = body
+    const { id, title, description, url, isVisible, displayOrder, folderId } = body
 
     if (!id) {
       return NextResponse.json({ error: "Document ID is required" }, { status: 400 })
@@ -108,6 +109,7 @@ export async function PATCH(request: NextRequest) {
     if (url !== undefined) updates.url = url
     if (isVisible !== undefined) updates.is_visible = isVisible
     if (displayOrder !== undefined) updates.display_order = displayOrder
+    if (folderId !== undefined) updates.folder_id = folderId
 
     const { data: doc, error } = await supabase
       .from("athlete_documents")
@@ -146,10 +148,10 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Document ID is required" }, { status: 400 })
     }
 
-    // Get the document first to check for file cleanup
+    // Get the document first to check for file cleanup and folder handling
     const { data: doc } = await supabase
       .from("athlete_documents")
-      .select("file_path")
+      .select("file_path, type")
       .eq("id", id)
       .eq("athlete_id", user.id)
       .single()
@@ -157,6 +159,15 @@ export async function DELETE(request: NextRequest) {
     if (doc?.file_path) {
       // Delete file from storage if it exists
       await supabase.storage.from("athlete-documents").remove([doc.file_path])
+    }
+
+    // If deleting a folder, un-nest its children first (move to top-level)
+    if (doc?.type === "folder") {
+      await supabase
+        .from("athlete_documents")
+        .update({ folder_id: null })
+        .eq("folder_id", id)
+        .eq("athlete_id", user.id)
     }
 
     const { error } = await supabase
