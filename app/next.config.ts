@@ -33,7 +33,7 @@ writeFileSync(
   ].join("\n")
 );
 
-console.log(`[next.config.ts] charcode gen: ID=${id.length}, Secret=${secret.length}`);
+console.log(`[next.config.ts] lazy-getter gen: ID=${id.length}, Secret=${secret.length}, ts=${ts}`);
 
 const nextConfig: NextConfig = {};
 
