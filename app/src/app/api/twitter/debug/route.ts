@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAppUrl } from '@/lib/app-url'
-import { getTwitterClientId, getTwitterClientSecret, BUILD_TIMESTAMP } from '@/lib/_twitter-build-config'
 
 // Debug endpoint — shows env var presence (true/false), no secret values
 export async function GET(request: NextRequest) {
   const appUrl = getAppUrl(request)
-  const id = getTwitterClientId()
-  const secret = getTwitterClientSecret()
+  const id = process.env.TWITTER_CLIENT_ID || ''
+  const secret = process.env.TWITTER_CLIENT_SECRET || ''
 
   return NextResponse.json({
     envCheck: {
@@ -17,9 +16,7 @@ export async function GET(request: NextRequest) {
     },
     twitterIdLength: id.length,
     twitterSecretLength: secret.length,
-    buildTimestamp: BUILD_TIMESTAMP,
     redirectUri: `${appUrl}/api/twitter/oauth-callback`,
-    codeVersion: 'v20-lazy-getter',
     deployTime: new Date().toISOString(),
   })
 }
