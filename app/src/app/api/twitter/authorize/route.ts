@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const campaignId = searchParams.get('campaign')
+    const returnTo = searchParams.get('returnTo')
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
     const state = JSON.stringify({
       userId: user.id,
       campaignId: campaignId || null,
+      returnTo: returnTo || null,
     })
 
     const params = new URLSearchParams({

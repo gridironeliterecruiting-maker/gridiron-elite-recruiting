@@ -13,19 +13,23 @@ export async function GET(request: NextRequest) {
 
   // Parse state
   let campaignId: string | null = null
+  let returnTo: string | null = null
   try {
     if (stateParam) {
       const stateJson = Buffer.from(stateParam, 'base64').toString()
       const state = JSON.parse(stateJson)
       campaignId = state.campaignId
+      returnTo = state.returnTo
     }
   } catch (e) {
     console.error('Failed to parse Twitter OAuth state:', e)
   }
 
-  const redirectBase = campaignId
-    ? `${finalUrl}/outreach?campaign=${campaignId}`
-    : `${finalUrl}/outreach`
+  const redirectBase = returnTo
+    ? `${finalUrl}${returnTo}`
+    : campaignId
+      ? `${finalUrl}/outreach?campaign=${campaignId}`
+      : `${finalUrl}/outreach`
 
   if (error) {
     console.error('Twitter OAuth error:', error)

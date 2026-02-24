@@ -93,7 +93,7 @@ export function HubClient({
   }, [hasTwitterToken])
 
   const handleConnectTwitter = () => {
-    window.location.href = "/api/twitter/authorize"
+    window.location.href = "/api/twitter/authorize?returnTo=/dashboard"
   }
 
   const firstName = profile.first_name || "Athlete"
