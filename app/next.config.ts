@@ -28,9 +28,12 @@ console.log(written);
 
 const nextConfig: NextConfig = {
   env: {
-    TWITTER_CLIENT_ID: twitterClientId,
-    TWITTER_CLIENT_SECRET: twitterClientSecret,
-    TWITTER_BUILD_TIMESTAMP: buildTime,
+    // Use different names to avoid Vercel overriding with runtime env var resolution.
+    // Vercel treats project env var names (TWITTER_CLIENT_ID etc.) as runtime-resolved,
+    // which returns empty because they're not injected into serverless runtime.
+    BAKED_TWITTER_CLIENT_ID: twitterClientId,
+    BAKED_TWITTER_CLIENT_SECRET: twitterClientSecret,
+    BAKED_TWITTER_BUILD_TIMESTAMP: buildTime,
   },
 };
 

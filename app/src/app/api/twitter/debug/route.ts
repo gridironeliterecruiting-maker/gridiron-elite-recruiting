@@ -10,9 +10,9 @@ export async function GET(request: NextRequest) {
   const genId = GEN_ID
   const genSecret = GEN_SECRET
 
-  // Strategy 2: next.config env property (inlined by Next.js at build time)
-  const envId = process.env.TWITTER_CLIENT_ID || ''
-  const envSecret = process.env.TWITTER_CLIENT_SECRET || ''
+  // Strategy 2: next.config env with BAKED_ prefix (avoids Vercel runtime override)
+  const bakedId = process.env.BAKED_TWITTER_CLIENT_ID || ''
+  const bakedSecret = process.env.BAKED_TWITTER_CLIENT_SECRET || ''
 
   return NextResponse.json({
     strategy1_generatedModule: {
@@ -20,10 +20,10 @@ export async function GET(request: NextRequest) {
       secretLength: genSecret.length,
       buildTimestamp: GEN_TS,
     },
-    strategy2_nextConfigEnv: {
-      idLength: envId.length,
-      secretLength: envSecret.length,
-      buildTimestamp: process.env.TWITTER_BUILD_TIMESTAMP || 'not set',
+    strategy2_bakedEnv: {
+      idLength: bakedId.length,
+      secretLength: bakedSecret.length,
+      buildTimestamp: process.env.BAKED_TWITTER_BUILD_TIMESTAMP || 'not set',
     },
     envCheck: {
       NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       NODE_ENV: process.env.NODE_ENV || 'not set',
     },
     redirectUri: `${appUrl}/api/twitter/oauth-callback`,
-    codeVersion: 'v14-dual-strategy',
+    codeVersion: 'v15-baked-env',
     deployTime: new Date().toISOString(),
   })
 }
