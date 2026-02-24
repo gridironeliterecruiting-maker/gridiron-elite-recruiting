@@ -31,14 +31,7 @@ interface RecruitDocumentsProps {
 }
 
 export function RecruitDocuments({ documents, supabaseUrl }: RecruitDocumentsProps) {
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => {
-    // Start with all folders expanded
-    const folderIds = new Set<string>()
-    for (const doc of documents) {
-      if (doc.type === "folder") folderIds.add(doc.id)
-    }
-    return folderIds
-  })
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
 
   // Build folder contents map
   const folderContents = new Map<string, Document[]>()
@@ -76,13 +69,11 @@ export function RecruitDocuments({ documents, supabaseUrl }: RecruitDocumentsPro
 
   function toggleFolder(folderId: string) {
     setExpandedFolders((prev) => {
-      const next = new Set(prev)
-      if (next.has(folderId)) {
-        next.delete(folderId)
-      } else {
-        next.add(folderId)
+      // Only one folder open at a time — toggle off if already open, otherwise switch
+      if (prev.has(folderId)) {
+        return new Set()
       }
-      return next
+      return new Set([folderId])
     })
   }
 

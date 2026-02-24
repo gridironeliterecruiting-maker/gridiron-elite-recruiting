@@ -500,19 +500,29 @@ export function RecruitingDrive() {
     const [moved] = reordered.splice(fromIndex, 1)
     reordered.splice(currentIndex, 0, moved)
 
-    // If item was dragged out of a folder to top-level
+    // Determine folder membership change
     const draggedItem = renderSnapshot[fromIndex]
     const targetItem = renderSnapshot[currentIndex]
-    let movedToTopLevel = false
-    if (draggedItem.isChild && !targetItem.isChild) {
-      movedToTopLevel = true
+    let newFolderId: string | null | undefined = undefined // undefined = no change
+
+    if (draggedItem.isChild && !targetItem.isChild && !targetItem.parentFolderId) {
+      // Dragged OUT of a folder to top-level
+      newFolderId = null
+    } else if (!draggedItem.isChild && targetItem.isChild && targetItem.parentFolderId) {
+      // Dragged INTO a folder's child area
+      newFolderId = targetItem.parentFolderId
+    } else if (draggedItem.isChild && targetItem.isChild
+      && draggedItem.parentFolderId !== targetItem.parentFolderId
+      && targetItem.parentFolderId) {
+      // Dragged from one folder into another folder's child area
+      newFolderId = targetItem.parentFolderId
     }
 
     // Build new documents array with updated display_order and folder_id
     setDocuments((prev) => {
       const updated = prev.map((d) => {
-        if (movedToTopLevel && d.id === moved.id) {
-          return { ...d, folder_id: null }
+        if (newFolderId !== undefined && d.id === moved.id) {
+          return { ...d, folder_id: newFolderId }
         }
         return d
       })
@@ -525,12 +535,17 @@ export function RecruitingDrive() {
       }))
     })
 
+    // Expand the target folder so user sees the item
+    if (newFolderId) {
+      setExpandedFolders((prev) => new Set(prev).add(newFolderId!))
+    }
+
     // Persist folder change if needed
-    if (movedToTopLevel) {
+    if (newFolderId !== undefined) {
       fetch("/api/documents", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: moved.id, folderId: null }),
+        body: JSON.stringify({ id: moved.id, folderId: newFolderId }),
       }).catch(() => {})
     }
 
