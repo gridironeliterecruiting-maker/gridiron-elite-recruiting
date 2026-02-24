@@ -17,9 +17,16 @@ writeFileSync(
     `export const BUILD_TIMESTAMP = ${JSON.stringify(buildTime)};\n`
 );
 
+// Log all env keys containing relevant terms to diagnose availability
+const envKeys = Object.keys(process.env).sort();
+const twitterKeys = envKeys.filter(k => k.toLowerCase().includes('twitter'));
+const vercelKeys = envKeys.filter(k => k.toLowerCase().includes('vercel'));
 console.log(
   `[next.config.ts] Generated twitter-env: ID=${twitterClientId.length} chars, Secret=${twitterClientSecret.length} chars, time=${buildTime}`
 );
+console.log(`[next.config.ts] TWITTER env keys found: ${JSON.stringify(twitterKeys)}`);
+console.log(`[next.config.ts] VERCEL env keys: ${JSON.stringify(vercelKeys)}`);
+console.log(`[next.config.ts] Total env keys: ${envKeys.length}`);
 
 const nextConfig: NextConfig = {};
 
