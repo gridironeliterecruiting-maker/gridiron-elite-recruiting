@@ -41,7 +41,10 @@ export async function GET(request: NextRequest) {
       code_challenge_method: 'S256',
     })
 
-    const url = `https://twitter.com/i/oauth2/authorize?${params.toString()}`
+    const url = `https://x.com/i/oauth2/authorize?${params.toString()}`
+    console.log('[Twitter Authorize] Redirect URL:', url)
+    console.log('[Twitter Authorize] Client ID:', clientId.substring(0, 8) + '...')
+    console.log('[Twitter Authorize] Redirect URI:', redirectUri)
 
     // Store code_verifier in HttpOnly cookie for callback
     const response = NextResponse.redirect(url)
