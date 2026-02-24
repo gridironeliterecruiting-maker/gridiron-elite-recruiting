@@ -19,12 +19,16 @@ export async function GET(request: NextRequest) {
     k.toUpperCase().includes('TWITTER')
   )
 
+  // List all env var keys (no values) to understand where vars come from
+  const allEnvKeys = Object.keys(process.env).sort()
+
   return NextResponse.json({
     envCheck,
     twitterEnvKeysFound: twitterEnvKeys,
-    totalEnvVarCount: Object.keys(process.env).length,
+    allEnvKeys,
+    totalEnvVarCount: allEnvKeys.length,
     redirectUri: `${appUrl}/api/twitter/oauth-callback`,
-    codeVersion: 'v8-no-env-block',
+    codeVersion: 'v9-list-all-keys',
     deployTime: new Date().toISOString(),
   })
 }
