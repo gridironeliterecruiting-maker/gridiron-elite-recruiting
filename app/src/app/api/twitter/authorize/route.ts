@@ -36,12 +36,12 @@ export async function GET(request: NextRequest) {
       client_id: clientId,
       redirect_uri: redirectUri,
       scope: 'dm.read dm.write tweet.read users.read offline.access',
-      state: Buffer.from(state).toString('base64'),
+      state: Buffer.from(state).toString('base64url'),
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
     })
 
-    const url = `https://x.com/i/oauth2/authorize?${params.toString()}`
+    const url = `https://twitter.com/i/oauth2/authorize?${params.toString()}`
     console.log('[Twitter Authorize] Redirect URL:', url)
     console.log('[Twitter Authorize] Client ID:', clientId.substring(0, 8) + '...')
     console.log('[Twitter Authorize] Redirect URI:', redirectUri)

@@ -11,12 +11,17 @@ export async function GET(request: NextRequest) {
   const stateParam = searchParams.get('state')
   const finalUrl = getAppUrl(request)
 
-  // Parse state
+  // Parse state (try base64url first, then standard base64)
   let campaignId: string | null = null
   let returnTo: string | null = null
   try {
     if (stateParam) {
-      const stateJson = Buffer.from(stateParam, 'base64').toString()
+      let stateJson: string
+      try {
+        stateJson = Buffer.from(stateParam, 'base64url').toString()
+      } catch {
+        stateJson = Buffer.from(stateParam, 'base64').toString()
+      }
       const state = JSON.parse(stateJson)
       campaignId = state.campaignId
       returnTo = state.returnTo
