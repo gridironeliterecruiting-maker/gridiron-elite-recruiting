@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node -e \"const fs=require('fs');const vars=['TWITTER_CLIENT_ID','TWITTER_CLIENT_SECRET'];const lines=vars.filter(k=>process.env[k]).map(k=>k+'='+process.env[k]);if(lines.length){fs.appendFileSync('.env.local',lines.join('\\n')+'\\n');console.log('Wrote',lines.length,'env vars to .env.local')}else{console.log('No TWITTER env vars found at build time')}\" && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },

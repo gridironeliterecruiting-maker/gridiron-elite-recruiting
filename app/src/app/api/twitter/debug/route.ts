@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     allEnvKeys,
     totalEnvVarCount: allEnvKeys.length,
     redirectUri: `${appUrl}/api/twitter/oauth-callback`,
-    codeVersion: 'v9-list-all-keys',
+    codeVersion: 'v10-env-block-inline',
     deployTime: new Date().toISOString(),
   })
 }
