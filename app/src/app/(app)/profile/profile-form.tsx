@@ -133,7 +133,7 @@ export function ProfileForm({ profile }: { profile: Profile | null }) {
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <Field label="Hudl Profile URL" value={form.hudl_url} onChange={(v) => update("hudl_url", v)} placeholder="https://www.hudl.com/profile/..." />
-          <Field label="Twitter / X Handle" value={form.twitter_handle} onChange={(v) => update("twitter_handle", v)} placeholder="@yourhandle" />
+          <Field label="X Handle" value={form.twitter_handle} onChange={(v) => update("twitter_handle", v)} placeholder="@yourhandle" />
         </CardContent>
       </Card>
 

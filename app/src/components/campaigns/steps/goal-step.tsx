@@ -58,7 +58,7 @@ interface GoalStepProps {
 
 export function GoalStep({ onSelect, selected, channelFilter }: GoalStepProps) {
   const isDm = channelFilter === 'dm'
-  const channelLabel = isDm ? 'Twitter campaign' : 'email campaign'
+  const channelLabel = isDm ? 'X DM campaign' : 'email campaign'
   return (
     <div>
       <h2 className="mb-2 font-display text-base font-bold uppercase tracking-wider text-foreground">

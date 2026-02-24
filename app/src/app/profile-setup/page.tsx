@@ -153,7 +153,7 @@ export default function ProfileSetupPage() {
               <input type="tel" value={form.phone} onChange={e => update('phone', e.target.value)} placeholder="(555) 123-4567" className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Twitter/X Handle</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">X Handle</label>
               <input type="text" value={form.twitter_handle} onChange={e => update('twitter_handle', e.target.value)} placeholder="@handle" className={inputClass} />
             </div>
           </div>

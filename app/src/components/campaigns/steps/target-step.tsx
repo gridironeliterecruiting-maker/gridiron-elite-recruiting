@@ -676,7 +676,7 @@ function CoachSelectionOverlay({
         <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-3">
           <p className="text-xs text-muted-foreground leading-relaxed">
             {channelFilter === 'dm' ? (
-              <>Only coaches with <span className="font-semibold text-foreground">open Twitter DMs</span> can be selected. Greyed-out coaches don&apos;t accept DMs.</>
+              <>Only coaches with <span className="font-semibold text-foreground">open X DMs</span> can be selected. Greyed-out coaches don&apos;t accept DMs.</>
             ) : (
               <>We recommend that initial emails to a program target <span className="font-semibold text-foreground">recruiting coaches</span> and your <span className="font-semibold text-foreground">position coach</span>.</>
             )}

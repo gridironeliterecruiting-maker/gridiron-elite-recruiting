@@ -176,7 +176,7 @@ export function CoachDetail({ coach, program, onClose }: CoachDetailProps) {
                       <Twitter className="h-4 w-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Twitter / X</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">X</p>
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-medium text-foreground">@{coach.twitter_handle}</p>
                         {coach.twitter_dm_open && (

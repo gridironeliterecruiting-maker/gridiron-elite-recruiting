@@ -266,7 +266,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
 
   // Header icon and title
   const headerIcon = campaignType === 'dm' ? MessageCircle : Mail
-  const headerTitle = campaignType === 'dm' ? 'New Twitter Campaign' : 'New Email Campaign'
+  const headerTitle = campaignType === 'dm' ? 'New X DM Campaign' : 'New Email Campaign'
   const HeaderIcon = headerIcon
 
   return (

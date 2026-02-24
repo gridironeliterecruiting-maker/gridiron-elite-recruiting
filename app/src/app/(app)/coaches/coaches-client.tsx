@@ -484,7 +484,7 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
                     <TableHead><CoachSortButton field="school_name">School</CoachSortButton></TableHead>
                     <TableHead>Title</TableHead>
                     <TableHead><CoachSortButton field="has_email">Email</CoachSortButton></TableHead>
-                    <TableHead><CoachSortButton field="dm_open">Twitter</CoachSortButton></TableHead>
+                    <TableHead><CoachSortButton field="dm_open">X</CoachSortButton></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

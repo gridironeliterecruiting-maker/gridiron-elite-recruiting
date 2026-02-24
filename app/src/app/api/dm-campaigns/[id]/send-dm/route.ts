@@ -154,6 +154,7 @@ export async function POST(
         .single()
 
       if (program.data) {
+        // Log interaction only if pipeline entry already exists
         const { data: existingEntry } = await supabase
           .from('pipeline_entries')
           .select('id')
@@ -161,39 +162,14 @@ export async function POST(
           .eq('program_id', program.data.id)
           .single()
 
-        let pipelineEntryId = existingEntry?.id
-
-        if (!pipelineEntryId) {
-          const { data: firstStage } = await supabase
-            .from('pipeline_stages')
-            .select('id')
-            .eq('display_order', 1)
-            .single()
-
-          if (firstStage) {
-            const { data: newEntry } = await supabase
-              .from('pipeline_entries')
-              .insert({
-                athlete_id: user.id,
-                program_id: program.data.id,
-                stage_id: firstStage.id,
-                primary_coach_id: recipient.coach_id,
-                status: 'active',
-              })
-              .select('id')
-              .single()
-            pipelineEntryId = newEntry?.id
-          }
-        }
-
-        if (pipelineEntryId) {
+        if (existingEntry) {
           await supabase.from('interactions').insert({
-            pipeline_entry_id: pipelineEntryId,
+            pipeline_entry_id: existingEntry.id,
             athlete_id: user.id,
             coach_id: recipient.coach_id,
             type: 'dm_sent',
             direction: 'outbound',
-            subject: 'Twitter DM (auto-sent)',
+            subject: 'X DM (auto-sent)',
             occurred_at: now,
           })
         }
