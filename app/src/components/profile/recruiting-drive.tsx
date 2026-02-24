@@ -59,18 +59,18 @@ export function RecruitingDrive() {
   const [addFolderTitle, setAddFolderTitle] = useState("")
   const [savingFolder, setSavingFolder] = useState(false)
 
-  // Drag state
-  const [dragState, setDragState] = useState<{
-    active: boolean
-    index: number
+  // Drag state — snapshot + transform approach (no state mutations during drag)
+  const [dragInfo, setDragInfo] = useState<{
+    renderSnapshot: { doc: Document; isChild: boolean; parentFolderId?: string }[]
+    fromIndex: number
+    currentIndex: number
     startY: number
     currentY: number
-    rowHeight: number
     draggedDoc: Document
+    rowHeights: number[]
   } | null>(null)
-  const [dropTarget, setDropTarget] = useState<string | null>(null) // folder id being hovered
+  const [dropTarget, setDropTarget] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
-  const rowHeightsRef = useRef<number[]>([])
   const documentsRef = useRef(documents)
   documentsRef.current = documents
 
@@ -345,10 +345,8 @@ export function RecruitingDrive() {
     if (!listEl) return
 
     const rows = listEl.querySelectorAll("[data-drag-row]")
-    rowHeightsRef.current = Array.from(rows).map((r) => (r as HTMLElement).offsetHeight + 6)
+    const heights = Array.from(rows).map((r) => (r as HTMLElement).offsetHeight + 6)
 
-    const row = rows[renderIndex] as HTMLElement
-    const rect = row.getBoundingClientRect()
     const item = renderList[renderIndex]
 
     // If dragging an expanded folder, collapse it first
@@ -358,143 +356,124 @@ export function RecruitingDrive() {
         next.delete(item.doc.id)
         return next
       })
+      // We need to wait for re-render before snapshotting — defer to next frame
+      requestAnimationFrame(() => {
+        const freshRows = listEl.querySelectorAll("[data-drag-row]")
+        const freshHeights = Array.from(freshRows).map((r) => (r as HTMLElement).offsetHeight + 6)
+        // Rebuild renderList without the collapsed folder's children
+        const freshRenderList: { doc: Document; isChild: boolean; parentFolderId?: string }[] = []
+        const docs = documentsRef.current
+        const tl = docs.filter((d) => d.folder_id === null).sort((a, b) => a.display_order - b.display_order)
+        // The folder we just collapsed won't have children in the list
+        const collapsedFolders = new Set(expandedFolders)
+        collapsedFolders.delete(item.doc.id)
+        for (const d of tl) {
+          freshRenderList.push({ doc: d, isChild: false })
+          if (d.type === "folder" && collapsedFolders.has(d.id)) {
+            const children = docs.filter((c) => c.folder_id === d.id).sort((a, b) => a.display_order - b.display_order)
+            for (const child of children) {
+              freshRenderList.push({ doc: child, isChild: true, parentFolderId: d.id })
+            }
+          }
+        }
+        const freshIndex = freshRenderList.findIndex((r) => r.doc.id === item.doc.id)
+        if (freshIndex === -1) return
+        setDragInfo({
+          renderSnapshot: freshRenderList,
+          fromIndex: freshIndex,
+          currentIndex: freshIndex,
+          startY: e.clientY,
+          currentY: e.clientY,
+          draggedDoc: item.doc,
+          rowHeights: freshHeights,
+        })
+      })
+      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+      return
     }
 
-    setDragState({
-      active: true,
-      index: renderIndex,
+    // Snapshot the current render list
+    setDragInfo({
+      renderSnapshot: [...renderList],
+      fromIndex: renderIndex,
+      currentIndex: renderIndex,
       startY: e.clientY,
       currentY: e.clientY,
-      rowHeight: rect.height,
       draggedDoc: item.doc,
+      rowHeights: heights,
     })
 
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
   }
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragState?.active) return
+    if (!dragInfo) return
     e.preventDefault()
 
     const newY = e.clientY
-    const delta = newY - dragState.startY
-    const heights = rowHeightsRef.current
-    const fromIndex = dragState.index
-    const currentRenderList = renderList
+    const delta = newY - dragInfo.startY
+    const { fromIndex, rowHeights: heights, renderSnapshot, draggedDoc } = dragInfo
 
-    // Determine drop target (middle-zone of folders)
+    // --- Folder drop-target detection (3-zone: top 25% / middle 50% / bottom 25%) ---
     let newDropTarget: string | null = null
-    const listEl = listRef.current
-    if (listEl && dragState.draggedDoc.type !== "folder") {
-      const rows = listEl.querySelectorAll("[data-drag-row]")
-      const draggedRect = rows[fromIndex]?.getBoundingClientRect()
-      if (draggedRect) {
-        const dragCenter = draggedRect.top + delta + draggedRect.height / 2
-        for (let i = 0; i < currentRenderList.length; i++) {
-          if (i === fromIndex) continue
-          const item = currentRenderList[i]
-          if (item.doc.type !== "folder") continue
-          const row = rows[i] as HTMLElement
-          if (!row) continue
-          const rect = row.getBoundingClientRect()
-          const top33 = rect.top + rect.height * 0.33
-          const bottom33 = rect.top + rect.height * 0.67
-          if (dragCenter > top33 && dragCenter < bottom33) {
-            newDropTarget = item.doc.id
-            break
-          }
+    if (draggedDoc.type !== "folder") {
+      // Compute the visual center of the dragged row
+      let draggedTop = 0
+      for (let i = 0; i < fromIndex; i++) draggedTop += heights[i]
+      const dragCenter = draggedTop + heights[fromIndex] / 2 + delta
+
+      for (let i = 0; i < renderSnapshot.length; i++) {
+        if (i === fromIndex) continue
+        const item = renderSnapshot[i]
+        if (item.doc.type !== "folder") continue
+        let rowTop = 0
+        for (let j = 0; j < i; j++) rowTop += heights[j]
+        const rowH = heights[i]
+        const top25 = rowTop + rowH * 0.25
+        const bottom25 = rowTop + rowH * 0.75
+        if (dragCenter > top25 && dragCenter < bottom25) {
+          newDropTarget = item.doc.id
+          break
         }
       }
     }
     setDropTarget(newDropTarget)
 
-    // If hovering over a folder's middle zone, don't reorder
-    if (newDropTarget) {
-      setDragState((prev) => prev ? { ...prev, currentY: newY } : null)
-      return
-    }
-
-    // Calculate new position
+    // --- Compute currentIndex from pointer delta ---
     let newIndex = fromIndex
-    let accumulated = 0
-
-    if (delta > 0) {
-      for (let i = fromIndex + 1; i < currentRenderList.length; i++) {
-        accumulated += heights[i]
-        if (delta > accumulated - heights[i] / 2) {
-          newIndex = i
-        } else {
-          break
+    if (!newDropTarget) {
+      let accumulated = 0
+      if (delta > 0) {
+        for (let i = fromIndex + 1; i < renderSnapshot.length; i++) {
+          accumulated += heights[i]
+          if (delta > accumulated - heights[i] / 2) {
+            newIndex = i
+          } else {
+            break
+          }
         }
-      }
-    } else {
-      for (let i = fromIndex - 1; i >= 0; i--) {
-        accumulated -= heights[i]
-        if (delta < accumulated + heights[i] / 2) {
-          newIndex = i
-        } else {
-          break
+      } else {
+        for (let i = fromIndex - 1; i >= 0; i--) {
+          accumulated -= heights[i]
+          if (delta < accumulated + heights[i] / 2) {
+            newIndex = i
+          } else {
+            break
+          }
         }
       }
     }
 
-    if (newIndex !== fromIndex) {
-      // For the render list reorder, we need to update the underlying documents array
-      const draggedItem = currentRenderList[fromIndex]
-      const targetItem = currentRenderList[newIndex]
-
-      // If the dragged item is a child being dragged out of its folder
-      if (draggedItem.isChild && !targetItem.isChild && targetItem.parentFolderId !== draggedItem.parentFolderId) {
-        // Move item to top-level
-        setDocuments((prev) =>
-          prev.map((d) => d.id === draggedItem.doc.id ? { ...d, folder_id: null } : d)
-        )
-        // Persist
-        fetch("/api/documents", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: draggedItem.doc.id, folderId: null }),
-        }).catch(() => {})
-      }
-
-      // Swap display_order values to reorder
-      setDocuments((prev) => {
-        const updated = [...prev]
-        const draggedIdx = updated.findIndex((d) => d.id === draggedItem.doc.id)
-        const targetIdx = updated.findIndex((d) => d.id === targetItem.doc.id)
-        if (draggedIdx === -1 || targetIdx === -1) return prev
-
-        const [moved] = updated.splice(draggedIdx, 1)
-        updated.splice(targetIdx, 0, moved)
-        return updated
-      })
-
-      const shiftDir = newIndex > fromIndex ? 1 : -1
-      let shiftAmount = 0
-      const minI = Math.min(fromIndex, newIndex)
-      const maxI = Math.max(fromIndex, newIndex)
-      for (let i = minI; i <= maxI; i++) {
-        if (i !== fromIndex) shiftAmount += heights[i]
-      }
-
-      setDragState((prev) => prev ? {
-        ...prev,
-        index: newIndex,
-        startY: prev.startY + shiftDir * shiftAmount,
-        currentY: newY,
-      } : null)
-    } else {
-      setDragState((prev) => prev ? { ...prev, currentY: newY } : null)
-    }
-  }, [dragState, renderList])
+    setDragInfo((prev) => prev ? { ...prev, currentY: newY, currentIndex: newIndex } : null)
+  }, [dragInfo])
 
   const handlePointerUp = useCallback(() => {
-    if (!dragState?.active) return
+    if (!dragInfo) return
 
     const droppedOnFolder = dropTarget
-    const draggedDoc = dragState.draggedDoc
+    const { draggedDoc, renderSnapshot, fromIndex, currentIndex } = dragInfo
 
-    setDragState(null)
+    setDragInfo(null)
     setDropTarget(null)
 
     // If dropped onto a folder's middle zone
@@ -503,18 +482,57 @@ export function RecruitingDrive() {
       return
     }
 
-    // Persist final order
-    const finalDocs = documentsRef.current.map((doc, i) => ({ ...doc, display_order: i }))
-    setDocuments(finalDocs)
+    // If position didn't change, nothing to do
+    if (fromIndex === currentIndex) return
 
-    for (const doc of finalDocs) {
+    // Apply the reorder: remove from fromIndex, insert at currentIndex in snapshot order
+    const reordered = renderSnapshot.map((r) => r.doc)
+    const [moved] = reordered.splice(fromIndex, 1)
+    reordered.splice(currentIndex, 0, moved)
+
+    // If item was dragged out of a folder to top-level
+    const draggedItem = renderSnapshot[fromIndex]
+    const targetItem = renderSnapshot[currentIndex]
+    let movedToTopLevel = false
+    if (draggedItem.isChild && !targetItem.isChild) {
+      movedToTopLevel = true
+    }
+
+    // Build new documents array with updated display_order and folder_id
+    setDocuments((prev) => {
+      const updated = prev.map((d) => {
+        if (movedToTopLevel && d.id === moved.id) {
+          return { ...d, folder_id: null }
+        }
+        return d
+      })
+      // Assign display_order based on the reordered snapshot
+      const orderMap = new Map<string, number>()
+      reordered.forEach((doc, i) => orderMap.set(doc.id, i))
+      return updated.map((d) => ({
+        ...d,
+        display_order: orderMap.has(d.id) ? orderMap.get(d.id)! : d.display_order,
+      }))
+    })
+
+    // Persist folder change if needed
+    if (movedToTopLevel) {
       fetch("/api/documents", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: doc.id, displayOrder: doc.display_order }),
-      }).catch(() => console.error("Failed to save order for", doc.id))
+        body: JSON.stringify({ id: moved.id, folderId: null }),
+      }).catch(() => {})
     }
-  }, [dragState, dropTarget])
+
+    // Persist order for all items in the reordered list
+    reordered.forEach((doc, i) => {
+      fetch("/api/documents", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: doc.id, displayOrder: i }),
+      }).catch(() => console.error("Failed to save order for", doc.id))
+    })
+  }, [dragInfo, dropTarget])
 
   function resetAddForm() {
     setShowAddForm(false)
@@ -549,35 +567,61 @@ export function RecruitingDrive() {
     }
   }
 
+  function computeRowTransform(renderIndex: number): React.CSSProperties | undefined {
+    if (!dragInfo) return undefined
+    const { fromIndex, currentIndex, startY, currentY, rowHeights } = dragInfo
+
+    if (renderIndex === fromIndex) {
+      // The dragged row follows the pointer
+      return {
+        position: "relative",
+        zIndex: 50,
+        transform: `translateY(${currentY - startY}px)`,
+        pointerEvents: "none",
+      }
+    }
+
+    // Rows between fromIndex and currentIndex shift to fill the gap
+    const min = Math.min(fromIndex, currentIndex)
+    const max = Math.max(fromIndex, currentIndex)
+    if (renderIndex >= min && renderIndex <= max) {
+      const draggedHeight = rowHeights[fromIndex]
+      if (fromIndex < currentIndex) {
+        // Dragged down: rows between shift UP by dragged height
+        return { transform: `translateY(-${draggedHeight}px)` }
+      } else {
+        // Dragged up: rows between shift DOWN by dragged height
+        return { transform: `translateY(${draggedHeight}px)` }
+      }
+    }
+
+    return undefined
+  }
+
   function renderDocRow(
     doc: Document,
     renderIndex: number,
     isChild: boolean,
   ) {
-    const isDragging = dragState?.active && dragState.index === renderIndex
-    const dragOffset = isDragging ? dragState.currentY - dragState.startY : 0
+    const isDragging = dragInfo !== null && dragInfo.fromIndex === renderIndex
     const isDropTarget = dropTarget === doc.id
     const isFolder = doc.type === "folder"
     const isExpanded = expandedFolders.has(doc.id)
     const childCount = folderContents.get(doc.id)?.length || 0
+    const transformStyle = dragInfo ? computeRowTransform(renderIndex) : undefined
 
     return (
       <div
         key={doc.id}
         data-drag-row
         onPointerDown={(e) => handlePointerDown(e, renderIndex)}
-        style={isDragging ? {
-          position: "relative",
-          zIndex: 50,
-          transform: `translateY(${dragOffset}px)`,
-          pointerEvents: "none",
-        } : undefined}
+        style={transformStyle}
         className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 select-none ${
           isChild ? "ml-8" : ""
         } ${
           isDragging
             ? "border-primary bg-card shadow-lg ring-1 ring-primary/30"
-            : dragState?.active
+            : dragInfo
               ? "transition-transform duration-200"
               : "group"
         } ${
@@ -736,12 +780,11 @@ export function RecruitingDrive() {
           <div className="flex items-center gap-2">
             <Button
               size="sm"
-              variant="outline"
               onClick={() => { setShowAddFolderForm(true); setShowAddForm(false) }}
-              className="text-blue-600 border-blue-200 hover:bg-blue-50"
+              className="bg-blue-600 text-white hover:bg-blue-700"
             >
-              <Folder className="mr-1 h-3.5 w-3.5" />
-              Add Folder
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              +Add Folder
             </Button>
             <Button
               size="sm"
@@ -924,7 +967,8 @@ export function RecruitingDrive() {
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
             >
-              {renderList.map((item, index) =>
+              {/* During drag, render from frozen snapshot; otherwise normal renderList */}
+              {(dragInfo ? dragInfo.renderSnapshot : renderList).map((item, index) =>
                 renderDocRow(item.doc, index, item.isChild)
               )}
             </div>

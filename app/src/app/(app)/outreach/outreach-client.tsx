@@ -332,7 +332,7 @@ export function OutreachClient({
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />
-            Twitter DM Assist
+            X DM Assist
           </Button>
           <Button
             onClick={() => setShowCreateCampaign('email')}
