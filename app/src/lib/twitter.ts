@@ -1,6 +1,7 @@
 // Twitter/X API v2 utility functions for OAuth and DM sending
 import crypto from 'crypto'
-import { TWITTER_CLIENT_ID, TWITTER_CLIENT_SECRET } from './_twitter-build-config'
+const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID!
+const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET!
 
 const TWITTER_API_BASE = 'https://api.twitter.com/2'
 const TWITTER_TOKEN_URL = 'https://api.twitter.com/2/oauth2/token'
