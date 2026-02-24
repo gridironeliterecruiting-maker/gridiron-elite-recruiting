@@ -1,6 +1,7 @@
 import Image from "next/image"
 import { notFound } from "next/navigation"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { RecruitDocuments } from "./recruit-documents"
 
 interface RecruitPageProps {
   params: Promise<{ slug: string }>
@@ -21,7 +22,7 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
     notFound()
   }
 
-  // Get visible documents
+  // Get visible documents (all types including folders)
   const { data: documents } = await admin
     .from("athlete_documents")
     .select("*")
@@ -32,31 +33,7 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
   const fullName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim()
   const locationParts = [profile.high_school, [profile.city, profile.state].filter(Boolean).join(", ")].filter(Boolean).join(" / ")
 
-  const allDocs = (documents || []).filter((d: { type: string }) => d.type !== "folder")
-  const visibleFolders = (documents || []).filter((d: { type: string; is_visible: boolean }) => d.type === "folder" && d.is_visible)
-
-  // Group items by folder
-  const folderContents = new Map<string, typeof allDocs>()
-  for (const doc of allDocs) {
-    if (doc.folder_id) {
-      const list = folderContents.get(doc.folder_id) || []
-      list.push(doc)
-      folderContents.set(doc.folder_id, list)
-    }
-  }
-
-  // Folders that have visible items
-  const foldersWithItems = visibleFolders.filter((f: { id: string }) => {
-    const items = folderContents.get(f.id)
-    return items && items.length > 0
-  })
-
-  // Top-level items (not in any folder)
-  const topLevelItems = allDocs.filter((d: { folder_id: string | null }) => !d.folder_id)
-  const topLinks = topLevelItems.filter((d: { type: string }) => d.type === "link" || d.type === "video")
-  const topFiles = topLevelItems.filter((d: { type: string }) => d.type === "file")
-
-  const hasDocuments = allDocs.length > 0
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[hsl(224,76%,20%)] to-[hsl(220,20%,97%)]">
@@ -137,189 +114,7 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
 
       {/* Documents section — same max-width as header for alignment */}
       <main className="mx-auto max-w-3xl px-4 pb-16 pt-2">
-        {hasDocuments ? (
-          <div className="flex flex-col gap-6">
-            {/* Folder sections */}
-            {foldersWithItems.map((folder: { id: string; title: string }) => {
-              const items = folderContents.get(folder.id) || []
-              const folderLinks = items.filter((d: { type: string }) => d.type === "link" || d.type === "video")
-              const folderFiles = items.filter((d: { type: string }) => d.type === "file")
-
-              return (
-                <section key={folder.id}>
-                  <h2 className="mb-3 font-display text-sm font-bold uppercase tracking-wider text-[hsl(224,76%,30%)]">
-                    {folder.title}
-                  </h2>
-                  <div className="flex flex-col gap-1.5">
-                    {folderLinks.map((doc: { id: string; url: string; type: string; title: string; description: string | null }) => (
-                      <a
-                        key={doc.id}
-                        href={doc.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group flex items-center gap-3 rounded-lg border border-border bg-white px-3 py-2 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
-                      >
-                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${
-                          doc.type === "video"
-                            ? "bg-red-50 text-red-600"
-                            : "bg-blue-50 text-blue-600"
-                        }`}>
-                          {doc.type === "video" ? (
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          ) : (
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                            </svg>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-[hsl(222,47%,11%)]">{doc.title}</p>
-                          {doc.description && (
-                            <p className="mt-0.5 text-xs text-[hsl(222,47%,11%)]/60">{doc.description}</p>
-                          )}
-                        </div>
-                        <svg className="h-4 w-4 shrink-0 text-[hsl(222,47%,11%)]/20 transition-transform group-hover:translate-x-0.5 group-hover:text-[hsl(224,76%,30%)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
-                    ))}
-                    {folderFiles.map((doc: { id: string; url: string; file_path: string | null; type: string; title: string; description: string | null; file_name: string | null }) => {
-                      const fileUrl = doc.url || (doc.file_path
-                        ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/athlete-documents/${doc.file_path}`
-                        : "#")
-                      return (
-                        <a
-                          key={doc.id}
-                          href={fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group flex items-center gap-3 rounded-lg border border-border bg-white px-3 py-2 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
-                        >
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-600">
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold text-[hsl(222,47%,11%)]">{doc.title}</p>
-                            {doc.description && (
-                              <p className="mt-0.5 text-xs text-[hsl(222,47%,11%)]/60">{doc.description}</p>
-                            )}
-                            {doc.file_name && (
-                              <p className="mt-0.5 text-[10px] text-[hsl(222,47%,11%)]/40">{doc.file_name}</p>
-                            )}
-                          </div>
-                          <svg className="h-4 w-4 shrink-0 text-[hsl(222,47%,11%)]/20 transition-transform group-hover:translate-y-0.5 group-hover:text-[hsl(224,76%,30%)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                          </svg>
-                        </a>
-                      )
-                    })}
-                  </div>
-                </section>
-              )
-            })}
-
-            {/* Top-level Links & Videos */}
-            {topLinks.length > 0 && (
-              <section>
-                <h2 className="mb-3 font-display text-sm font-bold uppercase tracking-wider text-[hsl(224,76%,30%)]">
-                  Links & Videos
-                </h2>
-                <div className="flex flex-col gap-1.5">
-                  {topLinks.map((doc: { id: string; url: string; type: string; title: string; description: string | null }) => (
-                    <a
-                      key={doc.id}
-                      href={doc.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex items-center gap-3 rounded-lg border border-border bg-white px-3 py-2 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
-                    >
-                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${
-                        doc.type === "video"
-                          ? "bg-red-50 text-red-600"
-                          : "bg-blue-50 text-blue-600"
-                      }`}>
-                        {doc.type === "video" ? (
-                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        ) : (
-                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                          </svg>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-[hsl(222,47%,11%)]">{doc.title}</p>
-                        {doc.description && (
-                          <p className="mt-0.5 text-xs text-[hsl(222,47%,11%)]/60">{doc.description}</p>
-                        )}
-                      </div>
-                      <svg className="h-4 w-4 shrink-0 text-[hsl(222,47%,11%)]/20 transition-transform group-hover:translate-x-0.5 group-hover:text-[hsl(224,76%,30%)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                    </a>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Top-level Files */}
-            {topFiles.length > 0 && (
-              <section>
-                <h2 className="mb-3 font-display text-sm font-bold uppercase tracking-wider text-[hsl(224,76%,30%)]">
-                  Documents
-                </h2>
-                <div className="flex flex-col gap-1.5">
-                  {topFiles.map((doc: { id: string; url: string; file_path: string | null; type: string; title: string; description: string | null; file_name: string | null }) => {
-                    const fileUrl = doc.url || (doc.file_path
-                      ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/athlete-documents/${doc.file_path}`
-                      : "#")
-
-                    return (
-                      <a
-                        key={doc.id}
-                        href={fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group flex items-center gap-3 rounded-lg border border-border bg-white px-3 py-2 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
-                      >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-600">
-                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-[hsl(222,47%,11%)]">{doc.title}</p>
-                          {doc.description && (
-                            <p className="mt-0.5 text-xs text-[hsl(222,47%,11%)]/60">{doc.description}</p>
-                          )}
-                          {doc.file_name && (
-                            <p className="mt-0.5 text-[10px] text-[hsl(222,47%,11%)]/40">{doc.file_name}</p>
-                          )}
-                        </div>
-                        <svg className="h-4 w-4 shrink-0 text-[hsl(222,47%,11%)]/20 transition-transform group-hover:translate-y-0.5 group-hover:text-[hsl(224,76%,30%)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                      </a>
-                    )
-                  })}
-                </div>
-              </section>
-            )}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-border bg-white p-12 text-center shadow-sm">
-            <p className="text-sm text-[hsl(222,47%,11%)]/60">
-              No documents have been shared yet.
-            </p>
-          </div>
-        )}
+        <RecruitDocuments documents={documents || []} supabaseUrl={supabaseUrl} />
 
         {/* Footer branding */}
         <div className="mt-12 flex flex-col items-center gap-2 text-center">

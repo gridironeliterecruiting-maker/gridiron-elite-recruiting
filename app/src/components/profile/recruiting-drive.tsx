@@ -440,13 +440,20 @@ export function RecruitingDrive() {
     setDropTarget(newDropTarget)
 
     // --- Compute currentIndex from pointer delta ---
+    // For folder rows (when dragging a non-folder), use 25%/75% thresholds so the
+    // reorder zones match the 3-zone detection and the middle 50% stays as a drop target.
     let newIndex = fromIndex
     if (!newDropTarget) {
+      const isFolderRow = (i: number) =>
+        renderSnapshot[i].doc.type === "folder" && draggedDoc.type !== "folder"
       let accumulated = 0
       if (delta > 0) {
         for (let i = fromIndex + 1; i < renderSnapshot.length; i++) {
           accumulated += heights[i]
-          if (delta > accumulated - heights[i] / 2) {
+          const threshold = isFolderRow(i)
+            ? accumulated - heights[i] * 0.25  // only reorder past bottom 25%
+            : accumulated - heights[i] / 2
+          if (delta > threshold) {
             newIndex = i
           } else {
             break
@@ -455,7 +462,10 @@ export function RecruitingDrive() {
       } else {
         for (let i = fromIndex - 1; i >= 0; i--) {
           accumulated -= heights[i]
-          if (delta < accumulated + heights[i] / 2) {
+          const threshold = isFolderRow(i)
+            ? accumulated + heights[i] * 0.25  // only reorder past top 25%
+            : accumulated + heights[i] / 2
+          if (delta < threshold) {
             newIndex = i
           } else {
             break
@@ -784,7 +794,7 @@ export function RecruitingDrive() {
               className="bg-blue-600 text-white hover:bg-blue-700"
             >
               <Plus className="mr-1 h-3.5 w-3.5" />
-              +Add Folder
+              Add Folder
             </Button>
             <Button
               size="sm"
