@@ -28,6 +28,7 @@ yarn-error.log*
 
 # build-time generated env modules
 src/lib/twitter-env.generated.ts
+src/lib/_twitter-build-config.ts
 
 # vercel
 .vercel

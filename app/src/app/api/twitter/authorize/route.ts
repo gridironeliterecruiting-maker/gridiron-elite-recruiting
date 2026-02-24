@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getAppUrl } from '@/lib/app-url'
 import { generateCodeVerifier, generateCodeChallenge } from '@/lib/twitter'
-import { TWITTER_CLIENT_ID } from '@/lib/twitter-env.generated'
+import { TWITTER_CLIENT_ID } from '@/lib/_twitter-build-config'
 
 export async function GET(request: NextRequest) {
   try {
