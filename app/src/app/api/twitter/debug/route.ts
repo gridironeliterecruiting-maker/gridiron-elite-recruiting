@@ -49,6 +49,11 @@ export async function GET(request: NextRequest) {
       NODE_ENV: process.env.NODE_ENV || 'not set',
     }
 
+    // Find ALL env var keys containing "TWITTER" (case-insensitive)
+    const twitterEnvKeys = Object.keys(process.env).filter(k =>
+      k.toUpperCase().includes('TWITTER')
+    )
+
     return NextResponse.json({
       debug: true,
       appUrl,
@@ -57,6 +62,8 @@ export async function GET(request: NextRequest) {
       clientSecretStatus: clientSecret,
       envCheck,
       rawClientId: process.env.TWITTER_CLIENT_ID === undefined ? 'undefined' : process.env.TWITTER_CLIENT_ID === '' ? 'empty string' : 'has value',
+      twitterEnvKeysFound: twitterEnvKeys,
+      totalEnvVarCount: Object.keys(process.env).length,
       deployTime: new Date().toISOString(),
     }, { status: 200 })
   } catch (error: any) {
