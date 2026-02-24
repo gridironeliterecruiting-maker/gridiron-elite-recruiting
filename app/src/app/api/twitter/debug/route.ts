@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     twitterEnvKeysFound: twitterEnvKeys,
     totalEnvVarCount: Object.keys(process.env).length,
     redirectUri: `${appUrl}/api/twitter/oauth-callback`,
-    codeVersion: 'v7-next-config-env',
+    codeVersion: 'v8-no-env-block',
     deployTime: new Date().toISOString(),
   })
 }
