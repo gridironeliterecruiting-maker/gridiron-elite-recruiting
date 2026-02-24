@@ -675,7 +675,7 @@ export function RecruitingDrive() {
             <span className="text-sm font-bold uppercase tracking-wide text-foreground">
               {doc.title}
             </span>
-            <span className="ml-auto shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+            <span className="shrink-0 rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
               {childCount}
             </span>
           </button>

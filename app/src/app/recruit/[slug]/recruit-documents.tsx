@@ -169,7 +169,7 @@ export function RecruitDocuments({ documents, supabaseUrl }: RecruitDocumentsPro
                 <span className="text-sm font-bold uppercase tracking-wide text-[hsl(222,47%,11%)]">
                   {doc.title}
                 </span>
-                <span className="ml-auto shrink-0 rounded-full bg-[hsl(220,14%,96%)] px-2 py-0.5 text-[10px] font-semibold text-[hsl(222,47%,11%)]/50">
+                <span className="shrink-0 rounded-full bg-[hsl(220,14%,96%)] px-2.5 py-0.5 text-xs font-semibold text-[hsl(222,47%,11%)]/50">
                   {children.length}
                 </span>
               </button>

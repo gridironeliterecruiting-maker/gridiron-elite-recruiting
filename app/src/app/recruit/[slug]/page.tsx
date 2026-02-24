@@ -3,6 +3,8 @@ import { notFound } from "next/navigation"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { RecruitDocuments } from "./recruit-documents"
 
+export const dynamic = "force-dynamic"
+
 interface RecruitPageProps {
   params: Promise<{ slug: string }>
 }
