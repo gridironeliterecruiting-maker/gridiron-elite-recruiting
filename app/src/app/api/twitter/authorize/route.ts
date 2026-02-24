@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getAppUrl } from '@/lib/app-url'
 import { generateCodeVerifier, generateCodeChallenge } from '@/lib/twitter'
-import { TWITTER_CLIENT_ID } from '@/lib/_twitter-build-config'
+import { getTwitterClientId } from '@/lib/_twitter-build-config'
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const clientId = TWITTER_CLIENT_ID
+    const clientId = getTwitterClientId()
     const appUrl = getAppUrl(request)
     const redirectUri = `${appUrl}/api/twitter/oauth-callback`
 
