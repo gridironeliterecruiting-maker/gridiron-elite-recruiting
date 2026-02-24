@@ -1,5 +1,6 @@
 // Twitter/X API v2 utility functions for OAuth and DM sending
 import crypto from 'crypto'
+import { TWITTER_CLIENT_ID, TWITTER_CLIENT_SECRET } from './twitter-env.generated'
 
 const TWITTER_API_BASE = 'https://api.twitter.com/2'
 const TWITTER_TOKEN_URL = 'https://api.twitter.com/2/oauth2/token'
@@ -32,8 +33,8 @@ export async function exchangeCodeForTokens(
   token_type: string
   scope: string
 }> {
-  const clientId = process.env.TWITTER_CLIENT_ID!
-  const clientSecret = process.env.TWITTER_CLIENT_SECRET!
+  const clientId = TWITTER_CLIENT_ID
+  const clientSecret = TWITTER_CLIENT_SECRET
 
   const res = await fetch(TWITTER_TOKEN_URL, {
     method: 'POST',
@@ -65,8 +66,8 @@ export async function refreshTwitterToken(refreshToken: string): Promise<{
   refresh_token?: string
   expires_in: number
 }> {
-  const clientId = process.env.TWITTER_CLIENT_ID!
-  const clientSecret = process.env.TWITTER_CLIENT_SECRET!
+  const clientId = TWITTER_CLIENT_ID
+  const clientSecret = TWITTER_CLIENT_SECRET
 
   const res = await fetch(TWITTER_TOKEN_URL, {
     method: 'POST',
