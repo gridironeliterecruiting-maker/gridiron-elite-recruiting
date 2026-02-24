@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAppUrl } from '@/lib/app-url'
-import { TWITTER_CLIENT_ID, TWITTER_CLIENT_SECRET } from '@/lib/twitter-env.generated'
+import { TWITTER_CLIENT_ID, TWITTER_CLIENT_SECRET, BUILD_TIMESTAMP } from '@/lib/twitter-env.generated'
 
 // Public debug endpoint — only shows env var presence (true/false), no secret values
 export async function GET(request: NextRequest) {
@@ -19,8 +19,9 @@ export async function GET(request: NextRequest) {
     },
     generatedIdLength: TWITTER_CLIENT_ID.length,
     generatedSecretLength: TWITTER_CLIENT_SECRET.length,
+    buildTimestamp: BUILD_TIMESTAMP,
     redirectUri: `${appUrl}/api/twitter/oauth-callback`,
-    codeVersion: 'v11-generated-module',
+    codeVersion: 'v12-nextconfig-gen',
     deployTime: new Date().toISOString(),
   })
 }
