@@ -38,22 +38,26 @@ export async function GET(request: NextRequest) {
 
     const url = `https://twitter.com/i/oauth2/authorize?${params.toString()}`
 
+    // Check which env vars exist (just presence, not values)
+    const envCheck = {
+      TWITTER_CLIENT_ID: !!process.env.TWITTER_CLIENT_ID,
+      TWITTER_CLIENT_SECRET: !!process.env.TWITTER_CLIENT_SECRET,
+      NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      GOOGLE_CLIENT_ID: !!process.env.GOOGLE_CLIENT_ID,
+      VERCEL: process.env.VERCEL || 'not set',
+      NODE_ENV: process.env.NODE_ENV || 'not set',
+    }
+
     return NextResponse.json({
       debug: true,
       appUrl,
       redirectUri,
       clientId: clientId.substring(0, 8) + '...' + clientId.substring(clientId.length - 4),
       clientSecretStatus: clientSecret,
-      scopes: 'dm.read dm.write tweet.read users.read offline.access',
-      codeChallenge: codeChallenge.substring(0, 10) + '...',
-      stateEncoded: Buffer.from(state).toString('base64url').substring(0, 30) + '...',
-      fullOAuthUrl: url,
-      instructions: {
-        step1: 'Verify the redirectUri above EXACTLY matches what you entered in X Developer Portal → OAuth 2.0 → Callback URL',
-        step2: 'Verify clientId matches your X app Client ID',
-        step3: 'In X Developer Portal, check if your app type is "Confidential Client" (required for offline.access)',
-        step4: 'If app type is "Public Client", offline.access scope will cause "Something went wrong"',
-      }
+      envCheck,
+      rawClientId: process.env.TWITTER_CLIENT_ID === undefined ? 'undefined' : process.env.TWITTER_CLIENT_ID === '' ? 'empty string' : 'has value',
+      deployTime: new Date().toISOString(),
     }, { status: 200 })
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
