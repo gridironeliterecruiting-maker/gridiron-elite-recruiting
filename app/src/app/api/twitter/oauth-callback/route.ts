@@ -11,6 +11,12 @@ export async function GET(request: NextRequest) {
   const stateParam = searchParams.get('state')
   const finalUrl = getAppUrl(request)
 
+  console.log('[Twitter Callback] ===== START =====')
+  console.log('[Twitter Callback] finalUrl:', finalUrl)
+  console.log('[Twitter Callback] code present:', !!code)
+  console.log('[Twitter Callback] error param:', error)
+  console.log('[Twitter Callback] state present:', !!stateParam)
+
   // Parse state (try base64url first, then standard base64)
   let campaignId: string | null = null
   let returnTo: string | null = null
@@ -25,9 +31,10 @@ export async function GET(request: NextRequest) {
       const state = JSON.parse(stateJson)
       campaignId = state.campaignId
       returnTo = state.returnTo
+      console.log('[Twitter Callback] Parsed state - returnTo:', returnTo, 'campaignId:', campaignId)
     }
   } catch (e) {
-    console.error('Failed to parse Twitter OAuth state:', e)
+    console.error('[Twitter Callback] Failed to parse state:', e)
   }
 
   const redirectBase = returnTo
@@ -37,37 +44,50 @@ export async function GET(request: NextRequest) {
       : `${finalUrl}/outreach`
 
   if (error) {
-    console.error('Twitter OAuth error:', error)
+    console.error('[Twitter Callback] Twitter returned error:', error)
     return NextResponse.redirect(`${redirectBase}${redirectBase.includes('?') ? '&' : '?'}twitter=error&reason=${encodeURIComponent(error)}`)
   }
 
   if (!code) {
+    console.error('[Twitter Callback] No code in callback URL')
     return NextResponse.redirect(`${redirectBase}${redirectBase.includes('?') ? '&' : '?'}twitter=error&reason=no_code`)
   }
 
   // Read code_verifier from cookie
   const codeVerifier = request.cookies.get('twitter_code_verifier')?.value
+  console.log('[Twitter Callback] code_verifier cookie present:', !!codeVerifier)
   if (!codeVerifier) {
-    console.error('Missing PKCE code_verifier cookie')
+    console.error('[Twitter Callback] Missing PKCE code_verifier cookie')
+    console.log('[Twitter Callback] Available cookies:', request.cookies.getAll().map(c => c.name).join(', '))
     return NextResponse.redirect(`${redirectBase}${redirectBase.includes('?') ? '&' : '?'}twitter=error&reason=missing_verifier`)
   }
 
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    console.log('[Twitter Callback] Auth result - user:', user?.id || 'null', 'error:', authError?.message || 'none')
 
     if (!user) {
+      console.error('[Twitter Callback] No authenticated user')
       return NextResponse.redirect(`${finalUrl}/login?redirect=/outreach`)
     }
 
     const redirectUri = `${finalUrl}/api/twitter/oauth-callback`
+    console.log('[Twitter Callback] Token exchange redirect_uri:', redirectUri)
+    console.log('[Twitter Callback] TWITTER_CLIENT_ID present:', !!process.env.TWITTER_CLIENT_ID)
+    console.log('[Twitter Callback] TWITTER_CLIENT_SECRET present:', !!process.env.TWITTER_CLIENT_SECRET)
 
     // Exchange code for tokens
     const tokens = await exchangeCodeForTokens(code, codeVerifier, redirectUri)
     const { access_token, refresh_token, expires_in } = tokens
 
+    console.log('[Twitter Callback] Token exchange success - access_token present:', !!access_token, 'refresh_token present:', !!refresh_token, 'expires_in:', expires_in)
+
     // Get user's Twitter profile
     const twitterUser = await getTwitterMe(access_token)
+    console.log('[Twitter Callback] Twitter user:', twitterUser.id, '@' + twitterUser.username)
+
     const tokenExpiry = new Date(Date.now() + (expires_in || 7200) * 1000).toISOString()
 
     // Upsert tokens using admin client (bypasses RLS)
@@ -89,11 +109,11 @@ export async function GET(request: NextRequest) {
       )
 
     if (upsertError) {
-      console.error('Failed to store Twitter tokens:', upsertError)
+      console.error('[Twitter Callback] Upsert failed:', JSON.stringify(upsertError))
       return NextResponse.redirect(`${redirectBase}${redirectBase.includes('?') ? '&' : '?'}twitter=error&reason=store_failed`)
     }
 
-    console.log(`Twitter connected for user ${user.id} (@${twitterUser.username})`)
+    console.log(`[Twitter Callback] ===== SUCCESS ===== user=${user.id} handle=@${twitterUser.username}`)
 
     const successUrl = `${redirectBase}${redirectBase.includes('?') ? '&' : '?'}twitter=connected`
     const response = NextResponse.redirect(successUrl)
@@ -109,7 +129,11 @@ export async function GET(request: NextRequest) {
 
     return response
   } catch (err) {
-    console.error('Twitter OAuth callback error:', err)
+    const message = err instanceof Error ? err.message : String(err)
+    const stack = err instanceof Error ? err.stack : ''
+    console.error('[Twitter Callback] ===== UNEXPECTED ERROR =====')
+    console.error('[Twitter Callback] Message:', message)
+    console.error('[Twitter Callback] Stack:', stack)
     return NextResponse.redirect(`${redirectBase}${redirectBase.includes('?') ? '&' : '?'}twitter=error&reason=unexpected`)
   }
 }

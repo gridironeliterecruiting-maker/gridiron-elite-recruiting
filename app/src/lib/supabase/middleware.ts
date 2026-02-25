@@ -38,21 +38,19 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // IMPORTANT: Skip getUser() for /auth/callback to preserve PKCE code_verifier cookie.
+  // IMPORTANT: Skip getUser() for OAuth callbacks to preserve PKCE code_verifier cookies.
   // When stale session cookies exist, getUser() → _getSession() → refresh fails → catch block
-  // deletes the code_verifier cookie, causing exchangeCodeForSession to fail.
-  // This is the root cause of the "first login attempt fails, second works" bug.
-  const isAuthCallback = request.nextUrl.pathname.startsWith('/auth/callback')
-  console.log(`[Middleware] Path: ${request.nextUrl.pathname}, isAuthCallback: ${isAuthCallback}`)
-  
+  // deletes cookies, causing token exchange to fail.
+  const isOAuthCallback = request.nextUrl.pathname.startsWith('/auth/callback')
+    || request.nextUrl.pathname.startsWith('/api/twitter/oauth-callback')
+    || request.nextUrl.pathname.startsWith('/api/gmail/oauth-callback')
+
   let user = null
-  if (!isAuthCallback) {
+  if (!isOAuthCallback) {
     const { data: { user: sessionUser }, error: userError } = await supabase.auth.getUser()
     user = sessionUser
     if (userError) {
-      console.error(`[Middleware] Supabase getUser error: ${userError.message}`)
-    } else {
-      console.log(`[Middleware] User: ${user ? user.id : 'null'}`)
+      console.error(`[Middleware] getUser error on ${request.nextUrl.pathname}: ${userError.message}`)
     }
   }
 
@@ -70,13 +68,11 @@ export async function updateSession(request: NextRequest) {
 
   // Public routes - no auth required
   const publicRoutes = ['/login', '/signup', '/auth/callback', '/api/track', '/api/unsubscribe', '/api/email/process-queue', '/api/email/check-replies', '/api/gmail/oauth-callback', '/api/gmail/authorize', '/api/twitter/oauth-callback', '/recruit']
-  const isPublicRoute = publicRoutes.some(route => 
+  const isPublicRoute = publicRoutes.some(route =>
     request.nextUrl.pathname.startsWith(route)
   )
-  console.log(`[Middleware] isPublicRoute: ${isPublicRoute}`)
 
   if (!user && !isPublicRoute) {
-    console.log(`[Middleware] No user and not public route. Redirecting to /login.`)
     return redirectWithCookies('/login')
   }
 
