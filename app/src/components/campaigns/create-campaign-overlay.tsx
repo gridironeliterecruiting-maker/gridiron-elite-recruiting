@@ -57,6 +57,9 @@ interface CreateCampaignOverlayProps {
     coachId: string | null
     programId: string | null
   } | null
+  followupData?: {
+    selectedCoaches: SelectedCoach[]
+  } | null
   initialCampaignType?: CampaignType
   onClose: () => void
   onCampaignLaunched?: (campaignData: {
@@ -66,13 +69,13 @@ interface CreateCampaignOverlayProps {
   }) => void
 }
 
-export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gmailTier, hasGmailToken, gmailTokenExpired, quickEmailData, quickDmData, initialCampaignType = 'email', onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
+export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gmailTier, hasGmailToken, gmailTokenExpired, quickEmailData, quickDmData, followupData, initialCampaignType = 'email', onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
   const router = useRouter()
   const campaignType = initialCampaignType
   // Quick email/DM skips goal and target, goes straight to build/compose (step 3)
   const [currentStep, setCurrentStep] = useState(quickEmailData || quickDmData ? 3 : 1)
-  const [maxStepReached, setMaxStepReached] = useState(quickEmailData || quickDmData ? 3 : 1)
-  const [draft, setDraft] = useState<CampaignDraft>({ goal: null, selectedCoaches: [], templates: [] })
+  const [maxStepReached, setMaxStepReached] = useState(quickEmailData || quickDmData ? 3 : followupData ? 3 : 1)
+  const [draft, setDraft] = useState<CampaignDraft>({ goal: null, selectedCoaches: followupData?.selectedCoaches || [], templates: [] })
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [showSaveDraftDialog, setShowSaveDraftDialog] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -229,7 +232,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
   const handleGoalSelect = (goal: CampaignGoal) => {
     setDraft((prev) => ({ ...prev, goal }))
     setHasUnsavedChanges(true)
-    goToStep(2)
+    goToStep(followupData ? 3 : 2)
   }
 
   const handleCreateDmCampaign = async (name: string, messageBody: string) => {

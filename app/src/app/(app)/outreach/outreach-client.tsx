@@ -31,6 +31,7 @@ import { CampaignLaunchedOverlay } from "@/components/campaigns/campaign-launche
 import { CampaignDetailsOverlay } from "@/components/campaigns/campaign-details-overlay"
 import { DmCampaignOverlay } from "@/components/campaigns/dm-campaign-overlay"
 import { CampaignCard } from "@/components/campaigns/campaign-card"
+import type { SelectedCoach } from "@/components/campaigns/types"
 
 interface EmailTemplate {
   id: string
@@ -156,6 +157,7 @@ export function OutreachClient({
   } | null>(null)
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
   const [selectedDmCampaignId, setSelectedDmCampaignId] = useState<string | null>(null)
+  const [followupData, setFollowupData] = useState<{ selectedCoaches: SelectedCoach[] } | null>(null)
   
   // Check if we just launched successfully
   useEffect(() => {
@@ -354,53 +356,18 @@ export function OutreachClient({
           gmailTokenExpired={gmailTokenExpired}
           quickEmailData={quickEmailData}
           quickDmData={quickDmData}
+          followupData={followupData}
           initialCampaignType={showCreateCampaign}
           onClose={() => {
             setShowCreateCampaign(null)
             setQuickEmailData(null)
             setQuickDmData(null)
+            setFollowupData(null)
           }}
           onCampaignLaunched={(campaignData) => {
             setLaunchedCampaign(campaignData)
           }}
         />
-      )}
-
-      {/* Twitter/X connection status */}
-      {hasTwitterToken && twitterHandle && (
-        <Card className="border-primary/20 bg-primary/[0.03]">
-          <CardContent className="flex items-center gap-3 p-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <MessageCircle className="h-4 w-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-foreground">X Connected — @{twitterHandle}</p>
-              <p className="text-[11px] text-muted-foreground">DMs can be sent automatically via the X API</p>
-            </div>
-            <Badge className="border-0 bg-green-100 text-green-700 text-[10px]">
-              <CheckCircle2 className="mr-1 h-3 w-3" />
-              Connected
-            </Badge>
-          </CardContent>
-        </Card>
-      )}
-
-      {twitterStatus === 'connected' && !hasTwitterToken && (
-        <Card className="border-green-200 bg-green-50/50">
-          <CardContent className="flex items-center gap-3 p-3">
-            <CheckCircle2 className="h-5 w-5 text-green-500" />
-            <p className="text-xs font-semibold text-green-700">X account connected successfully! Refresh the page to see the status.</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {twitterStatus === 'error' && (
-        <Card className="border-red-200 bg-red-50/50">
-          <CardContent className="flex items-center gap-3 p-3">
-            <AlertCircle className="h-5 w-5 text-red-500" />
-            <p className="text-xs font-semibold text-red-700">Failed to connect X account. Please try again.</p>
-          </CardContent>
-        </Card>
       )}
 
       {/* Quick Stats */}
@@ -626,6 +593,11 @@ export function OutreachClient({
           onClose={() => setSelectedCampaignId(null)}
           onStatusChange={() => {
             window.location.reload()
+          }}
+          onFollowup={(data) => {
+            setSelectedCampaignId(null)
+            setFollowupData(data)
+            setShowCreateCampaign('email')
           }}
         />
       )}

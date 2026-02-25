@@ -76,15 +76,32 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { status } = await request.json()
+    const body = await request.json()
+    const { status, name } = body
 
-    if (!['paused', 'cancelled', 'active'].includes(status)) {
-      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    const update: Record<string, any> = { updated_at: new Date().toISOString() }
+
+    if (name !== undefined) {
+      if (typeof name !== 'string' || name.trim().length === 0) {
+        return NextResponse.json({ error: 'Invalid name' }, { status: 400 })
+      }
+      update.name = name.trim()
+    }
+
+    if (status !== undefined) {
+      if (!['paused', 'cancelled', 'active'].includes(status)) {
+        return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+      }
+      update.status = status
+    }
+
+    if (Object.keys(update).length <= 1) {
+      return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
     }
 
     const { error } = await supabase
       .from('campaigns')
-      .update({ status, updated_at: new Date().toISOString() })
+      .update(update)
       .eq('id', id)
       .eq('user_id', user.id)
 

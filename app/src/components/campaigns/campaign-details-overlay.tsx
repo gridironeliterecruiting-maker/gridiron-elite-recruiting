@@ -15,17 +15,22 @@ import {
   MousePointerClick,
   ExternalLink,
   Send,
+  Pencil,
+  ArrowUpDown,
+  Plus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
 import { CoachDetail } from "@/components/programs/coach-detail"
+import type { SelectedCoach } from "./types"
 
 interface CampaignDetailsProps {
   campaignId: string
   onClose: () => void
   onStatusChange?: () => void
+  onFollowup?: (data: { selectedCoaches: SelectedCoach[] }) => void
 }
 
 interface CoachRecipient {
@@ -179,7 +184,7 @@ async function fetchCoachAndProgram(
   return { coach: coachData, program }
 }
 
-export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: CampaignDetailsProps) {
+export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, onFollowup }: CampaignDetailsProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [campaign, setCampaign] = useState<CampaignDetails | null>(null)
   const [loading, setLoading] = useState(true)
@@ -190,6 +195,11 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
     program: any
   } | null>(null)
   const [loadingCoach, setLoadingCoach] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState(false)
+  const [nameValue, setNameValue] = useState('')
+  const [savingName, setSavingName] = useState(false)
+  const [sortField, setSortField] = useState<'opened' | 'clicked' | 'replied' | null>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     document.body.style.overflow = "hidden"
@@ -198,6 +208,9 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
 
   useEffect(() => { fetchCampaignDetails() }, [campaignId])
   useEffect(() => { containerRef.current?.scrollTo(0, 0) }, [campaignId])
+  useEffect(() => { if (campaign) setNameValue(campaign.name) }, [campaign])
+  useEffect(() => { if (editingName) nameInputRef.current?.focus() }, [editingName])
+  useEffect(() => { setSortField(null) }, [expandedProgram])
 
   const fetchCampaignDetails = async () => {
     try {
@@ -251,6 +264,62 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
     setExpandedProgram(prev => prev === programName ? null : programName)
   }
 
+  const handleSaveName = async () => {
+    if (!campaign || !nameValue.trim() || nameValue.trim() === campaign.name) {
+      setEditingName(false)
+      if (campaign) setNameValue(campaign.name)
+      return
+    }
+    setSavingName(true)
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: nameValue.trim() }),
+      })
+      if (res.ok) {
+        setCampaign(prev => prev ? { ...prev, name: nameValue.trim() } : null)
+        onStatusChange?.()
+      }
+    } catch (err) {
+      console.error('Failed to update campaign name:', err)
+      setNameValue(campaign.name)
+    } finally {
+      setSavingName(false)
+      setEditingName(false)
+    }
+  }
+
+  const handleFollowup = () => {
+    if (!campaign || !onFollowup) return
+    const coaches: SelectedCoach[] = []
+    for (const program of campaign.programsWithRecipients) {
+      for (const coach of program.coaches) {
+        if (coach.coach_id) {
+          coaches.push({
+            coachId: coach.coach_id,
+            programId: program.program_id || '',
+            programName: program.program_name,
+            coachName: coach.coach_name,
+            title: 'Coach',
+            email: coach.coach_email,
+          })
+        }
+      }
+    }
+    onFollowup({ selectedCoaches: coaches })
+  }
+
+  const sortCoaches = (coaches: CoachRecipient[]) => {
+    if (!sortField) return coaches
+    const key = `${sortField}_at` as keyof CoachRecipient
+    return [...coaches].sort((a, b) => {
+      const aHas = a[key] ? 1 : 0
+      const bHas = b[key] ? 1 : 0
+      return bHas - aHas
+    })
+  }
+
   const getProgramStats = (coaches: CoachRecipient[]) => {
     const total = coaches.length
     const opened = coaches.filter(c => c.opened_at).length
@@ -294,9 +363,38 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h1 className="font-display text-lg font-bold uppercase tracking-tight text-foreground sm:text-xl">
-                        {campaign.name}
-                      </h1>
+                      {editingName ? (
+                        <input
+                          ref={nameInputRef}
+                          type="text"
+                          value={nameValue}
+                          onChange={(e) => setNameValue(e.target.value)}
+                          onBlur={handleSaveName}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveName()
+                            if (e.key === 'Escape') {
+                              setNameValue(campaign.name)
+                              setEditingName(false)
+                            }
+                          }}
+                          className="font-display text-lg font-bold uppercase tracking-tight text-foreground bg-transparent border-b-2 border-primary outline-none sm:text-xl"
+                          disabled={savingName}
+                        />
+                      ) : (
+                        <>
+                          <h1 className="font-display text-lg font-bold uppercase tracking-tight text-foreground sm:text-xl">
+                            {campaign.name}
+                          </h1>
+                          <button
+                            type="button"
+                            onClick={() => setEditingName(true)}
+                            className="shrink-0 text-muted-foreground/50 hover:text-primary transition-colors"
+                            aria-label="Edit campaign name"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        </>
+                      )}
                       <Badge className={`${statusColors[campaign.status] || statusColors.draft} shrink-0 border-0 text-[9px] font-bold uppercase tracking-wider`}>
                         {campaign.status}
                       </Badge>
@@ -312,6 +410,18 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
                     </div>
                   </div>
                 </div>
+
+                {onFollowup && (
+                  <Button
+                    onClick={handleFollowup}
+                    size="sm"
+                    className="shrink-0 bg-accent text-accent-foreground hover:bg-accent/90"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Send Followup Email</span>
+                    <span className="sm:hidden">Followup</span>
+                  </Button>
+                )}
 
                 {(campaign.status === 'active' || campaign.status === 'paused') && (
                   <Button
@@ -433,11 +543,20 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange }: 
                               <Card className="mt-2 overflow-hidden">
                                 <div className="grid grid-cols-[1fr_72px_72px_72px] items-center border-b border-border bg-secondary/50 px-4 py-2 sm:grid-cols-[1fr_88px_88px_88px]">
                                   <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Coach</span>
-                                  <span className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Opened</span>
-                                  <span className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Clicked</span>
-                                  <span className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Replied</span>
+                                  <button type="button" onClick={() => setSortField(prev => prev === 'opened' ? null : 'opened')} className="flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
+                                    Opened
+                                    <ArrowUpDown className={`h-3 w-3 ${sortField === 'opened' ? 'text-primary' : 'text-muted-foreground/50'}`} />
+                                  </button>
+                                  <button type="button" onClick={() => setSortField(prev => prev === 'clicked' ? null : 'clicked')} className="flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
+                                    Clicked
+                                    <ArrowUpDown className={`h-3 w-3 ${sortField === 'clicked' ? 'text-primary' : 'text-muted-foreground/50'}`} />
+                                  </button>
+                                  <button type="button" onClick={() => setSortField(prev => prev === 'replied' ? null : 'replied')} className="flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
+                                    Replied
+                                    <ArrowUpDown className={`h-3 w-3 ${sortField === 'replied' ? 'text-primary' : 'text-muted-foreground/50'}`} />
+                                  </button>
                                 </div>
-                                {program.coaches.map((coach, i) => {
+                                {sortCoaches(program.coaches).map((coach, i) => {
                                   const key = coach.coach_id || coach.coach_name
                                   const isLoading = loadingCoach === key
                                   return (
