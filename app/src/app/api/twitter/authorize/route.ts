@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const clientId = process.env.TWITTER_CLIENT_ID || ''
+    const clientId = (process.env.TWITTER_CLIENT_ID || '').trim()
     const appUrl = getAppUrl(request)
     const redirectUri = `${appUrl}/api/twitter/oauth-callback`
 

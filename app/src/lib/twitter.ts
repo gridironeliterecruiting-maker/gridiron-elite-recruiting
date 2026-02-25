@@ -4,6 +4,14 @@ import crypto from 'crypto'
 const TWITTER_API_BASE = 'https://api.twitter.com/2'
 const TWITTER_TOKEN_URL = 'https://api.twitter.com/2/oauth2/token'
 
+// Trim env vars — Vercel can store trailing newlines from copy-paste
+function getTwitterCredentials() {
+  return {
+    clientId: (process.env.TWITTER_CLIENT_ID || '').trim(),
+    clientSecret: (process.env.TWITTER_CLIENT_SECRET || '').trim(),
+  }
+}
+
 /**
  * Generate a PKCE code_verifier (43-128 chars, base64url)
  */
@@ -32,8 +40,7 @@ export async function exchangeCodeForTokens(
   token_type: string
   scope: string
 }> {
-  const clientId = process.env.TWITTER_CLIENT_ID || ''
-  const clientSecret = process.env.TWITTER_CLIENT_SECRET || ''
+  const { clientId, clientSecret } = getTwitterCredentials()
 
   const res = await fetch(TWITTER_TOKEN_URL, {
     method: 'POST',
@@ -67,8 +74,7 @@ export async function refreshTwitterToken(refreshToken: string): Promise<{
   refresh_token?: string
   expires_in: number
 }> {
-  const clientId = process.env.TWITTER_CLIENT_ID || ''
-  const clientSecret = process.env.TWITTER_CLIENT_SECRET || ''
+  const { clientId, clientSecret } = getTwitterCredentials()
 
   const res = await fetch(TWITTER_TOKEN_URL, {
     method: 'POST',
