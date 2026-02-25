@@ -256,61 +256,17 @@ export function addUnsubscribeFooter(
 }
 
 /**
- * Calculate send schedule based on recipient count and account tier
- * Returns an array of Date objects representing when each email should be sent
+ * Calculate send schedule based on recipient count.
+ * All emails send at the user's chosen time. No artificial spacing.
+ * The process-queue sends them as fast as the Gmail API allows.
  */
 export function calculateSendSchedule(
   recipientCount: number,
   accountTier: string,
   startDate?: Date
 ): Date[] {
-  const start = startDate || new Date()
-  const limits = TIER_LIMITS[accountTier] || TIER_LIMITS.new
-  const { daily, hourly } = limits
-
-  const schedule: Date[] = []
-  let currentDate = new Date(start)
-  let sentToday = 0
-  let sentThisHour = 0
-  let currentHour = currentDate.getHours()
-
-  for (let i = 0; i < recipientCount; i++) {
-    // Check hourly limit
-    if (sentThisHour >= hourly) {
-      // Move to next hour
-      currentDate = new Date(currentDate)
-      currentDate.setHours(currentDate.getHours() + 1, 0, 0, 0)
-      sentThisHour = 0
-
-      // Check if we moved to next day
-      if (currentDate.getHours() < currentHour || currentDate.getHours() >= 22) {
-        currentDate.setDate(currentDate.getDate() + 1)
-        currentDate.setHours(9, 0, 0, 0) // Start at 9 AM next day
-        sentToday = 0
-      }
-      currentHour = currentDate.getHours()
-    }
-
-    // Check daily limit
-    if (sentToday >= daily) {
-      currentDate = new Date(currentDate)
-      currentDate.setDate(currentDate.getDate() + 1)
-      currentDate.setHours(9, 0, 0, 0)
-      sentToday = 0
-      sentThisHour = 0
-      currentHour = 9
-    }
-
-    // Add some randomness (1-5 minute gaps)
-    const jitter = Math.floor(Math.random() * 4 + 1) * 60 * 1000
-    const sendTime = new Date(currentDate.getTime() + jitter * (sentThisHour + 1))
-
-    schedule.push(sendTime)
-    sentToday++
-    sentThisHour++
-  }
-
-  return schedule
+  const sendAt = startDate || new Date()
+  return Array(recipientCount).fill(sendAt)
 }
 
 /**
