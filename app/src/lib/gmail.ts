@@ -4,14 +4,12 @@ import { getAppUrl } from './app-url'
 const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1'
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 
-// Account tier limits (emails per day)
-// Gmail hard limit: 500/day for regular accounts, 2000/day for Workspace.
-// These are conservative buffers to avoid spam flags on personalized outreach.
+// Account tier limits — 500/day (Gmail hard limit), no hourly cap
 const TIER_LIMITS: Record<string, { daily: number; hourly: number; description: string }> = {
-  new: { daily: 100, hourly: 30, description: 'New account (0-14 days)' },
-  building: { daily: 200, hourly: 50, description: 'Building reputation (14-30 days)' },
-  established: { daily: 350, hourly: 75, description: 'Established (30-90 days)' },
-  veteran: { daily: 450, hourly: 100, description: 'Veteran (90+ days)' },
+  new: { daily: 500, hourly: 500, description: 'Standard' },
+  building: { daily: 500, hourly: 500, description: 'Standard' },
+  established: { daily: 500, hourly: 500, description: 'Standard' },
+  veteran: { daily: 500, hourly: 500, description: 'Standard' },
 }
 
 /**
