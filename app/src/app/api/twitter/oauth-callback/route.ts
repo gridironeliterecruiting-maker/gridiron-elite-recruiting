@@ -130,10 +130,13 @@ export async function GET(request: NextRequest) {
     return response
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    const stack = err instanceof Error ? err.stack : ''
     console.error('[Twitter Callback] ===== UNEXPECTED ERROR =====')
     console.error('[Twitter Callback] Message:', message)
-    console.error('[Twitter Callback] Stack:', stack)
-    return NextResponse.redirect(`${redirectBase}${redirectBase.includes('?') ? '&' : '?'}twitter=error&reason=unexpected`)
+    if (err instanceof Error && err.stack) {
+      console.error('[Twitter Callback] Stack:', err.stack)
+    }
+    // Include a short error hint in the URL for debugging
+    const shortReason = encodeURIComponent(message.slice(0, 200))
+    return NextResponse.redirect(`${redirectBase}${redirectBase.includes('?') ? '&' : '?'}twitter=error&reason=${shortReason}`)
   }
 }

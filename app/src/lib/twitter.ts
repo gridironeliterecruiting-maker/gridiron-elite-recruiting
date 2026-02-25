@@ -35,15 +35,22 @@ export async function exchangeCodeForTokens(
   const clientId = process.env.TWITTER_CLIENT_ID || ''
   const clientSecret = process.env.TWITTER_CLIENT_SECRET || ''
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  }
+
+  // Confidential clients use Basic auth; public clients omit it
+  if (clientSecret) {
+    headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
+  }
+
   const res = await fetch(TWITTER_TOKEN_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
-    },
+    headers,
     body: new URLSearchParams({
       code,
       grant_type: 'authorization_code',
+      client_id: clientId,
       redirect_uri: redirectUri,
       code_verifier: codeVerifier,
     }),
@@ -51,7 +58,8 @@ export async function exchangeCodeForTokens(
 
   if (!res.ok) {
     const error = await res.text()
-    throw new Error(`Twitter token exchange failed: ${error}`)
+    console.error('[Twitter] Token exchange failed:', res.status, error)
+    throw new Error(`Twitter token exchange failed (${res.status}): ${error}`)
   }
 
   return res.json()
@@ -68,21 +76,28 @@ export async function refreshTwitterToken(refreshToken: string): Promise<{
   const clientId = process.env.TWITTER_CLIENT_ID || ''
   const clientSecret = process.env.TWITTER_CLIENT_SECRET || ''
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  }
+
+  if (clientSecret) {
+    headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
+  }
+
   const res = await fetch(TWITTER_TOKEN_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
-    },
+    headers,
     body: new URLSearchParams({
       grant_type: 'refresh_token',
+      client_id: clientId,
       refresh_token: refreshToken,
     }),
   })
 
   if (!res.ok) {
     const error = await res.text()
-    throw new Error(`Twitter token refresh failed: ${error}`)
+    console.error('[Twitter] Token refresh failed:', res.status, error)
+    throw new Error(`Twitter token refresh failed (${res.status}): ${error}`)
   }
 
   return res.json()
