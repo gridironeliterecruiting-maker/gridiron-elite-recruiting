@@ -35,18 +35,12 @@ export async function exchangeCodeForTokens(
   const clientId = process.env.TWITTER_CLIENT_ID || ''
   const clientSecret = process.env.TWITTER_CLIENT_SECRET || ''
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/x-www-form-urlencoded',
-  }
-
-  // Confidential clients use Basic auth; public clients omit it
-  if (clientSecret) {
-    headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
-  }
-
   const res = await fetch(TWITTER_TOKEN_URL, {
     method: 'POST',
-    headers,
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
+    },
     body: new URLSearchParams({
       code,
       grant_type: 'authorization_code',
@@ -76,17 +70,12 @@ export async function refreshTwitterToken(refreshToken: string): Promise<{
   const clientId = process.env.TWITTER_CLIENT_ID || ''
   const clientSecret = process.env.TWITTER_CLIENT_SECRET || ''
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/x-www-form-urlencoded',
-  }
-
-  if (clientSecret) {
-    headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
-  }
-
   const res = await fetch(TWITTER_TOKEN_URL, {
     method: 'POST',
-    headers,
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
+    },
     body: new URLSearchParams({
       grant_type: 'refresh_token',
       client_id: clientId,
