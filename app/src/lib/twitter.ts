@@ -27,7 +27,14 @@ export function generateCodeChallenge(verifier: string): string {
 }
 
 /**
- * Exchange an authorization code for tokens
+ * Exchange an authorization code for tokens.
+ *
+ * Per Twitter/X official docs for confidential clients:
+ * - Authorization: Basic <base64(client_id:client_secret)> header REQUIRED
+ * - Body contains ONLY: code, grant_type, redirect_uri, code_verifier
+ * - Do NOT include client_id or client_secret in the body
+ *
+ * @see https://developer.x.com/en/docs/authentication/oauth-2-0/user-access-token
  */
 export async function exchangeCodeForTokens(
   code: string,
@@ -42,47 +49,39 @@ export async function exchangeCodeForTokens(
 }> {
   const { clientId, clientSecret } = getTwitterCredentials()
 
-  // Build body params — always include client_id, add client_secret for body-based auth
-  const bodyParams: Record<string, string> = {
+  console.log('[Twitter] Token exchange starting')
+  console.log('[Twitter] clientId length:', clientId.length, 'first 8:', clientId.substring(0, 8))
+  console.log('[Twitter] clientSecret length:', clientSecret.length, 'first 4:', clientSecret.substring(0, 4))
+  console.log('[Twitter] redirectUri:', redirectUri)
+  console.log('[Twitter] code length:', code.length)
+  console.log('[Twitter] codeVerifier length:', codeVerifier.length)
+
+  // Confidential client: Basic auth header with base64(client_id:client_secret)
+  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+  console.log('[Twitter] Basic auth header length:', basicAuth.length, 'first 20:', basicAuth.substring(0, 20))
+
+  // Body params per Twitter docs: ONLY code, grant_type, redirect_uri, code_verifier
+  const body = new URLSearchParams({
     code,
     grant_type: 'authorization_code',
-    client_id: clientId,
     redirect_uri: redirectUri,
     code_verifier: codeVerifier,
-  }
-  if (clientSecret) {
-    bodyParams.client_secret = clientSecret
-  }
-
-  // Try with Basic auth header first
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/x-www-form-urlencoded',
-  }
-  if (clientSecret) {
-    headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
-  }
-
-  console.log('[Twitter] Token exchange - clientId length:', clientId.length, 'clientSecret length:', clientSecret.length)
-
-  let res = await fetch(TWITTER_TOKEN_URL, {
-    method: 'POST',
-    headers,
-    body: new URLSearchParams(bodyParams),
   })
 
-  // If Basic auth fails, retry without the header (body-only auth)
-  if (res.status === 401 && clientSecret) {
-    console.log('[Twitter] Basic auth rejected, retrying with body-only auth')
-    res = await fetch(TWITTER_TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(bodyParams),
-    })
-  }
+  const res = await fetch(TWITTER_TOKEN_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${basicAuth}`,
+    },
+    body,
+  })
 
   if (!res.ok) {
     const error = await res.text()
     console.error('[Twitter] Token exchange failed:', res.status, error)
+    console.error('[Twitter] Request URL:', TWITTER_TOKEN_URL)
+    console.error('[Twitter] Auth header present: true, length:', basicAuth.length)
     throw new Error(`Twitter token exchange failed (${res.status}): ${error}`)
   }
 
@@ -90,7 +89,8 @@ export async function exchangeCodeForTokens(
 }
 
 /**
- * Refresh an expired Twitter access token
+ * Refresh an expired Twitter access token.
+ * Confidential client: Basic auth header, body has grant_type + refresh_token only.
  */
 export async function refreshTwitterToken(refreshToken: string): Promise<{
   access_token: string
@@ -99,35 +99,19 @@ export async function refreshTwitterToken(refreshToken: string): Promise<{
 }> {
   const { clientId, clientSecret } = getTwitterCredentials()
 
-  const bodyParams: Record<string, string> = {
-    grant_type: 'refresh_token',
-    client_id: clientId,
-    refresh_token: refreshToken,
-  }
-  if (clientSecret) {
-    bodyParams.client_secret = clientSecret
-  }
+  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/x-www-form-urlencoded',
-  }
-  if (clientSecret) {
-    headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
-  }
-
-  let res = await fetch(TWITTER_TOKEN_URL, {
+  const res = await fetch(TWITTER_TOKEN_URL, {
     method: 'POST',
-    headers,
-    body: new URLSearchParams(bodyParams),
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${basicAuth}`,
+    },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    }),
   })
-
-  if (res.status === 401 && clientSecret) {
-    res = await fetch(TWITTER_TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(bodyParams),
-    })
-  }
 
   if (!res.ok) {
     const error = await res.text()
