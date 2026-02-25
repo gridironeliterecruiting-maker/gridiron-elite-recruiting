@@ -1,8 +1,10 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { HubClient } from "./hub-client"
 
 export default async function HubPage() {
   const supabase = await createClient()
+  const admin = createAdminClient()
 
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -32,7 +34,7 @@ export default async function HubPage() {
           .eq("user_id", user.id)
       : Promise.resolve({ data: null }),
     user
-      ? supabase
+      ? admin
           .from("twitter_tokens")
           .select("id, twitter_handle, connected_at")
           .eq("user_id", user.id)

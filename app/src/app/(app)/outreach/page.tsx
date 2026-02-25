@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { OutreachClient } from "./outreach-client"
 
 export default async function OutreachPage({
@@ -7,6 +8,7 @@ export default async function OutreachPage({
   searchParams: { campaign?: string; gmail?: string; twitter?: string; resume?: string }
 }) {
   const supabase = await createClient()
+  const admin = createAdminClient()
 
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -19,8 +21,8 @@ export default async function OutreachPage({
   ] = await Promise.all([
     supabase.from("email_templates").select("*").order("name"),
     supabase.from("programs").select("id, school_name, division, conference, logo_url").order("school_name"),
-    supabase.from("gmail_tokens").select("email, connected_at, account_tier, token_expiry").eq("user_id", user!.id).single(),
-    supabase.from("twitter_tokens").select("twitter_handle, connected_at, token_expiry").eq("user_id", user!.id).single(),
+    admin.from("gmail_tokens").select("email, connected_at, account_tier, token_expiry").eq("user_id", user!.id).single(),
+    admin.from("twitter_tokens").select("twitter_handle, connected_at, token_expiry").eq("user_id", user!.id).single(),
     supabase.from("campaigns").select("*").eq("user_id", user!.id).order("created_at", { ascending: false }),
   ])
 
