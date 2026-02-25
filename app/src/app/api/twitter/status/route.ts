@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET() {
   try {
@@ -10,7 +11,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: token } = await supabase
+    const admin = createAdminClient()
+    const { data: token } = await admin
       .from('twitter_tokens')
       .select('twitter_handle, connected_at, token_expiry')
       .eq('user_id', user.id)

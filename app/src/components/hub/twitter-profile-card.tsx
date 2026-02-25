@@ -33,11 +33,12 @@ interface TwitterProfile {
 
 interface TwitterProfileCardProps {
   profile: TwitterProfile | null
+  handle: string | null
   onConnect: () => void
 }
 
-export function TwitterProfileCard({ profile, onConnect }: TwitterProfileCardProps) {
-  if (!profile) {
+export function TwitterProfileCard({ profile, handle, onConnect }: TwitterProfileCardProps) {
+  if (!profile && !handle) {
     // Not connected state
     return (
       <Card className="overflow-hidden">
@@ -62,6 +63,43 @@ export function TwitterProfileCard({ profile, onConnect }: TwitterProfileCardPro
               <Link2 className="h-4 w-4" />
               Connect X Account
             </button>
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
+  // Connected but full profile hasn't loaded yet — show basic info from DB
+  if (!profile) {
+    return (
+      <Card className="overflow-hidden">
+        <div className="bg-gradient-to-r from-primary to-primary/80 px-5 py-3 sm:px-6">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary-foreground/60">
+              Coach&apos;s View of Your Profile
+            </p>
+            <a
+              href={`https://x.com/${handle}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[11px] font-semibold text-primary-foreground/70 transition-colors hover:text-primary-foreground"
+            >
+              Open in X
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        </div>
+        <div className="p-5 sm:p-6">
+          <div className="flex items-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground ring-2 ring-border">
+              <MessageCircle className="h-7 w-7" />
+            </div>
+            <div>
+              <p className="text-base font-bold text-foreground">@{handle}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                X account connected. Full profile details loading...
+              </p>
+            </div>
           </div>
         </div>
       </Card>

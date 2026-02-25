@@ -48,6 +48,7 @@ interface PipelineStage {
 interface HubClientProps {
   profile: AthleteProfile
   hasTwitterToken: boolean
+  twitterHandle: string | null
   pipelineCount: number
   stages: PipelineStage[]
   emailsSent: number
@@ -58,6 +59,7 @@ interface HubClientProps {
 export function HubClient({
   profile,
   hasTwitterToken,
+  twitterHandle,
   pipelineCount,
   stages,
   emailsSent,
@@ -66,30 +68,38 @@ export function HubClient({
 }: HubClientProps) {
   const [twitterProfile, setTwitterProfile] = useState<TwitterProfile | null>(null)
   const [twitterLoading, setTwitterLoading] = useState(hasTwitterToken)
-  const [twitterError, setTwitterError] = useState<string | null>(null)
 
-  // Fetch Twitter profile data client-side (requires API call with token refresh)
+  // Fetch full Twitter profile data client-side (enrichment from Twitter API)
   useEffect(() => {
     if (!hasTwitterToken) return
 
-    async function fetchTwitterProfile() {
-      try {
-        const res = await fetch("/api/twitter/profile")
-        const data = await res.json()
+    let cancelled = false
 
-        if (data.profile) {
-          setTwitterProfile(data.profile)
-        } else if (data.error) {
-          setTwitterError(data.error)
+    async function fetchWithRetry() {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const res = await fetch("/api/twitter/profile")
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          const data = await res.json()
+
+          if (!cancelled && data.profile) {
+            setTwitterProfile(data.profile)
+            setTwitterLoading(false)
+            return
+          }
+        } catch {
+          // Retry after a short delay
+          if (attempt === 0) {
+            await new Promise(r => setTimeout(r, 2000))
+          }
         }
-      } catch {
-        setTwitterError("Failed to load Twitter profile")
-      } finally {
-        setTwitterLoading(false)
       }
+      // Both attempts failed — stop loading, fallback to DB data
+      if (!cancelled) setTwitterLoading(false)
     }
 
-    fetchTwitterProfile()
+    fetchWithRetry()
+    return () => { cancelled = true }
   }, [hasTwitterToken])
 
   const handleConnectTwitter = () => {
@@ -118,19 +128,20 @@ export function HubClient({
           ) : (
             <TwitterProfileCard
               profile={twitterProfile}
+              handle={twitterHandle}
               onConnect={handleConnectTwitter}
             />
           )}
 
-          {/* Readiness score */}
+          {/* Readiness score — only shown when full profile is available */}
           {twitterLoading ? (
-            <ReadinessScoreSkeleton />
-          ) : (
+            twitterProfile || hasTwitterToken ? <ReadinessScoreSkeleton /> : null
+          ) : twitterProfile ? (
             <ReadinessScore
               twitterProfile={twitterProfile}
               athleteProfile={profile}
             />
-          )}
+          ) : null}
 
           {/* Instagram placeholder */}
           <InstagramPlaceholder />

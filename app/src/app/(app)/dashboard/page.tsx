@@ -34,7 +34,7 @@ export default async function HubPage() {
     user
       ? supabase
           .from("twitter_tokens")
-          .select("id")
+          .select("id, twitter_handle, connected_at")
           .eq("user_id", user.id)
           .single()
       : Promise.resolve({ data: null }),
@@ -98,6 +98,7 @@ export default async function HubPage() {
         twitter_handle: null,
       }}
       hasTwitterToken={!!twitterToken}
+      twitterHandle={twitterToken?.twitter_handle || null}
       pipelineCount={pipelineCount || 0}
       stages={stagesWithCounts}
       emailsSent={emailsSent}
