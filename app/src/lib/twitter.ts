@@ -42,20 +42,43 @@ export async function exchangeCodeForTokens(
 }> {
   const { clientId, clientSecret } = getTwitterCredentials()
 
-  const res = await fetch(TWITTER_TOKEN_URL, {
+  // Build body params — always include client_id, add client_secret for body-based auth
+  const bodyParams: Record<string, string> = {
+    code,
+    grant_type: 'authorization_code',
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    code_verifier: codeVerifier,
+  }
+  if (clientSecret) {
+    bodyParams.client_secret = clientSecret
+  }
+
+  // Try with Basic auth header first
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  }
+  if (clientSecret) {
+    headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
+  }
+
+  console.log('[Twitter] Token exchange - clientId length:', clientId.length, 'clientSecret length:', clientSecret.length)
+
+  let res = await fetch(TWITTER_TOKEN_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
-    },
-    body: new URLSearchParams({
-      code,
-      grant_type: 'authorization_code',
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      code_verifier: codeVerifier,
-    }),
+    headers,
+    body: new URLSearchParams(bodyParams),
   })
+
+  // If Basic auth fails, retry without the header (body-only auth)
+  if (res.status === 401 && clientSecret) {
+    console.log('[Twitter] Basic auth rejected, retrying with body-only auth')
+    res = await fetch(TWITTER_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(bodyParams),
+    })
+  }
 
   if (!res.ok) {
     const error = await res.text()
@@ -76,18 +99,35 @@ export async function refreshTwitterToken(refreshToken: string): Promise<{
 }> {
   const { clientId, clientSecret } = getTwitterCredentials()
 
-  const res = await fetch(TWITTER_TOKEN_URL, {
+  const bodyParams: Record<string, string> = {
+    grant_type: 'refresh_token',
+    client_id: clientId,
+    refresh_token: refreshToken,
+  }
+  if (clientSecret) {
+    bodyParams.client_secret = clientSecret
+  }
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  }
+  if (clientSecret) {
+    headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
+  }
+
+  let res = await fetch(TWITTER_TOKEN_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
-    },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      client_id: clientId,
-      refresh_token: refreshToken,
-    }),
+    headers,
+    body: new URLSearchParams(bodyParams),
   })
+
+  if (res.status === 401 && clientSecret) {
+    res = await fetch(TWITTER_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(bodyParams),
+    })
+  }
 
   if (!res.ok) {
     const error = await res.text()
