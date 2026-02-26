@@ -72,7 +72,12 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith(route)
   )
 
-  if (!user && !isPublicRoute) {
+  // Allow potential landing page slugs (e.g. /prairie-ia) — single path segment, not a known route
+  const pathSegments = request.nextUrl.pathname.split('/').filter(Boolean)
+  const knownTopLevel = ['dashboard', 'coaches', 'pipeline', 'outreach', 'profile', 'profile-setup', 'login', 'signup', 'auth', 'api', 'recruit']
+  const isPotentialSlug = pathSegments.length === 1 && !knownTopLevel.includes(pathSegments[0])
+
+  if (!user && !isPublicRoute && !isPotentialSlug) {
     return redirectWithCookies('/login')
   }
 
@@ -82,7 +87,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Check if authenticated user needs profile setup
-  if (user && !request.nextUrl.pathname.startsWith('/profile-setup') && !request.nextUrl.pathname.startsWith('/api/') && !request.nextUrl.pathname.startsWith('/auth/') && !request.nextUrl.pathname.startsWith('/recruit')) {
+  if (user && !isPotentialSlug && !request.nextUrl.pathname.startsWith('/profile-setup') && !request.nextUrl.pathname.startsWith('/api/') && !request.nextUrl.pathname.startsWith('/auth/') && !request.nextUrl.pathname.startsWith('/recruit')) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('id, first_name, position, role')
