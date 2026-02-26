@@ -99,23 +99,22 @@ export default function NavBar({
             <div className="flex h-16 items-center justify-between">
               {/* Logo & Brand */}
               <Link href="/dashboard" className="relative flex items-center gap-3">
-                <div className="relative -mb-5 mt-1 shrink-0">
-                  <div className="relative h-[76px] w-[76px] drop-shadow-[0_6px_16px_rgba(0,0,0,0.5)] lg:h-[84px] lg:w-[84px]">
-                    <Image
-                      src={coachBranding?.logo_url || "/logo.png"}
-                      alt={coachBranding?.program_name ? `${coachBranding.program_name} logo` : "Gridiron Elite Recruiting logo"}
-                      fill
-                      className="object-contain"
-                      priority
-                    />
-                  </div>
+                <div className="relative -mb-5 shrink-0 drop-shadow-[0_6px_16px_rgba(0,0,0,0.5)]">
+                  <Image
+                    src={coachBranding?.logo_url || "/logo.png"}
+                    alt={coachBranding?.program_name ? `${coachBranding.program_name} logo` : "Gridiron Elite Recruiting logo"}
+                    width={200}
+                    height={200}
+                    className="h-[72px] w-auto lg:h-[80px]"
+                    priority
+                  />
                 </div>
                 <div className="hidden sm:block">
                   <h1 className="font-display text-lg font-bold uppercase leading-tight tracking-wide text-primary-foreground">
                     {coachBranding?.program_name || "Gridiron Elite"}
                   </h1>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary-foreground/50">
-                    {isCoach ? "Recruiting" : "Recruiting"}
+                    Recruiting
                   </p>
                 </div>
               </Link>
