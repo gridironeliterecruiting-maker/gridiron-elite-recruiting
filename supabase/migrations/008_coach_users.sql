@@ -26,11 +26,19 @@ CREATE POLICY "Coaches can view own coach_profile" ON coach_profiles
   FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Coaches can update own coach_profile" ON coach_profiles
   FOR UPDATE USING (auth.uid() = id);
--- Admins manage all
+-- Helper function to check admin status without triggering RLS recursion.
+-- SECURITY DEFINER bypasses RLS, preventing circular policy evaluation
+-- (profiles → coach_players → profiles).
+CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles WHERE id = user_id AND role = 'admin'
+  )
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+-- Admins manage all (uses SECURITY DEFINER function to avoid RLS recursion)
 CREATE POLICY "Admins can manage coach_profiles" ON coach_profiles
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+  FOR ALL USING (public.is_admin(auth.uid()));
 
 CREATE TRIGGER update_coach_profiles_updated_at BEFORE UPDATE ON coach_profiles
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -49,11 +57,9 @@ ALTER TABLE coach_players ENABLE ROW LEVEL SECURITY;
 -- Coach reads own links
 CREATE POLICY "Coaches can view own coach_players" ON coach_players
   FOR SELECT USING (auth.uid() = coach_id);
--- Admins manage all
+-- Admins manage all (uses SECURITY DEFINER function to avoid RLS recursion)
 CREATE POLICY "Admins can manage coach_players" ON coach_players
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+  FOR ALL USING (public.is_admin(auth.uid()));
 
 CREATE INDEX idx_coach_players_coach ON coach_players(coach_id);
 CREATE INDEX idx_coach_players_player ON coach_players(player_id);
