@@ -15,7 +15,6 @@ import {
   Menu,
   X,
   ChevronDown,
-  UserCircle,
 } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -26,7 +25,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useActivePlayer } from "@/components/ActivePlayerContext"
-import { MyPlayersOverlay } from "@/components/coach/MyPlayersOverlay"
 
 const athleteNavItems = [
   { label: "Hub", icon: LayoutDashboard, href: "/dashboard" },
@@ -67,7 +65,6 @@ export default function NavBar({
   coachBranding?: CoachBranding | null
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [showPlayersOverlay, setShowPlayersOverlay] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const { activePlayer, isCoach } = useActivePlayer()
@@ -146,20 +143,6 @@ export default function NavBar({
 
               {/* User Area */}
               <div className="flex items-center gap-3">
-                {/* Player switcher chip (coach only) */}
-                {isCoach && activePlayer && (
-                  <button
-                    type="button"
-                    onClick={() => setShowPlayersOverlay(true)}
-                    className="flex items-center gap-1.5 rounded-full bg-primary-foreground/10 px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary-foreground/20"
-                  >
-                    <UserCircle className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">{activePlayer.first_name} {activePlayer.last_name}</span>
-                    <span className="sm:hidden">{activePlayer.first_name?.[0]}{activePlayer.last_name?.[0]}</span>
-                    <ChevronDown className="h-3 w-3" />
-                  </button>
-                )}
-
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
@@ -237,10 +220,6 @@ export default function NavBar({
         </nav>
       </header>
 
-      {/* My Players overlay */}
-      {showPlayersOverlay && (
-        <MyPlayersOverlay onClose={() => setShowPlayersOverlay(false)} />
-      )}
     </>
   )
 }

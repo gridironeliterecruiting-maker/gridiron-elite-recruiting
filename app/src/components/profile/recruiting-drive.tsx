@@ -38,7 +38,12 @@ interface Document {
   folder_id: string | null
 }
 
-export function RecruitingDrive() {
+interface RecruitingDriveProps {
+  playerId?: string | null
+  readOnly?: boolean
+}
+
+export function RecruitingDrive({ playerId, readOnly = false }: RecruitingDriveProps = {}) {
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
   const [shareSlug, setShareSlug] = useState<string | null>(null)
@@ -113,7 +118,8 @@ export function RecruitingDrive() {
 
   async function loadDocuments() {
     try {
-      const res = await fetch("/api/documents")
+      const url = playerId ? `/api/documents?playerId=${playerId}` : "/api/documents"
+      const res = await fetch(url)
       const data = await res.json()
       setDocuments(data.documents || [])
     } catch {
@@ -125,7 +131,8 @@ export function RecruitingDrive() {
 
   async function loadShareSlug() {
     try {
-      const res = await fetch("/api/documents/share-link")
+      const url = playerId ? `/api/documents/share-link?playerId=${playerId}` : "/api/documents/share-link"
+      const res = await fetch(url)
       const data = await res.json()
       setShareSlug(data.slug || null)
     } catch {
@@ -628,25 +635,25 @@ export function RecruitingDrive() {
     renderIndex: number,
     isChild: boolean,
   ) {
-    const isDragging = dragInfo !== null && dragInfo.fromIndex === renderIndex
-    const isDropTarget = dropTarget === doc.id
+    const isDragging = !readOnly && dragInfo !== null && dragInfo.fromIndex === renderIndex
+    const isDropTarget = !readOnly && dropTarget === doc.id
     const isFolder = doc.type === "folder"
     const isExpanded = expandedFolders.has(doc.id)
     const childCount = folderContents.get(doc.id)?.length || 0
-    const transformStyle = dragInfo ? computeRowTransform(renderIndex) : undefined
+    const transformStyle = !readOnly && dragInfo ? computeRowTransform(renderIndex) : undefined
 
     return (
       <div
         key={doc.id}
         data-drag-row
-        onPointerDown={(e) => handlePointerDown(e, renderIndex)}
+        onPointerDown={readOnly ? undefined : (e) => handlePointerDown(e, renderIndex)}
         style={transformStyle}
         className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 select-none ${
           isChild ? "ml-8" : ""
         } ${
           isDragging
             ? "border-primary bg-card shadow-lg ring-1 ring-primary/30"
-            : dragInfo
+            : dragInfo && !readOnly
               ? "transition-transform duration-200"
               : "group"
         } ${
@@ -659,10 +666,12 @@ export function RecruitingDrive() {
                 : ""
         }`}
       >
-        {/* Drag handle */}
-        <div data-drag-handle className="shrink-0 cursor-grab text-muted-foreground/30 transition-colors hover:text-muted-foreground active:cursor-grabbing touch-none">
-          <GripVertical className="h-4 w-4" />
-        </div>
+        {/* Drag handle (hidden in readOnly mode) */}
+        {!readOnly && (
+          <div data-drag-handle className="shrink-0 cursor-grab text-muted-foreground/30 transition-colors hover:text-muted-foreground active:cursor-grabbing touch-none">
+            <GripVertical className="h-4 w-4" />
+          </div>
+        )}
 
         {/* Folder expand/collapse chevron OR type icon */}
         {isFolder ? (
@@ -709,7 +718,7 @@ export function RecruitingDrive() {
         )}
 
         {/* Actions */}
-        <div className={`flex shrink-0 items-center gap-1 transition-opacity ${isDragging ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}>
+        <div className={`flex shrink-0 items-center gap-1 transition-opacity ${isDragging ? "opacity-0" : readOnly ? "opacity-0 group-hover:opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
           {!isFolder && doc.url && (
             <a href={doc.url} target="_blank" rel="noopener noreferrer">
               <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
@@ -717,27 +726,31 @@ export function RecruitingDrive() {
               </Button>
             </a>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0"
-            onClick={() => handleToggleVisibility(doc)}
-            title={doc.is_visible ? "Hide from coaches" : "Show to coaches"}
-          >
-            {doc.is_visible ? (
-              <Eye className="h-3.5 w-3.5" />
-            ) : (
-              <EyeOff className="h-3.5 w-3.5" />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-            onClick={() => handleDelete(doc)}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          {!readOnly && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => handleToggleVisibility(doc)}
+                title={doc.is_visible ? "Hide from coaches" : "Show to coaches"}
+              >
+                {doc.is_visible ? (
+                  <Eye className="h-3.5 w-3.5" />
+                ) : (
+                  <EyeOff className="h-3.5 w-3.5" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                onClick={() => handleDelete(doc)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
     )
@@ -754,7 +767,7 @@ export function RecruitingDrive() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Your Recruiting Page
+                {readOnly ? "Player's Recruiting Page" : "Your Recruiting Page"}
               </p>
               {shareSlug ? (
                 <p className="truncate text-sm text-primary">
@@ -802,24 +815,26 @@ export function RecruitingDrive() {
             </div>
             <CardTitle className="text-base">Recruiting Drive</CardTitle>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={() => { setShowAddFolderForm(true); setShowAddForm(false) }}
-              className="bg-blue-600 text-white hover:bg-blue-700"
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              Add Folder
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => { setShowAddForm(true); setShowAddFolderForm(false) }}
-              className="bg-accent text-accent-foreground hover:bg-accent/90"
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              Add Item
-            </Button>
-          </div>
+          {!readOnly && (
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => { setShowAddFolderForm(true); setShowAddForm(false) }}
+                className="bg-blue-600 text-white hover:bg-blue-700"
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Add Folder
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => { setShowAddForm(true); setShowAddFolderForm(false) }}
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Add Item
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="pt-0">
           {/* Add folder form */}
@@ -989,8 +1004,8 @@ export function RecruitingDrive() {
             <div
               ref={listRef}
               className="relative flex flex-col gap-1.5"
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
+              onPointerMove={readOnly ? undefined : handlePointerMove}
+              onPointerUp={readOnly ? undefined : handlePointerUp}
             >
               {/* During drag, render from frozen snapshot; otherwise normal renderList */}
               {(dragInfo ? dragInfo.renderSnapshot : renderList).map((item, index) =>

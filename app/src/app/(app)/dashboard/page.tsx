@@ -170,6 +170,7 @@ export default async function HubPage() {
         twitter_handle: null,
       }}
       isCoach={isCoach}
+      coachFirstName={isCoach ? (userProfile?.first_name || "Coach") : undefined}
       coachProgramName={coachProgramName}
       activePlayerName={playerProfile ? `${playerProfile.first_name} ${playerProfile.last_name}` : null}
       hasTwitterToken={!!twitterToken}

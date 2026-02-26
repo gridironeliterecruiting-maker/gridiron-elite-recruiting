@@ -1,14 +1,41 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 
-// GET — get or generate the athlete's share slug
-export async function GET() {
+// GET — get or generate the athlete's share slug (or a player's for coaches)
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const playerId = searchParams.get("playerId")
+
+    // Coach fetching a player's share slug
+    if (playerId) {
+      const { data: link } = await supabase
+        .from("coach_players")
+        .select("id")
+        .eq("coach_id", user.id)
+        .eq("player_id", playerId)
+        .single()
+
+      if (!link) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403 })
+      }
+
+      const admin = createAdminClient()
+      const { data: playerProfile } = await admin
+        .from("profiles")
+        .select("share_slug")
+        .eq("id", playerId)
+        .single()
+
+      return NextResponse.json({ slug: playerProfile?.share_slug || null })
     }
 
     // Check if athlete already has a share slug

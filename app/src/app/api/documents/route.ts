@@ -1,14 +1,46 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 
-// GET — list athlete's documents
-export async function GET() {
+// GET — list athlete's documents (or a player's documents for coaches)
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const playerId = searchParams.get("playerId")
+
+    if (playerId) {
+      // Coach accessing a player's documents — validate access
+      const { data: link } = await supabase
+        .from("coach_players")
+        .select("id")
+        .eq("coach_id", user.id)
+        .eq("player_id", playerId)
+        .single()
+
+      if (!link) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403 })
+      }
+
+      const admin = createAdminClient()
+      const { data: documents, error } = await admin
+        .from("athlete_documents")
+        .select("*")
+        .eq("athlete_id", playerId)
+        .order("display_order", { ascending: true })
+
+      if (error) {
+        console.error("[Documents] List player docs error:", error)
+        return NextResponse.json({ error: "Failed to load documents" }, { status: 500 })
+      }
+
+      return NextResponse.json({ documents: documents || [] })
     }
 
     const { data: documents, error } = await supabase

@@ -48,6 +48,7 @@ interface PipelineStage {
 interface HubClientProps {
   profile: AthleteProfile
   isCoach?: boolean
+  coachFirstName?: string
   coachProgramName?: string | null
   activePlayerName?: string | null
   hasTwitterToken: boolean
@@ -62,6 +63,7 @@ interface HubClientProps {
 export function HubClient({
   profile,
   isCoach = false,
+  coachFirstName,
   coachProgramName,
   activePlayerName,
   hasTwitterToken,
@@ -112,7 +114,7 @@ export function HubClient({
     window.location.href = "/api/twitter/authorize?returnTo=/dashboard"
   }
 
-  const firstName = profile.first_name || "Athlete"
+  const firstName = isCoach && coachFirstName ? coachFirstName : (profile.first_name || "Athlete")
 
   return (
     <div className="flex flex-col gap-6">
