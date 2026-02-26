@@ -56,26 +56,52 @@ export async function POST(request: Request) {
       )
     }
 
-    // Create the template (use admin client to bypass RLS)
+    // Check if the user already has a template with this name
     const admin = createAdminClient()
-    const { data: template, error } = await admin
+    const { data: existing } = await admin
       .from('email_templates')
-      .insert({
-        name,
-        subject,
-        body: templateBody,
-        created_by: user.id,
-        is_system: false
-      })
-      .select()
-      .single()
+      .select('id')
+      .eq('name', name)
+      .eq('created_by', user.id)
+      .eq('is_system', false)
+      .maybeSingle()
 
-    if (error) {
-      console.error('Error creating template:', error)
-      return NextResponse.json({ error: 'Failed to create template' }, { status: 500 })
+    let template
+    let error
+
+    if (existing) {
+      // Overwrite existing template
+      const result = await admin
+        .from('email_templates')
+        .update({ subject, body: templateBody, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+        .select()
+        .single()
+      template = result.data
+      error = result.error
+    } else {
+      // Create new template
+      const result = await admin
+        .from('email_templates')
+        .insert({
+          name,
+          subject,
+          body: templateBody,
+          created_by: user.id,
+          is_system: false
+        })
+        .select()
+        .single()
+      template = result.data
+      error = result.error
     }
 
-    return NextResponse.json({ template }, { status: 201 })
+    if (error) {
+      console.error('Error saving template:', error)
+      return NextResponse.json({ error: 'Failed to save template' }, { status: 500 })
+    }
+
+    return NextResponse.json({ template }, { status: existing ? 200 : 201 })
   } catch (error) {
     console.error('Unexpected error in POST /api/templates:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

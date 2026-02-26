@@ -315,6 +315,7 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
           index={editingIndex}
           onUpdate={(updates) => updateTemplate(editingIndex, updates)}
           onClose={() => setEditingIndex(null)}
+          existingTemplateNames={availableTemplates.filter(t => !t.is_system).map(t => t.name)}
           onSaveAsTemplate={async (templateData) => {
             try {
               const response = await fetch('/api/templates', {
@@ -541,12 +542,14 @@ function TemplateEditorOverlay({
   onUpdate,
   onClose,
   onSaveAsTemplate,
+  existingTemplateNames,
 }: {
   template: EmailTemplate
   index: number
   onUpdate: (updates: Partial<EmailTemplate>) => void
   onClose: () => void
   onSaveAsTemplate: (data: { name: string; subject: string; body: string }) => Promise<void>
+  existingTemplateNames: string[]
 }) {
   const [name, setName] = useState(template.name)
   const [subject, setSubject] = useState(template.subject)
@@ -555,6 +558,7 @@ function TemplateEditorOverlay({
   const [showSaveAs, setShowSaveAs] = useState(false)
   const [saveAsName, setSaveAsName] = useState('')
   const [savingAs, setSavingAs] = useState(false)
+  const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false)
   const bodyRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSave = () => {
@@ -564,14 +568,24 @@ function TemplateEditorOverlay({
 
   const handleSaveAs = async () => {
     if (!saveAsName.trim()) return
+    const trimmedName = saveAsName.trim()
+
+    // Check for duplicate name
+    if (!showOverwriteConfirm && existingTemplateNames.includes(trimmedName)) {
+      setShowOverwriteConfirm(true)
+      setSavingAs(false)
+      return
+    }
+
     setSavingAs(true)
+    setShowOverwriteConfirm(false)
     try {
-      await onSaveAsTemplate({ name: saveAsName.trim(), subject, body })
+      await onSaveAsTemplate({ name: trimmedName, subject, body })
     } catch {
       // Error already logged by parent — still close and apply changes
     }
-    // Always apply changes to the current campaign and close
-    onUpdate({ name, subject, body, delayDays: index === 0 ? null : delayDays })
+    // Apply changes to the current campaign using the new template name
+    onUpdate({ name: trimmedName, subject, body, delayDays: index === 0 ? null : delayDays })
     onClose()
   }
 
@@ -658,40 +672,70 @@ function TemplateEditorOverlay({
         {/* Save As Popup */}
         {showSaveAs && (
           <div className="absolute inset-0 z-10 flex items-center justify-center">
-            <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" onClick={() => setShowSaveAs(false)} />
+            <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" onClick={() => { setShowSaveAs(false); setShowOverwriteConfirm(false) }} />
             <div className="relative mx-4 w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl">
-              <h4 className="mb-1 font-display text-base font-bold uppercase tracking-tight text-foreground">
-                Save as Template
-              </h4>
-              <p className="mb-4 text-xs text-muted-foreground">
-                Save this email to your template library for reuse.
-              </p>
-              <input
-                type="text"
-                value={saveAsName}
-                onChange={(e) => setSaveAsName(e.target.value)}
-                placeholder="Template name"
-                className="mb-4 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                autoFocus
-                onKeyDown={(e) => e.key === 'Enter' && handleSaveAs()}
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowSaveAs(false)}
-                  className="rounded-md border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveAs}
-                  disabled={!saveAsName.trim() || savingAs}
-                  className="rounded-md bg-[hsl(0,72%,51%)] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[hsl(0,72%,45%)] disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {savingAs ? 'Saving...' : 'Save Template'}
-                </button>
-              </div>
+              {showOverwriteConfirm ? (
+                <>
+                  <h4 className="mb-1 font-display text-base font-bold uppercase tracking-tight text-foreground">
+                    Template Already Exists
+                  </h4>
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    A template named &ldquo;{saveAsName.trim()}&rdquo; already exists. Do you want to replace it?
+                  </p>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setShowOverwriteConfirm(false) }}
+                      className="rounded-md border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                    >
+                      Go Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveAs}
+                      disabled={savingAs}
+                      className="rounded-md bg-[hsl(0,72%,51%)] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[hsl(0,72%,45%)] disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {savingAs ? 'Saving...' : 'Replace Template'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h4 className="mb-1 font-display text-base font-bold uppercase tracking-tight text-foreground">
+                    Save as Template
+                  </h4>
+                  <p className="mb-4 text-xs text-muted-foreground">
+                    Save this email to your template library for reuse.
+                  </p>
+                  <input
+                    type="text"
+                    value={saveAsName}
+                    onChange={(e) => { setSaveAsName(e.target.value); setShowOverwriteConfirm(false) }}
+                    placeholder="Template name"
+                    className="mb-4 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    autoFocus
+                    onKeyDown={(e) => e.key === 'Enter' && handleSaveAs()}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowSaveAs(false)}
+                      className="rounded-md border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveAs}
+                      disabled={!saveAsName.trim() || savingAs}
+                      className="rounded-md bg-[hsl(0,72%,51%)] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[hsl(0,72%,45%)] disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {savingAs ? 'Saving...' : 'Save Template'}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
