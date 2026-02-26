@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Mail, MessageCircle, Check } from "lucide-react"
 import { GoalStep } from "./steps/goal-step"
@@ -83,6 +83,12 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
   const [isSaving, setIsSaving] = useState(false)
   const [dmCampaignId, setDmCampaignId] = useState<string | null>(null)
   const [dmAllSent, setDmAllSent] = useState(false)
+
+  // Track whether the user has manually edited templates in step 3.
+  // If they haven't, changing the goal resets templates to the new goal's defaults.
+  // If they have, changing the goal only updates the goal label and preserves their work.
+  const [templatesEditedByUser, setTemplatesEditedByUser] = useState(false)
+  const templateAutoLoadRef = useRef(true) // First onTemplatesChange call is always an auto-load
 
   // Target step navigation state persistence
   const [targetNavState, setTargetNavState] = useState<{
@@ -232,7 +238,14 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
   }
 
   const handleGoalSelect = (goal: CampaignGoal) => {
-    setDraft((prev) => ({ ...prev, goal }))
+    if (!templatesEditedByUser) {
+      // Templates are still default — clear them so BuildStep reloads for the new goal
+      templateAutoLoadRef.current = true
+      setDraft((prev) => ({ ...prev, goal, templates: [] }))
+    } else {
+      // User has edited templates — preserve their work, just update the goal
+      setDraft((prev) => ({ ...prev, goal }))
+    }
     setHasUnsavedChanges(true)
     goToStep(2)
   }
@@ -378,6 +391,11 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
             templates={draft.templates}
             onTemplatesChange={(templates: EmailTemplate[]) => {
               setDraft((prev) => ({ ...prev, templates }))
+              if (templateAutoLoadRef.current) {
+                templateAutoLoadRef.current = false
+              } else {
+                setTemplatesEditedByUser(true)
+              }
               setHasUnsavedChanges(true)
             }}
             onNext={() => goToStep(4)}
