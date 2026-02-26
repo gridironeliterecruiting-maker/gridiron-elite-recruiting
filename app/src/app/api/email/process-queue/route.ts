@@ -63,6 +63,7 @@ export async function GET(request: Request) {
         campaigns!inner (
           id,
           user_id,
+          player_id,
           name,
           goal,
           status
@@ -184,8 +185,10 @@ export async function GET(request: Request) {
         }
       }
 
-      // Get user profile for merge tags
-      const { data: profile } = await admin
+      // Determine if this user has any coach campaigns (player_id set)
+      // If so, we'll resolve merge tags per-recipient from the player's profile
+      // For now, fetch the sender's own profile as the default merge tag source
+      const { data: senderProfile } = await admin
         .from('profiles')
         .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, phone')
         .eq('id', userId)
@@ -195,7 +198,7 @@ export async function GET(request: Request) {
 
       for (let i = 0; i < Math.min(recipients.length, remainingToday); i++) {
         const recipient = recipients[i]
-        const campaign = recipient.campaigns as unknown as { id: string; name: string; goal: string }
+        const campaign = recipient.campaigns as unknown as { id: string; name: string; goal: string; player_id: string | null }
 
         // Mark as sending
         await admin
@@ -263,6 +266,22 @@ export async function GET(request: Request) {
             continue
           }
 
+          // When player_id is set (coach campaign), use the player's profile for merge tags
+          // and the sender's profile for the sender name. Otherwise, sender IS the player.
+          let mergeProfile = senderProfile
+          if (campaign.player_id) {
+            const { data: playerProfile } = await admin
+              .from('profiles')
+              .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, phone')
+              .eq('id', campaign.player_id)
+              .single()
+            if (playerProfile) {
+              mergeProfile = playerProfile
+            } else {
+              console.warn(`Coach campaign ${campaign.id}: could not fetch player ${campaign.player_id} profile, falling back to sender profile`)
+            }
+          }
+
           // Prepare merge data - support both underscore and space formats
           const profileData = {
             // Coach/School info
@@ -271,34 +290,34 @@ export async function GET(request: Request) {
             Last_Name_Coach: recipient.coach_name?.split(' ').pop() || 'Coach', // Alternative format
             School: recipient.program_name || '',
             School_Name: recipient.program_name || '',
-            
-            // Player info
-            First_Name: profile?.first_name || '',
-            Last_Name: profile?.last_name || '',
-            Position: profile?.position || '',
-            Grad_Year: profile?.grad_year?.toString() || '',
-            High_School: profile?.high_school || '',
-            City: profile?.city || '',
-            State: profile?.state || '',
-            City_State: [profile?.city, profile?.state].filter(Boolean).join(', '),
-            
+
+            // Player info (from player profile for coach campaigns, or sender's own for athlete campaigns)
+            First_Name: mergeProfile?.first_name || '',
+            Last_Name: mergeProfile?.last_name || '',
+            Position: mergeProfile?.position || '',
+            Grad_Year: mergeProfile?.grad_year?.toString() || '',
+            High_School: mergeProfile?.high_school || '',
+            City: mergeProfile?.city || '',
+            State: mergeProfile?.state || '',
+            City_State: [mergeProfile?.city, mergeProfile?.state].filter(Boolean).join(', '),
+
             // Stats and contact
-            GPA: profile?.gpa?.toString() || '',
-            Film_Link: profile?.hudl_url || '',
-            Hudl_URL: profile?.hudl_url || '',
-            Stats: profile?.position === 'QB' ? 
-              `• ${profile?.grad_year || 'Senior'} QB\n• GPA: ${profile?.gpa || 'N/A'}\n• Height: 6'2" Weight: 195 lbs` : 
-              `• ${profile?.grad_year || 'Senior'} ${profile?.position || 'Player'}\n• GPA: ${profile?.gpa || 'N/A'}`,
-            Phone: profile?.phone || '',
+            GPA: mergeProfile?.gpa?.toString() || '',
+            Film_Link: mergeProfile?.hudl_url || '',
+            Hudl_URL: mergeProfile?.hudl_url || '',
+            Stats: mergeProfile?.position === 'QB' ?
+              `• ${mergeProfile?.grad_year || 'Senior'} QB\n• GPA: ${mergeProfile?.gpa || 'N/A'}\n• Height: 6'2" Weight: 195 lbs` :
+              `• ${mergeProfile?.grad_year || 'Senior'} ${mergeProfile?.position || 'Player'}\n• GPA: ${mergeProfile?.gpa || 'N/A'}`,
+            Phone: mergeProfile?.phone || '',
             Email: userProfile?.email || '',
-            
+
             // Additional fields
             Recent_Achievement: '',
             Improvement_Area: '',
-            Recent_Game_Event: '', 
+            Recent_Game_Event: '',
             Recent_Performance: '',
             Specific_Reason: '',
-            All_Contact_Info: [userProfile?.email, profile?.phone].filter(Boolean).join(' • '),
+            All_Contact_Info: [userProfile?.email, mergeProfile?.phone].filter(Boolean).join(' • '),
           }
 
           // Create merge data with all possible formats
@@ -346,13 +365,17 @@ export async function GET(request: Request) {
           // Wrap in basic HTML email template
           htmlBody = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#333;">${htmlBody}</body></html>`
 
-          // Send via Gmail
+          // Send via Gmail — for coach campaigns, use player name as sender display name
+          const senderDisplayName = mergeProfile
+            ? `${mergeProfile.first_name} ${mergeProfile.last_name}`
+            : (senderProfile ? `${senderProfile.first_name} ${senderProfile.last_name}` : undefined)
+
           const result = await sendGmailEmail(
             accessToken,
             recipient.coach_email,
             subject,
             htmlBody,
-            profile ? `${profile.first_name} ${profile.last_name}` : undefined,
+            senderDisplayName,
             gmailToken.email
           )
 

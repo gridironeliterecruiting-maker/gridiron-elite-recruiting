@@ -26,6 +26,7 @@ interface LaunchConfirmationOverlayProps {
   campaignName: string
   scheduledAt: string | null
   launchNow: boolean
+  activePlayerId?: string | null
   onClose: () => void // For closing this overlay
   onConfirmLaunch: () => Promise<void> // The actual launch function passed from LaunchStep
   isLaunching: boolean
@@ -53,6 +54,7 @@ export function LaunchConfirmationOverlay({
   campaignName,
   scheduledAt,
   launchNow,
+  activePlayerId,
   onClose,
   onConfirmLaunch,
   isLaunching,
@@ -163,6 +165,7 @@ export function LaunchConfirmationOverlay({
         body: JSON.stringify({
           name: campaignName,
           goal,
+          playerId: activePlayerId || undefined,
           templates: templates.map((t) => ({
             subject: t.subject,
             body: t.body,

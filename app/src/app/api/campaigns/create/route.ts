@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { name, goal, templates, recipients, scheduledAt, status, type, dmMessageBody } = body
+    const { name, goal, templates, recipients, scheduledAt, status, type, dmMessageBody, playerId } = body
 
     const campaignType = type || 'email'
 
@@ -37,6 +37,7 @@ export async function POST(request: Request) {
         status: campaignType === 'dm' ? 'active' : (status || 'draft'),
         scheduled_at: scheduledAt || null,
         dm_message_body: campaignType === 'dm' ? dmMessageBody : null,
+        player_id: playerId || null,
       })
       .select('id')
       .single()

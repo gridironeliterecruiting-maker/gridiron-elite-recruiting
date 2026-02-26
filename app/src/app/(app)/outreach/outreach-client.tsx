@@ -112,6 +112,7 @@ interface OutreachClientProps {
   twitterHandle: string | null
   hasTwitterToken: boolean
   campaigns: Campaign[]
+  activePlayerId?: string | null
   resumeCampaignId?: string
   resumeStep?: string
   gmailStatus?: string
@@ -129,6 +130,7 @@ export function OutreachClient({
   twitterHandle,
   hasTwitterToken,
   campaigns,
+  activePlayerId,
   resumeCampaignId,
   resumeStep,
   gmailStatus,
@@ -358,6 +360,7 @@ export function OutreachClient({
           quickDmData={quickDmData}
           followupData={followupData}
           initialCampaignType={showCreateCampaign}
+          activePlayerId={activePlayerId}
           onClose={() => {
             setShowCreateCampaign(null)
             setQuickEmailData(null)

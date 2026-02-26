@@ -41,6 +41,7 @@ interface LaunchStepProps {
   gmailTier: string | null
   hasGmailToken: boolean
   gmailTokenExpired: boolean
+  activePlayerId?: string | null
   onEditTarget: () => void
   onEditBuild: () => void
   onBack: () => void
@@ -59,6 +60,7 @@ export function LaunchStep({
   gmailTier,
   hasGmailToken,
   gmailTokenExpired,
+  activePlayerId,
   onEditTarget,
   onEditBuild,
   onBack,
@@ -91,6 +93,7 @@ export function LaunchStep({
         body: JSON.stringify({
           name: campaignName,
           goal,
+          playerId: activePlayerId || undefined,
           templates: templates.map((t, i) => ({
             subject: t.subject,
             body: t.body,
@@ -370,6 +373,7 @@ export function LaunchStep({
           campaignName={campaignName}
           scheduledAt={scheduledDate}
           launchNow={launchNow}
+          activePlayerId={activePlayerId}
           onClose={() => setShowConfirmLaunch(false)}
           onConfirmLaunch={handleLaunch} // Pass the original handleLaunch as the confirmation action
           isLaunching={launching}

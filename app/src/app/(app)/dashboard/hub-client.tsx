@@ -47,6 +47,9 @@ interface PipelineStage {
 
 interface HubClientProps {
   profile: AthleteProfile
+  isCoach?: boolean
+  coachProgramName?: string | null
+  activePlayerName?: string | null
   hasTwitterToken: boolean
   twitterHandle: string | null
   pipelineCount: number
@@ -58,6 +61,9 @@ interface HubClientProps {
 
 export function HubClient({
   profile,
+  isCoach = false,
+  coachProgramName,
+  activePlayerName,
   hasTwitterToken,
   twitterHandle,
   pipelineCount,
@@ -116,50 +122,73 @@ export function HubClient({
       </Suspense>
 
       {/* Header with greeting and tagline */}
-      <HubHeader firstName={firstName} />
+      <HubHeader
+        firstName={firstName}
+        isCoach={isCoach}
+        activePlayerName={activePlayerName}
+      />
 
       {/* Main layout: two-column on desktop */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* Left column — brand audit */}
+        {/* Left column — brand audit (athletes) or action items (coaches) */}
         <div className="flex flex-col gap-6 lg:col-span-7">
-          {/* Twitter profile card */}
-          {twitterLoading ? (
-            <TwitterProfileSkeleton />
-          ) : (
-            <TwitterProfileCard
-              profile={twitterProfile}
-              handle={twitterHandle}
-              onConnect={handleConnectTwitter}
-            />
+          {!isCoach && (
+            <>
+              {/* Twitter profile card */}
+              {twitterLoading ? (
+                <TwitterProfileSkeleton />
+              ) : (
+                <TwitterProfileCard
+                  profile={twitterProfile}
+                  handle={twitterHandle}
+                  onConnect={handleConnectTwitter}
+                />
+              )}
+
+              {/* Readiness score — only shown when full profile is available */}
+              {twitterLoading ? (
+                twitterProfile || hasTwitterToken ? <ReadinessScoreSkeleton /> : null
+              ) : twitterProfile ? (
+                <ReadinessScore
+                  twitterProfile={twitterProfile}
+                  athleteProfile={profile}
+                />
+              ) : null}
+
+              {/* Instagram placeholder */}
+              <InstagramPlaceholder />
+            </>
           )}
 
-          {/* Readiness score — only shown when full profile is available */}
-          {twitterLoading ? (
-            twitterProfile || hasTwitterToken ? <ReadinessScoreSkeleton /> : null
-          ) : twitterProfile ? (
-            <ReadinessScore
-              twitterProfile={twitterProfile}
-              athleteProfile={profile}
+          {isCoach && (
+            /* Coach quick stats for active player */
+            <HubActionItems
+              pipelineCount={pipelineCount}
+              stages={stages}
+              emailsSent={emailsSent}
+              dmsSent={dmsSent}
+              campaignCount={campaignCount}
             />
-          ) : null}
-
-          {/* Instagram placeholder */}
-          <InstagramPlaceholder />
+          )}
         </div>
 
         {/* Right column — content + actions */}
         <div className="flex flex-col gap-6 lg:col-span-5">
-          {/* Content calendar */}
-          <ContentCalendar profile={profile} />
+          {!isCoach && (
+            <>
+              {/* Content calendar */}
+              <ContentCalendar profile={profile} />
 
-          {/* Action items + outreach stats */}
-          <HubActionItems
-            pipelineCount={pipelineCount}
-            stages={stages}
-            emailsSent={emailsSent}
-            dmsSent={dmsSent}
-            campaignCount={campaignCount}
-          />
+              {/* Action items + outreach stats */}
+              <HubActionItems
+                pipelineCount={pipelineCount}
+                stages={stages}
+                emailsSent={emailsSent}
+                dmsSent={dmsSent}
+                campaignCount={campaignCount}
+              />
+            </>
+          )}
         </div>
       </div>
     </div>

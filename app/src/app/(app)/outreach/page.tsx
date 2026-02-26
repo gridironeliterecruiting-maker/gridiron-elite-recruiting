@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { getActivePlayerId } from "@/lib/active-player"
 import { OutreachClient } from "./outreach-client"
 
 export default async function OutreachPage({
@@ -12,33 +13,69 @@ export default async function OutreachPage({
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Determine role
+  const { data: userProfile } = await supabase
+    .from("profiles")
+    .select("position, role")
+    .eq("id", user!.id)
+    .single()
+
+  const isCoach = userProfile?.role === "coach"
+
+  // For coaches, resolve active player
+  let activePlayerId: string | null = null
+  if (isCoach) {
+    const cookiePlayerId = await getActivePlayerId()
+    const { data: coachPlayers } = await supabase
+      .from("coach_players")
+      .select("player_id")
+      .eq("coach_id", user!.id)
+
+    const playerIds = (coachPlayers || []).map(cp => cp.player_id)
+    if (cookiePlayerId && playerIds.includes(cookiePlayerId)) {
+      activePlayerId = cookiePlayerId
+    } else if (playerIds.length > 0) {
+      activePlayerId = playerIds[0]
+    }
+  }
+
+  // Filter templates by role
+  const templateRole = isCoach ? 'coach' : 'athlete'
+
   const [
     { data: templates },
     { data: programs },
     { data: gmailToken },
     { data: twitterToken },
-    { data: campaigns },
+    { data: allCampaigns },
   ] = await Promise.all([
-    supabase.from("email_templates").select("*").order("name"),
+    supabase.from("email_templates").select("*").eq("for_role", templateRole).order("name"),
     supabase.from("programs").select("id, school_name, division, conference, logo_url").order("school_name"),
     admin.from("gmail_tokens").select("email, connected_at, account_tier, token_expiry").eq("user_id", user!.id).single(),
     admin.from("twitter_tokens").select("twitter_handle, connected_at, token_expiry").eq("user_id", user!.id).single(),
     supabase.from("campaigns").select("*").eq("user_id", user!.id).order("created_at", { ascending: false }),
   ])
 
-  // Get player position
+  // Filter campaigns: for coaches, only show campaigns for the active player
+  const campaigns = isCoach && activePlayerId
+    ? (allCampaigns || []).filter(c => c.player_id === activePlayerId)
+    : (allCampaigns || [])
+
+  // Get player position — from active player for coaches, own profile for athletes
   let playerPosition = ""
-  if (user) {
-    const { data: profile } = await supabase
+  if (isCoach && activePlayerId) {
+    const { data: playerProfile } = await supabase
       .from("profiles")
       .select("position")
-      .eq("id", user.id)
+      .eq("id", activePlayerId)
       .single()
-    playerPosition = profile?.position || ""
+    playerPosition = playerProfile?.position || ""
+  } else {
+    playerPosition = userProfile?.position || ""
   }
 
   // Get recipient counts and email event stats per campaign
-  const campaignIds = (campaigns || []).map((c) => c.id)
+  const campaignIds = campaigns.map((c) => c.id)
   let campaignStats: Record<string, { total: number; sent: number; opened: number; clicked: number; replied: number; error: number }> = {}
 
   if (campaignIds.length > 0) {
@@ -56,7 +93,7 @@ export default async function OutreachPage({
 
     // Build a map of campaign type for quick lookup
     const campaignTypeMap: Record<string, string> = {}
-    for (const c of (campaigns || [])) {
+    for (const c of campaigns) {
       campaignTypeMap[c.id] = c.type || 'email'
     }
 
@@ -124,10 +161,11 @@ export default async function OutreachPage({
       gmailTokenExpired={gmailToken ? new Date(gmailToken.token_expiry) <= new Date() : false}
       twitterHandle={twitterToken?.twitter_handle || null}
       hasTwitterToken={!!twitterToken}
-      campaigns={(campaigns || []).map((c) => ({
+      campaigns={campaigns.map((c) => ({
         ...c,
         stats: campaignStats[c.id] || { total: 0, sent: 0, opened: 0, clicked: 0, replied: 0, error: 0 },
       }))}
+      activePlayerId={isCoach ? activePlayerId : null}
       resumeCampaignId={searchParams.campaign}
       resumeStep={searchParams.resume}
       gmailStatus={searchParams.gmail}

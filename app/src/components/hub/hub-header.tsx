@@ -1,12 +1,14 @@
 "use client"
 
-import { CalendarDays, Flame } from "lucide-react"
+import { CalendarDays, Flame, Users } from "lucide-react"
 
 interface HubHeaderProps {
   firstName: string
+  isCoach?: boolean
+  activePlayerName?: string | null
 }
 
-export function HubHeader({ firstName }: HubHeaderProps) {
+export function HubHeader({ firstName, isCoach = false, activePlayerName }: HubHeaderProps) {
   const now = new Date()
   const hour = now.getHours()
   const greeting =
@@ -25,8 +27,19 @@ export function HubHeader({ firstName }: HubHeaderProps) {
           {greeting}, {firstName}
         </h1>
         <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Flame className="h-3.5 w-3.5 text-accent" />
-          COACHES ARE WATCHING. MAKE EVERY POST COUNT.
+          {isCoach ? (
+            <>
+              <Users className="h-3.5 w-3.5 text-accent" />
+              {activePlayerName
+                ? `MANAGING ${activePlayerName.toUpperCase()}'S RECRUITING`
+                : "SELECT A PLAYER TO GET STARTED"}
+            </>
+          ) : (
+            <>
+              <Flame className="h-3.5 w-3.5 text-accent" />
+              COACHES ARE WATCHING. MAKE EVERY POST COUNT.
+            </>
+          )}
         </p>
       </div>
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

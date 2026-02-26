@@ -85,11 +85,13 @@ export async function updateSession(request: NextRequest) {
   if (user && !request.nextUrl.pathname.startsWith('/profile-setup') && !request.nextUrl.pathname.startsWith('/api/') && !request.nextUrl.pathname.startsWith('/auth/') && !request.nextUrl.pathname.startsWith('/recruit')) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, first_name, position')
+      .select('id, first_name, position, role')
       .eq('id', user.id)
       .single()
 
-    if (!profile || !profile.first_name || !profile.position) {
+    // Coaches only need first_name set; athletes need first_name + position
+    const needsSetup = !profile || !profile.first_name || (profile.role !== 'coach' && !profile.position)
+    if (needsSetup) {
       return redirectWithCookies('/profile-setup')
     }
   }

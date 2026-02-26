@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { getActivePlayerId } from "@/lib/active-player"
 import { HubClient } from "./hub-client"
 
 export default async function HubPage() {
@@ -8,21 +9,83 @@ export default async function HubPage() {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  const { data: userProfile } = user
+    ? await supabase
+        .from("profiles")
+        .select("first_name, last_name, position, grad_year, high_school, hudl_url, city, state, twitter_handle, role")
+        .eq("id", user.id)
+        .single()
+    : { data: null }
+
+  const isCoach = userProfile?.role === "coach"
+
+  // For coaches, determine active player and use their profile for merge tag preview data
+  let activePlayerId: string | null = null
+  let playerProfile: {
+    first_name: string | null
+    last_name: string | null
+    position: string | null
+    grad_year: number | null
+    high_school: string | null
+    hudl_url: string | null
+    city: string | null
+    state: string | null
+    twitter_handle: string | null
+  } | null = null
+  let coachProgramName: string | null = null
+
+  if (isCoach && user) {
+    // Get active player from cookie
+    const cookiePlayerId = await getActivePlayerId()
+
+    // Validate the player is linked to this coach
+    const { data: coachPlayers } = await supabase
+      .from("coach_players")
+      .select("player_id")
+      .eq("coach_id", user.id)
+
+    const playerIds = (coachPlayers || []).map(cp => cp.player_id)
+
+    if (cookiePlayerId && playerIds.includes(cookiePlayerId)) {
+      activePlayerId = cookiePlayerId
+    } else if (playerIds.length > 0) {
+      activePlayerId = playerIds[0]
+    }
+
+    // Fetch the active player's profile
+    if (activePlayerId) {
+      const { data: pp } = await supabase
+        .from("profiles")
+        .select("first_name, last_name, position, grad_year, high_school, hudl_url, city, state, twitter_handle")
+        .eq("id", activePlayerId)
+        .single()
+      playerProfile = pp
+    }
+
+    // Fetch coach program name
+    const { data: coachProfile } = await supabase
+      .from("coach_profiles")
+      .select("program_name")
+      .eq("id", user.id)
+      .single()
+    coachProgramName = coachProfile?.program_name || null
+  }
+
+  // The profile to display stats for: player profile for coaches, own profile for athletes
+  const displayProfile = isCoach && playerProfile ? playerProfile : userProfile
+
+  // Fetch pipeline and campaign data scoped to the correct athlete
+  const pipelineAthleteId = isCoach ? activePlayerId : user?.id
+
   const [
-    { data: profile },
     { count: pipelineCount },
     { data: pipelineStages },
     { data: campaigns },
     { data: twitterToken },
   ] = await Promise.all([
-    user
-      ? supabase
-          .from("profiles")
-          .select("first_name, last_name, position, grad_year, high_school, hudl_url, city, state, twitter_handle")
-          .eq("id", user.id)
-          .single()
-      : Promise.resolve({ data: null }),
-    supabase.from("pipeline_entries").select("*", { count: "exact", head: true }),
+    pipelineAthleteId
+      ? supabase.from("pipeline_entries").select("*", { count: "exact", head: true }).eq("athlete_id", pipelineAthleteId)
+      : Promise.resolve({ count: 0 }),
     supabase
       .from("pipeline_stages")
       .select("id, name, display_order")
@@ -30,8 +93,15 @@ export default async function HubPage() {
     user
       ? supabase
           .from("campaigns")
-          .select("id, type")
+          .select("id, type, player_id")
           .eq("user_id", user.id)
+          .then(res => {
+            // For coaches, filter to active player's campaigns
+            if (isCoach && activePlayerId && res.data) {
+              return { ...res, data: res.data.filter(c => c.player_id === activePlayerId) }
+            }
+            return res
+          })
       : Promise.resolve({ data: null }),
     user
       ? admin
@@ -42,10 +112,10 @@ export default async function HubPage() {
       : Promise.resolve({ data: null }),
   ])
 
-  // Get pipeline entry counts per stage
-  const { data: pipelineEntries } = await supabase
-    .from("pipeline_entries")
-    .select("stage_id")
+  // Get pipeline entry counts per stage (scoped to athlete)
+  const { data: pipelineEntries } = pipelineAthleteId
+    ? await supabase.from("pipeline_entries").select("stage_id").eq("athlete_id", pipelineAthleteId)
+    : { data: null }
 
   const stageCounts: Record<string, number> = {}
   if (pipelineEntries) {
@@ -88,7 +158,7 @@ export default async function HubPage() {
 
   return (
     <HubClient
-      profile={profile || {
+      profile={displayProfile || {
         first_name: "Athlete",
         last_name: null,
         position: null,
@@ -99,6 +169,9 @@ export default async function HubPage() {
         state: null,
         twitter_handle: null,
       }}
+      isCoach={isCoach}
+      coachProgramName={coachProgramName}
+      activePlayerName={playerProfile ? `${playerProfile.first_name} ${playerProfile.last_name}` : null}
       hasTwitterToken={!!twitterToken}
       twitterHandle={twitterToken?.twitter_handle || null}
       pipelineCount={pipelineCount || 0}

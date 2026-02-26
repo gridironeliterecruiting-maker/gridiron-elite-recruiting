@@ -62,6 +62,7 @@ interface CreateCampaignOverlayProps {
     selectedCoaches: SelectedCoach[]
   } | null
   initialCampaignType?: CampaignType
+  activePlayerId?: string | null
   onClose: () => void
   onCampaignLaunched?: (campaignData: {
     name: string
@@ -70,7 +71,7 @@ interface CreateCampaignOverlayProps {
   }) => void
 }
 
-export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gmailTier, hasGmailToken, gmailTokenExpired, quickEmailData, quickDmData, followupData, initialCampaignType = 'email', onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
+export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gmailTier, hasGmailToken, gmailTokenExpired, quickEmailData, quickDmData, followupData, initialCampaignType = 'email', activePlayerId, onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
   const router = useRouter()
   const campaignType = initialCampaignType
   // Quick email/DM skips goal and target, goes straight to build/compose (step 3)
@@ -245,6 +246,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
         goal: draft.goal,
         type: 'dm',
         dmMessageBody: messageBody,
+        playerId: activePlayerId || undefined,
         recipients: draft.selectedCoaches.map(coach => ({
           coachId: coach.coachId,
           coachName: coach.coachName,
@@ -393,6 +395,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
             gmailTier={gmailTier}
             hasGmailToken={hasGmailToken}
             gmailTokenExpired={gmailTokenExpired}
+            activePlayerId={activePlayerId}
             onEditTarget={() => goToStep(2)}
             onEditBuild={() => goToStep(3)}
             onBack={() => goToStep(3)}
