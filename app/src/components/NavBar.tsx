@@ -99,8 +99,8 @@ export default function NavBar({
             <div className="flex h-16 items-center justify-between">
               {/* Logo & Brand */}
               <Link href="/dashboard" className="relative flex items-center gap-3">
-                <div className="relative -mb-8 mt-1 shrink-0">
-                  <div className="relative h-28 w-28 drop-shadow-[0_6px_16px_rgba(0,0,0,0.5)] lg:h-32 lg:w-32">
+                <div className="relative -mb-5 mt-1 shrink-0">
+                  <div className="relative h-[76px] w-[76px] drop-shadow-[0_6px_16px_rgba(0,0,0,0.5)] lg:h-[84px] lg:w-[84px]">
                     <Image
                       src={coachBranding?.logo_url || "/logo.png"}
                       alt={coachBranding?.program_name ? `${coachBranding.program_name} logo` : "Gridiron Elite Recruiting logo"}
