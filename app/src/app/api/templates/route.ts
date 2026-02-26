@@ -56,46 +56,27 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check if the user already has a template with this name
+    // Delete any existing user template with this name, then insert fresh.
+    // This avoids race conditions from check-then-insert patterns.
     const admin = createAdminClient()
-    const { data: existingList } = await admin
+    await admin
       .from('email_templates')
-      .select('id')
+      .delete()
       .ilike('name', name)
       .eq('created_by', user.id)
       .eq('is_system', false)
 
-    const existing = existingList && existingList.length > 0 ? existingList[0] : null
-
-    let template
-    let error
-
-    if (existing) {
-      // Overwrite existing template (update name too in case casing changed)
-      const result = await admin
-        .from('email_templates')
-        .update({ name, subject, body: templateBody, updated_at: new Date().toISOString() })
-        .eq('id', existing.id)
-        .select()
-        .single()
-      template = result.data
-      error = result.error
-    } else {
-      // Create new template
-      const result = await admin
-        .from('email_templates')
-        .insert({
-          name,
-          subject,
-          body: templateBody,
-          created_by: user.id,
-          is_system: false
-        })
-        .select()
-        .single()
-      template = result.data
-      error = result.error
-    }
+    const { data: template, error } = await admin
+      .from('email_templates')
+      .insert({
+        name,
+        subject,
+        body: templateBody,
+        created_by: user.id,
+        is_system: false
+      })
+      .select()
+      .single()
 
     if (error) {
       console.error('Error saving template:', error)
