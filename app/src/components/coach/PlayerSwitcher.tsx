@@ -16,11 +16,11 @@ export function PlayerSwitcher() {
       <button
         type="button"
         onClick={() => setShowOverlay(true)}
-        className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-secondary/50"
+        className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:border-primary/30 hover:bg-secondary/50 hover:shadow-md active:scale-[0.98]"
       >
         <UserCircle className="h-4 w-4 text-primary" />
         {activePlayer.first_name} {activePlayer.last_name}
-        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform duration-200" />
       </button>
 
       {showOverlay && (
