@@ -22,24 +22,12 @@ export function HubHeader({ firstName, isCoach = false, activePlayerName }: HubH
   })
 
   return (
-    <div className="flex flex-col gap-2">
-      {/* Top row: greeting + player switcher (coach) or date (athlete) */}
-      <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between">
+      <div>
         <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
           {greeting}, {firstName}
         </h1>
-        {isCoach ? (
-          <PlayerSwitcher />
-        ) : (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <CalendarDays className="h-3.5 w-3.5" />
-            {formattedDate}
-          </div>
-        )}
-      </div>
-      {/* Subtitle row */}
-      <div className="flex items-center justify-between">
-        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
           {isCoach ? (
             <>
               <Users className="h-3.5 w-3.5 text-accent" />
@@ -54,12 +42,13 @@ export function HubHeader({ firstName, isCoach = false, activePlayerName }: HubH
             </>
           )}
         </p>
-        {isCoach && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <CalendarDays className="h-3.5 w-3.5" />
-            {formattedDate}
-          </div>
-        )}
+      </div>
+      <div className="flex flex-col items-end gap-1">
+        {isCoach && <PlayerSwitcher />}
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <CalendarDays className="h-3.5 w-3.5" />
+          {formattedDate}
+        </div>
       </div>
     </div>
   )
