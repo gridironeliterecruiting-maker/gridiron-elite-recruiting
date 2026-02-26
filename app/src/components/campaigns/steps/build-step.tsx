@@ -567,14 +567,12 @@ function TemplateEditorOverlay({
     setSavingAs(true)
     try {
       await onSaveAsTemplate({ name: saveAsName.trim(), subject, body })
-      // Also apply changes to the current campaign
-      onUpdate({ name, subject, body, delayDays: index === 0 ? null : delayDays })
-      onClose()
     } catch {
-      // Error already logged by parent
-    } finally {
-      setSavingAs(false)
+      // Error already logged by parent — still close and apply changes
     }
+    // Always apply changes to the current campaign and close
+    onUpdate({ name, subject, body, delayDays: index === 0 ? null : delayDays })
+    onClose()
   }
 
   const insertMergeTag = (tag: string) => {
