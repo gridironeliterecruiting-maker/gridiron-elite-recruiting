@@ -16,6 +16,7 @@ import {
   Trash2,
   Check,
   Library,
+  Save,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -284,7 +285,7 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
         onClick={() => setShowAddOverlay(true)}
         className="mb-6 w-full rounded-lg border border-dashed border-border bg-card py-3 text-sm text-muted-foreground transition-all hover:border-primary hover:bg-primary/[0.02] hover:text-foreground"
       >
-        + Add Custom Email
+        + Add Custom Email or a Template
       </button>
 
       {/* Navigation */}
@@ -314,6 +315,24 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
           index={editingIndex}
           onUpdate={(updates) => updateTemplate(editingIndex, updates)}
           onClose={() => setEditingIndex(null)}
+          onSaveAsTemplate={async (templateData) => {
+            try {
+              const response = await fetch('/api/templates', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(templateData)
+              })
+              if (response.ok) {
+                const { template: newTemplate } = await response.json()
+                setAvailableTemplates(prev => [newTemplate, ...prev])
+              } else {
+                throw new Error('Failed to save template')
+              }
+            } catch (error) {
+              console.error('Error saving template:', error)
+              throw error
+            }
+          }}
         />
       )}
 
@@ -521,21 +540,41 @@ function TemplateEditorOverlay({
   index,
   onUpdate,
   onClose,
+  onSaveAsTemplate,
 }: {
   template: EmailTemplate
   index: number
   onUpdate: (updates: Partial<EmailTemplate>) => void
   onClose: () => void
+  onSaveAsTemplate: (data: { name: string; subject: string; body: string }) => Promise<void>
 }) {
   const [name, setName] = useState(template.name)
   const [subject, setSubject] = useState(template.subject)
   const [body, setBody] = useState(template.body || '')
   const [delayDays, setDelayDays] = useState(template.delayDays ?? 0)
+  const [showSaveAs, setShowSaveAs] = useState(false)
+  const [saveAsName, setSaveAsName] = useState('')
+  const [savingAs, setSavingAs] = useState(false)
   const bodyRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSave = () => {
     onUpdate({ name, subject, body, delayDays: index === 0 ? null : delayDays })
     onClose()
+  }
+
+  const handleSaveAs = async () => {
+    if (!saveAsName.trim()) return
+    setSavingAs(true)
+    try {
+      await onSaveAsTemplate({ name: saveAsName.trim(), subject, body })
+      // Also apply changes to the current campaign
+      onUpdate({ name, subject, body, delayDays: index === 0 ? null : delayDays })
+      onClose()
+    } catch {
+      // Error already logged by parent
+    } finally {
+      setSavingAs(false)
+    }
   }
 
   const insertMergeTag = (tag: string) => {
@@ -604,12 +643,60 @@ function TemplateEditorOverlay({
           </h3>
           <button
             type="button"
+            onClick={() => { setSaveAsName(name); setShowSaveAs(true) }}
+            className="rounded-md bg-[hsl(0,72%,51%)] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[hsl(0,72%,45%)]"
+          >
+            Save As
+          </button>
+          <button
+            type="button"
             onClick={handleSave}
             className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Save Changes
           </button>
         </div>
+
+        {/* Save As Popup */}
+        {showSaveAs && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center">
+            <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" onClick={() => setShowSaveAs(false)} />
+            <div className="relative mx-4 w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl">
+              <h4 className="mb-1 font-display text-base font-bold uppercase tracking-tight text-foreground">
+                Save as Template
+              </h4>
+              <p className="mb-4 text-xs text-muted-foreground">
+                Save this email to your template library for reuse.
+              </p>
+              <input
+                type="text"
+                value={saveAsName}
+                onChange={(e) => setSaveAsName(e.target.value)}
+                placeholder="Template name"
+                className="mb-4 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveAs()}
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSaveAs(false)}
+                  className="rounded-md border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveAs}
+                  disabled={!saveAsName.trim() || savingAs}
+                  className="rounded-md bg-[hsl(0,72%,51%)] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[hsl(0,72%,45%)] disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {savingAs ? 'Saving...' : 'Save Template'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-5 py-6">
