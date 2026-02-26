@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { refreshTwitterToken } from '@/lib/twitter'
 
 const TWITTER_API_BASE = 'https://api.twitter.com/2'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -14,12 +14,32 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Support ?playerId= for coaches viewing a player's Twitter profile
+    const { searchParams } = new URL(request.url)
+    const playerId = searchParams.get('playerId')
+    let targetUserId = user.id
+
+    if (playerId) {
+      // Validate coach has access to this player
+      const { data: link } = await supabase
+        .from('coach_players')
+        .select('id')
+        .eq('coach_id', user.id)
+        .eq('player_id', playerId)
+        .single()
+
+      if (!link) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      }
+      targetUserId = playerId
+    }
+
     // Use admin client to access twitter_tokens (bypasses RLS)
     const admin = createAdminClient()
     const { data: token } = await admin
       .from('twitter_tokens')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', targetUserId)
       .single()
 
     if (!token) {

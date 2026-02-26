@@ -71,6 +71,21 @@ export default async function HubPage() {
     coachProgramName = coachProfile?.program_name || null
   }
 
+  // For coaches, also check if the active player has a connected Twitter account
+  let playerTwitterHandle: string | null = null
+  let playerHasTwitterToken = false
+  if (isCoach && activePlayerId) {
+    const { data: playerTwitterToken } = await admin
+      .from("twitter_tokens")
+      .select("twitter_handle")
+      .eq("user_id", activePlayerId)
+      .single()
+    if (playerTwitterToken) {
+      playerHasTwitterToken = true
+      playerTwitterHandle = playerTwitterToken.twitter_handle
+    }
+  }
+
   // The profile to display stats for: player profile for coaches, own profile for athletes
   const displayProfile = isCoach && playerProfile ? playerProfile : userProfile
 
@@ -172,9 +187,12 @@ export default async function HubPage() {
       isCoach={isCoach}
       coachFirstName={isCoach ? (userProfile?.first_name || "Coach") : undefined}
       coachProgramName={coachProgramName}
+      activePlayerId={activePlayerId}
       activePlayerName={playerProfile ? `${playerProfile.first_name} ${playerProfile.last_name}` : null}
       hasTwitterToken={!!twitterToken}
       twitterHandle={twitterToken?.twitter_handle || null}
+      playerHasTwitterToken={playerHasTwitterToken}
+      playerTwitterHandle={playerTwitterHandle}
       pipelineCount={pipelineCount || 0}
       stages={stagesWithCounts}
       emailsSent={emailsSent}

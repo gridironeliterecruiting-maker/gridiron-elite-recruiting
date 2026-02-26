@@ -8,6 +8,7 @@ import { TwitterProfileCard } from "@/components/hub/twitter-profile-card"
 import { ReadinessScore } from "@/components/hub/readiness-score"
 import { ContentCalendar } from "@/components/hub/content-calendar"
 import { HubActionItems } from "@/components/hub/hub-action-items"
+import { CoachTwitterCard } from "@/components/hub/coach-twitter-card"
 import { InstagramPlaceholder } from "@/components/hub/instagram-placeholder"
 
 interface AthleteProfile {
@@ -50,9 +51,12 @@ interface HubClientProps {
   isCoach?: boolean
   coachFirstName?: string
   coachProgramName?: string | null
+  activePlayerId?: string | null
   activePlayerName?: string | null
   hasTwitterToken: boolean
   twitterHandle: string | null
+  playerHasTwitterToken?: boolean
+  playerTwitterHandle?: string | null
   pipelineCount: number
   stages: PipelineStage[]
   emailsSent: number
@@ -65,9 +69,12 @@ export function HubClient({
   isCoach = false,
   coachFirstName,
   coachProgramName,
+  activePlayerId,
   activePlayerName,
   hasTwitterToken,
   twitterHandle,
+  playerHasTwitterToken = false,
+  playerTwitterHandle,
   pipelineCount,
   stages,
   emailsSent,
@@ -163,14 +170,26 @@ export function HubClient({
           )}
 
           {isCoach && (
-            /* Coach quick stats for active player */
-            <HubActionItems
-              pipelineCount={pipelineCount}
-              stages={stages}
-              emailsSent={emailsSent}
-              dmsSent={dmsSent}
-              campaignCount={campaignCount}
-            />
+            <>
+              {/* Player's Twitter profile card */}
+              {(playerHasTwitterToken || playerTwitterHandle) && activePlayerId && (
+                <CoachTwitterCard
+                  playerId={activePlayerId}
+                  playerHandle={playerTwitterHandle || null}
+                  playerHasToken={playerHasTwitterToken}
+                  playerFirstName={activePlayerName?.split(" ")[0] || "Player"}
+                />
+              )}
+
+              {/* Coach quick stats for active player */}
+              <HubActionItems
+                pipelineCount={pipelineCount}
+                stages={stages}
+                emailsSent={emailsSent}
+                dmsSent={dmsSent}
+                campaignCount={campaignCount}
+              />
+            </>
           )}
         </div>
 
