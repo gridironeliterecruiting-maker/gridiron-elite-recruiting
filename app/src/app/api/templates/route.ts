@@ -2,22 +2,30 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
-// GET /api/templates - List all templates (system + user's own)
+// GET /api/templates - List role-appropriate templates (system + user's own)
 export async function GET() {
   try {
     const supabase = await createClient()
-    
+
     // Get the current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Fetch system templates and user's own templates
+    // Look up user's role
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    const userRole = profile?.role || 'athlete'
+
+    // Fetch system templates matching user's role + user's own templates
     const { data: templates, error } = await supabase
       .from('email_templates')
       .select('*')
-      .or(`is_system.eq.true,created_by.eq.${user.id}`)
+      .or(`and(is_system.eq.true,for_role.eq.${userRole}),created_by.eq.${user.id}`)
       .order('is_system', { ascending: false })
       .order('created_at', { ascending: false })
 
@@ -56,6 +64,14 @@ export async function POST(request: Request) {
       )
     }
 
+    // Look up user's role to tag template
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    const userRole = profile?.role || 'athlete'
+
     // Delete any existing user template with this name, then insert fresh.
     // This avoids race conditions from check-then-insert patterns.
     const admin = createAdminClient()
@@ -73,7 +89,8 @@ export async function POST(request: Request) {
         subject,
         body: templateBody,
         created_by: user.id,
-        is_system: false
+        is_system: false,
+        for_role: userRole
       })
       .select()
       .single()
