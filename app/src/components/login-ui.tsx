@@ -64,7 +64,7 @@ export function LoginUI({
           <Image src={logoSrc} alt={logoAlt} width={220} height={220} className="object-contain" />
         </div>
         {programName && (
-          <h2 className="font-display text-xl font-bold uppercase tracking-wide mb-1" style={{ color }}>
+          <h2 className="font-display text-xl font-bold uppercase tracking-wide mb-[30px]" style={{ color }}>
             {programName}
           </h2>
         )}
