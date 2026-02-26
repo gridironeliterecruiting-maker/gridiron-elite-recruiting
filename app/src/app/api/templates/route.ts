@@ -58,22 +58,23 @@ export async function POST(request: Request) {
 
     // Check if the user already has a template with this name
     const admin = createAdminClient()
-    const { data: existing } = await admin
+    const { data: existingList } = await admin
       .from('email_templates')
       .select('id')
-      .eq('name', name)
+      .ilike('name', name)
       .eq('created_by', user.id)
       .eq('is_system', false)
-      .maybeSingle()
+
+    const existing = existingList && existingList.length > 0 ? existingList[0] : null
 
     let template
     let error
 
     if (existing) {
-      // Overwrite existing template
+      // Overwrite existing template (update name too in case casing changed)
       const result = await admin
         .from('email_templates')
-        .update({ subject, body: templateBody, updated_at: new Date().toISOString() })
+        .update({ name, subject, body: templateBody, updated_at: new Date().toISOString() })
         .eq('id', existing.id)
         .select()
         .single()

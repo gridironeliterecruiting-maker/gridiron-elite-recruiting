@@ -570,8 +570,8 @@ function TemplateEditorOverlay({
     if (!saveAsName.trim()) return
     const trimmedName = saveAsName.trim()
 
-    // Check for duplicate name
-    if (!showOverwriteConfirm && existingTemplateNames.includes(trimmedName)) {
+    // Check for duplicate name (case-insensitive)
+    if (!showOverwriteConfirm && existingTemplateNames.some(n => n.toLowerCase() === trimmedName.toLowerCase())) {
       setShowOverwriteConfirm(true)
       setSavingAs(false)
       return
