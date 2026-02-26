@@ -207,8 +207,8 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
 
       if (response.ok) {
         const { template: newTemplate } = await response.json()
-        // Refresh the available templates list
-        setAvailableTemplates(prev => [newTemplate, ...prev])
+        // Refresh the available templates list (remove any with same name for overwrite)
+        setAvailableTemplates(prev => [newTemplate, ...prev.filter(t => t.name.toLowerCase() !== newTemplate.name.toLowerCase())])
         setShowCustomCreator(false)
         // Optionally, automatically add it to the sequence
         addTemplates([{
@@ -325,7 +325,8 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
               })
               if (response.ok) {
                 const { template: newTemplate } = await response.json()
-                setAvailableTemplates(prev => [newTemplate, ...prev])
+                // Remove any existing template with the same name (overwrite case)
+                setAvailableTemplates(prev => [newTemplate, ...prev.filter(t => t.name.toLowerCase() !== newTemplate.name.toLowerCase())])
               } else {
                 throw new Error('Failed to save template')
               }
