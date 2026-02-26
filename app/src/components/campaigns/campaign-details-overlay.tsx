@@ -24,13 +24,14 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
 import { CoachDetail } from "@/components/programs/coach-detail"
-import type { SelectedCoach } from "./types"
+import type { SelectedCoach, CampaignGoal } from "./types"
+import { QuickEmailModal } from "./quick-email-modal"
 
 interface CampaignDetailsProps {
   campaignId: string
   onClose: () => void
   onStatusChange?: () => void
-  onFollowup?: (data: { selectedCoaches: SelectedCoach[] }) => void
+  onFollowup?: (data: { goal: CampaignGoal; selectedCoaches: SelectedCoach[] }) => void
 }
 
 interface CoachRecipient {
@@ -200,6 +201,7 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
   const [savingName, setSavingName] = useState(false)
   const [sortField, setSortField] = useState<'opened' | 'clicked' | 'replied' | null>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
+  const [showGoalPicker, setShowGoalPicker] = useState(false)
 
   useEffect(() => {
     document.body.style.overflow = "hidden"
@@ -292,6 +294,11 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
 
   const handleFollowup = () => {
     if (!campaign || !onFollowup) return
+    setShowGoalPicker(true)
+  }
+
+  const handleFollowupGoalSelected = (goal: CampaignGoal) => {
+    if (!campaign || !onFollowup) return
     const coaches: SelectedCoach[] = []
     for (const program of campaign.programsWithRecipients) {
       for (const coach of program.coaches) {
@@ -307,7 +314,8 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
         }
       }
     }
-    onFollowup({ selectedCoaches: coaches })
+    setShowGoalPicker(false)
+    onFollowup({ goal, selectedCoaches: coaches })
   }
 
   const sortCoaches = (coaches: CoachRecipient[]) => {
@@ -603,6 +611,15 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
           </div>
         )}
       </div>
+
+      {showGoalPicker && (
+        <QuickEmailModal
+          title="Send Followup Email"
+          subtitle={`Follow up with ${campaign?.programsWithRecipients?.reduce((sum, p) => sum + p.coaches.length, 0) || 0} coaches`}
+          onContinue={handleFollowupGoalSelected}
+          onClose={() => setShowGoalPicker(false)}
+        />
+      )}
 
       {selectedCoachData && (
         <CoachDetail

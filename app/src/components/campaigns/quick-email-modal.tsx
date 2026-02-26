@@ -5,13 +5,15 @@ import { X, Mail, Film, Heart, MapPin, MessageSquare } from "lucide-react"
 import type { CampaignGoal } from "./types"
 
 interface QuickEmailModalProps {
-  coach: {
+  coach?: {
     id: string
     first_name: string
     last_name: string
     title: string
     school_name: string
   }
+  title?: string
+  subtitle?: string
   channel?: 'email' | 'dm'
   onContinue: (goal: CampaignGoal) => void
   onClose: () => void
@@ -55,7 +57,7 @@ const GOALS: {
   }
 ]
 
-export function QuickEmailModal({ coach, channel = 'email', onContinue, onClose }: QuickEmailModalProps) {
+export function QuickEmailModal({ coach, title: customTitle, subtitle: customSubtitle, channel = 'email', onContinue, onClose }: QuickEmailModalProps) {
   const isDm = channel === 'dm'
   const [selectedGoal, setSelectedGoal] = useState<CampaignGoal | null>(null)
 
@@ -73,11 +75,13 @@ export function QuickEmailModal({ coach, channel = 'email', onContinue, onClose 
         <div className="mb-6 flex items-start justify-between">
           <div>
             <h3 className="font-display text-lg font-bold uppercase tracking-tight text-foreground">
-              {isDm ? 'DM' : 'Email'} {coach.first_name} {coach.last_name}
+              {customTitle || `${isDm ? 'DM' : 'Email'} ${coach?.first_name} ${coach?.last_name}`}
             </h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {coach.title} • {coach.school_name}
-            </p>
+            {(customSubtitle || coach) && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {customSubtitle || `${coach?.title} • ${coach?.school_name}`}
+              </p>
+            )}
           </div>
           <button
             type="button"

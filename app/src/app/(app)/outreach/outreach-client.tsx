@@ -31,7 +31,7 @@ import { CampaignLaunchedOverlay } from "@/components/campaigns/campaign-launche
 import { CampaignDetailsOverlay } from "@/components/campaigns/campaign-details-overlay"
 import { DmCampaignOverlay } from "@/components/campaigns/dm-campaign-overlay"
 import { CampaignCard } from "@/components/campaigns/campaign-card"
-import type { SelectedCoach } from "@/components/campaigns/types"
+import type { SelectedCoach, CampaignGoal } from "@/components/campaigns/types"
 
 interface EmailTemplate {
   id: string
@@ -157,7 +157,7 @@ export function OutreachClient({
   } | null>(null)
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
   const [selectedDmCampaignId, setSelectedDmCampaignId] = useState<string | null>(null)
-  const [followupData, setFollowupData] = useState<{ selectedCoaches: SelectedCoach[] } | null>(null)
+  const [followupData, setFollowupData] = useState<{ goal: CampaignGoal; selectedCoaches: SelectedCoach[] } | null>(null)
   
   // Check if we just launched successfully
   useEffect(() => {
