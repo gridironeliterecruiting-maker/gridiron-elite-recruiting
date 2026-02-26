@@ -17,6 +17,11 @@ import {
  * Uses admin client to bypass RLS.
  */
 export async function GET(request: Request) {
+  // Block email sending on non-production environments (staging/preview)
+  if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production') {
+    return NextResponse.json({ processed: 0, message: 'Email sending is disabled in preview/staging environments', safety: 'non_production' })
+  }
+
   // Verify cron secret
   const authHeader = request.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET

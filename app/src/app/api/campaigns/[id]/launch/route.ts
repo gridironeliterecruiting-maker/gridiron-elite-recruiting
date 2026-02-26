@@ -8,6 +8,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Block campaign launches on non-production environments (staging/preview)
+    if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production') {
+      return NextResponse.json({ error: 'Campaign launching is disabled in preview/staging environments' }, { status: 403 })
+    }
+
     const { id } = await params
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
