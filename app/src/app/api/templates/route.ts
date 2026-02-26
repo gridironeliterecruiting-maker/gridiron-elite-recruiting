@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
 // GET /api/templates - List all templates (system + user's own)
@@ -55,8 +56,9 @@ export async function POST(request: Request) {
       )
     }
 
-    // Create the template
-    const { data: template, error } = await supabase
+    // Create the template (use admin client to bypass RLS)
+    const admin = createAdminClient()
+    const { data: template, error } = await admin
       .from('email_templates')
       .insert({
         name,
