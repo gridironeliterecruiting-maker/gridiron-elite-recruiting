@@ -345,6 +345,11 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
           loadingTemplates={loadingTemplates}
           onAdd={addTemplates}
           onClose={() => setShowAddOverlay(false)}
+          onDelete={async (id) => {
+            const response = await fetch(`/api/templates/${id}`, { method: 'DELETE' })
+            if (!response.ok) throw new Error('Failed to delete')
+            setAvailableTemplates(prev => prev.filter(t => t.id !== id))
+          }}
           onCreateNew={() => {
             setShowAddOverlay(false)
             setShowCustomCreator(true)
@@ -371,6 +376,7 @@ function AddTemplateOverlay({
   onAdd,
   onClose,
   onCreateNew,
+  onDelete,
 }: {
   existingNames: string[]
   availableTemplates: DatabaseTemplate[]
@@ -378,8 +384,11 @@ function AddTemplateOverlay({
   onAdd: (templates: EmailTemplate[]) => void
   onClose: () => void
   onCreateNew: () => void
+  onDelete: (id: string) => Promise<void>
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const toggleTemplate = (id: string) => {
     setSelected((prev) => {
@@ -401,6 +410,18 @@ function AddTemplateOverlay({
         delayDays: null
       }))
     onAdd(toAdd)
+  }
+
+  const handleDelete = async (id: string) => {
+    setDeleting(true)
+    try {
+      await onDelete(id)
+      setSelected((prev) => { const next = new Set(prev); next.delete(id); return next })
+    } catch {
+      // Error logged by parent
+    }
+    setDeleting(false)
+    setConfirmDeleteId(null)
   }
 
   // Separate system and user templates
@@ -456,34 +477,70 @@ function AddTemplateOverlay({
                   {userTemplates.map((template) => {
                     const isSelected = selected.has(template.id)
                     const alreadyInSequence = existingNames.includes(template.name)
+                    const isConfirmingDelete = confirmDeleteId === template.id
                     return (
-                      <button
-                        key={template.id}
-                        type="button"
-                        onClick={() => !alreadyInSequence && toggleTemplate(template.id)}
-                        disabled={alreadyInSequence}
-                        className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-all ${
-                          alreadyInSequence
-                            ? "border-border bg-secondary/30 opacity-50 cursor-not-allowed"
-                            : isSelected
-                              ? "border-primary/30 bg-primary/[0.03]"
-                              : "border-border bg-card hover:border-primary/20"
-                        }`}
-                      >
-                        <div
-                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                            isSelected
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border"
+                      <div key={template.id} className="relative">
+                        <button
+                          type="button"
+                          onClick={() => !alreadyInSequence && toggleTemplate(template.id)}
+                          disabled={alreadyInSequence}
+                          className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all ${
+                            alreadyInSequence
+                              ? "border-border bg-secondary/30 opacity-50 cursor-not-allowed"
+                              : isSelected
+                                ? "border-primary/30 bg-primary/[0.03]"
+                                : "border-border bg-card hover:border-primary/20"
                           }`}
                         >
-                          {isSelected && <Check className="h-3 w-3" />}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h5 className="font-medium text-foreground">{template.name}</h5>
-                          <p className="truncate text-xs text-muted-foreground">{template.subject}</p>
-                        </div>
-                      </button>
+                          <div
+                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
+                              isSelected
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border"
+                            }`}
+                          >
+                            {isSelected && <Check className="h-3 w-3" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h5 className="font-medium text-foreground">{template.name}</h5>
+                            <p className="truncate text-xs text-muted-foreground">{template.subject}</p>
+                          </div>
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(template.id) }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setConfirmDeleteId(template.id) } }}
+                            className="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </div>
+                        </button>
+                        {/* Delete confirmation */}
+                        {isConfirmingDelete && (
+                          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-card/95 backdrop-blur-sm border border-border">
+                            <div className="text-center px-4">
+                              <p className="text-sm font-medium text-foreground mb-3">Delete &ldquo;{template.name}&rdquo;?</p>
+                              <div className="flex justify-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteId(null)}
+                                  className="rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelete(template.id)}
+                                  disabled={deleting}
+                                  className="rounded-md bg-[hsl(0,72%,51%)] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[hsl(0,72%,45%)] disabled:opacity-40"
+                                >
+                                  {deleting ? 'Deleting...' : 'Delete'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )
                   })}
                 </div>

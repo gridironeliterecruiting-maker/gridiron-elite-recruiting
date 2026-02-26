@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to save template' }, { status: 500 })
     }
 
-    return NextResponse.json({ template }, { status: existing ? 200 : 201 })
+    return NextResponse.json({ template }, { status: 201 })
   } catch (error) {
     console.error('Unexpected error in POST /api/templates:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

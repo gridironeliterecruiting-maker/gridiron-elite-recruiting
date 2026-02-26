@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
 // PUT /api/templates/[id] - Update a template
@@ -77,8 +78,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Delete the template (only if user owns it)
-    const { error } = await supabase
+    // Delete the template (only if user owns it, use admin to bypass RLS)
+    const admin = createAdminClient()
+    const { error } = await admin
       .from('email_templates')
       .delete()
       .eq('id', id)
