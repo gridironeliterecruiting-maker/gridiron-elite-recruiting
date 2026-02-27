@@ -28,16 +28,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const admin = createAdminClient()
 
-  // Check if user has a coach profile (for coach UI features like player dropdown)
-  const { data: coachProfile } = await admin
-    .from('coach_profiles')
-    .select('program_name, title, logo_url, primary_color, accent_color')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  const isCoach = !!coachProfile
-
   // Resolve branding from the URL slug (source of truth)
+  // Track whether this is a managed program or legacy coach_profiles program
   let programBranding: {
     program_name: string
     title: string | null
@@ -45,16 +37,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     primary_color: string | null
     accent_color: string | null
   } | null = null
+  let managedProgramId: string | null = null
+  let legacyCoachId: string | null = null
 
   if (programSlug) {
     // Load branding from managed_programs by slug
     const { data: program } = await admin
       .from('managed_programs')
-      .select('school_name, mascot, logo_url, primary_color, accent_color')
+      .select('id, school_name, mascot, logo_url, primary_color, accent_color')
       .eq('landing_slug', programSlug)
       .maybeSingle()
 
     if (program) {
+      managedProgramId = program.id
       programBranding = {
         program_name: [program.school_name, program.mascot].filter(Boolean).join(' '),
         title: null,
@@ -66,37 +61,83 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       // Fall back to coach_profiles by slug (legacy)
       const { data: legacyCoach } = await admin
         .from('coach_profiles')
-        .select('program_name, title, logo_url, primary_color, accent_color')
+        .select('id, program_name, title, logo_url, primary_color, accent_color')
         .eq('landing_slug', programSlug)
         .maybeSingle()
 
       if (legacyCoach) {
+        legacyCoachId = legacyCoach.id
         programBranding = legacyCoach
       }
     }
   }
   // No slug = main site. Never apply program branding here — always show Gridiron Elite.
 
+  // Determine isCoach based on the current program only — not globally.
+  // The same user can be a coach on one program and a player on another.
+  let isCoach = false
+  if (managedProgramId) {
+    const { data: membership } = await admin
+      .from('program_members')
+      .select('role')
+      .eq('program_id', managedProgramId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    isCoach = membership?.role === 'coach'
+  } else if (legacyCoachId) {
+    // Legacy: the coach IS the user whose profile owns the slug
+    isCoach = user.id === legacyCoachId
+  }
+  // No programSlug → main site → isCoach = false
+
   let players: PlayerInfo[] = []
   let activePlayer: PlayerInfo | null = null
 
   if (isCoach) {
-    // TODO: scope players to current program via program_members
-    // For now, still using coach_players (legacy)
-    const { data: coachPlayers } = await supabase
-      .from('coach_players')
-      .select('player_id, profiles!coach_players_player_id_fkey(id, first_name, last_name, position, grad_year, high_school)')
-      .eq('coach_id', user.id)
+    if (managedProgramId) {
+      // Load players from program_members scoped to this program
+      const { data: playerMembers } = await admin
+        .from('program_members')
+        .select('user_id')
+        .eq('program_id', managedProgramId)
+        .eq('role', 'player')
+        .not('user_id', 'is', null)
 
-    if (coachPlayers) {
-      players = coachPlayers.map((cp: any) => ({
-        id: cp.profiles.id,
-        first_name: cp.profiles.first_name,
-        last_name: cp.profiles.last_name,
-        position: cp.profiles.position,
-        grad_year: cp.profiles.grad_year,
-        high_school: cp.profiles.high_school,
-      }))
+      if (playerMembers && playerMembers.length > 0) {
+        const userIds = playerMembers.map((m: any) => m.user_id)
+        const { data: playerProfiles } = await admin
+          .from('profiles')
+          .select('id, first_name, last_name, position, grad_year, high_school')
+          .in('id', userIds)
+
+        if (playerProfiles) {
+          players = playerProfiles.map((p: any) => ({
+            id: p.id,
+            first_name: p.first_name,
+            last_name: p.last_name,
+            position: p.position,
+            grad_year: p.grad_year,
+            high_school: p.high_school,
+          }))
+        }
+      }
+    } else if (legacyCoachId) {
+      // Legacy: load from coach_players
+      const { data: coachPlayers } = await supabase
+        .from('coach_players')
+        .select('player_id, profiles!coach_players_player_id_fkey(id, first_name, last_name, position, grad_year, high_school)')
+        .eq('coach_id', user.id)
+
+      if (coachPlayers) {
+        players = coachPlayers.map((cp: any) => ({
+          id: cp.profiles.id,
+          first_name: cp.profiles.first_name,
+          last_name: cp.profiles.last_name,
+          position: cp.profiles.position,
+          grad_year: cp.profiles.grad_year,
+          high_school: cp.profiles.high_school,
+        }))
+      }
     }
 
     const cookiePlayerId = await getActivePlayerId()
