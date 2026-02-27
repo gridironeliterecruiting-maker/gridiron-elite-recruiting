@@ -94,8 +94,8 @@ export async function updateSession(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    // Coaches only need first_name set; athletes need first_name + position
-    const needsSetup = !profile || !profile.first_name || (profile.role !== 'coach' && !profile.position)
+    // Coaches and admins only need first_name set; athletes need first_name + position
+    const needsSetup = !profile || !profile.first_name || (profile.role !== 'coach' && profile.role !== 'admin' && !profile.position)
     if (needsSetup) {
       return redirectWithCookies('/profile-setup')
     }

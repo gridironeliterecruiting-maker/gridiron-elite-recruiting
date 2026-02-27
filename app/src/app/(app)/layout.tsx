@@ -16,7 +16,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .eq('id', user.id)
     .single()
 
-  const isCoach = profile?.role === 'coach'
+  // Check if user has a coach profile (works for coach, admin, or any role)
+  const { data: coachProfile } = await supabase
+    .from('coach_profiles')
+    .select('program_name, title, logo_url, primary_color, accent_color')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  const isCoach = !!coachProfile
 
   // Coach-specific data
   let coachBranding: {
@@ -25,19 +32,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     logo_url: string | null
     primary_color: string | null
     accent_color: string | null
-  } | null = null
+  } | null = coachProfile
   let players: PlayerInfo[] = []
   let activePlayer: PlayerInfo | null = null
 
   if (isCoach) {
-    // Fetch coach branding
-    const { data: coachProfile } = await supabase
-      .from('coach_profiles')
-      .select('program_name, title, logo_url, primary_color, accent_color')
-      .eq('id', user.id)
-      .single()
-
-    coachBranding = coachProfile
 
     // Fetch linked players
     const { data: coachPlayers } = await supabase
