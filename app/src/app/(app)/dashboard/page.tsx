@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getActivePlayerId } from "@/lib/active-player"
+import { getCoachContext } from "@/lib/coach-context"
 import { HubClient } from "./hub-client"
 
 export default async function HubPage() {
@@ -17,9 +18,8 @@ export default async function HubPage() {
         .single()
     : { data: null }
 
-  // Check coach_profiles existence (not role string — admin users can also be coaches)
-  const { data: _cp } = await admin.from("coach_profiles").select("id").eq("id", user!.id).maybeSingle()
-  const isCoach = !!_cp
+  // Coach status is scoped to the current program only (not global)
+  const { isCoach, isLegacyCoach, playerIds: managedPlayerIds, programName: managedProgramName } = await getCoachContext(user!.id)
 
   // For coaches, determine active player and use their profile for merge tag preview data
   let activePlayerId: string | null = null
@@ -40,13 +40,15 @@ export default async function HubPage() {
     // Get active player from cookie
     const cookiePlayerId = await getActivePlayerId()
 
-    // Validate the player is linked to this coach
-    const { data: coachPlayers } = await supabase
-      .from("coach_players")
-      .select("player_id")
-      .eq("coach_id", user.id)
-
-    const playerIds = (coachPlayers || []).map(cp => cp.player_id)
+    // Resolve player list: program_members for managed programs, coach_players for legacy
+    let playerIds: string[] = managedPlayerIds
+    if (isLegacyCoach) {
+      const { data: coachPlayers } = await supabase
+        .from("coach_players")
+        .select("player_id")
+        .eq("coach_id", user.id)
+      playerIds = (coachPlayers || []).map(cp => cp.player_id)
+    }
 
     if (cookiePlayerId && playerIds.includes(cookiePlayerId)) {
       activePlayerId = cookiePlayerId
@@ -64,13 +66,17 @@ export default async function HubPage() {
       playerProfile = pp
     }
 
-    // Fetch coach program name
-    const { data: coachProfile } = await supabase
-      .from("coach_profiles")
-      .select("program_name")
-      .eq("id", user.id)
-      .single()
-    coachProgramName = coachProfile?.program_name || null
+    // Program name: from managed_programs for managed programs, coach_profiles for legacy
+    if (isLegacyCoach) {
+      const { data: coachProfile } = await supabase
+        .from("coach_profiles")
+        .select("program_name")
+        .eq("id", user.id)
+        .single()
+      coachProgramName = coachProfile?.program_name || null
+    } else {
+      coachProgramName = managedProgramName
+    }
   }
 
   // For coaches, also check if the active player has a connected Twitter account

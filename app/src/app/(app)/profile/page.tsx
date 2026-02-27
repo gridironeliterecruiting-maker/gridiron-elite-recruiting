@@ -1,13 +1,12 @@
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin"
 import { ProfileForm } from "./profile-form"
 import { RecruitingDrive } from "@/components/profile/recruiting-drive"
 import { getActivePlayerId } from "@/lib/active-player"
+import { getCoachContext } from "@/lib/coach-context"
 import { ProfileHeader } from "./profile-header"
 
 export default async function ProfilePage() {
   const supabase = await createClient()
-  const admin = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   const { data: profile } = await supabase
@@ -16,9 +15,8 @@ export default async function ProfilePage() {
     .eq("id", user?.id)
     .single()
 
-  // Check coach_profiles existence (not role string — admin users can also be coaches)
-  const { data: _cp } = await admin.from("coach_profiles").select("id").eq("id", user!.id).maybeSingle()
-  const isCoach = !!_cp
+  // Coach status is scoped to the current program only (not global)
+  const { isCoach, isLegacyCoach, playerIds: managedPlayerIds, programName: managedProgramName } = await getCoachContext(user!.id)
 
   // Coach-specific data
   let coachProfile: { program_name: string; title: string | null } | null = null
@@ -26,21 +24,29 @@ export default async function ProfilePage() {
   let activePlayerId: string | null = null
 
   if (isCoach && user) {
-    const { data: cp } = await supabase
-      .from("coach_profiles")
-      .select("program_name, title")
-      .eq("id", user.id)
-      .single()
-    coachProfile = cp
+    // Resolve player list: program_members for managed programs, coach_players for legacy
+    let playerIds: string[] = managedPlayerIds
+    if (isLegacyCoach) {
+      const { data: legacyPlayers } = await supabase
+        .from("coach_players")
+        .select("player_id")
+        .eq("coach_id", user.id)
+      playerIds = (legacyPlayers || []).map(cp => cp.player_id)
+
+      // Also fetch coach profile data (title, program_name) for legacy only
+      const { data: cp } = await supabase
+        .from("coach_profiles")
+        .select("program_name, title")
+        .eq("id", user.id)
+        .single()
+      coachProfile = cp
+    } else {
+      // Managed program: use program name from managed_programs
+      coachProfile = { program_name: managedProgramName || '', title: null }
+    }
 
     // Get active player
     const cookiePlayerId = await getActivePlayerId()
-    const { data: coachPlayers } = await supabase
-      .from("coach_players")
-      .select("player_id")
-      .eq("coach_id", user.id)
-
-    const playerIds = (coachPlayers || []).map(cp => cp.player_id)
     activePlayerId = cookiePlayerId && playerIds.includes(cookiePlayerId)
       ? cookiePlayerId
       : playerIds[0] || null

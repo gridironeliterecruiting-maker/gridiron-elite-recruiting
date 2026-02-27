@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getActivePlayerId } from "@/lib/active-player"
+import { getCoachContext } from "@/lib/coach-context"
 import { OutreachClient } from "./outreach-client"
 
 export default async function OutreachPage({
@@ -20,20 +21,24 @@ export default async function OutreachPage({
     .eq("id", user!.id)
     .single()
 
-  // Check coach_profiles existence (not role string — admin users can also be coaches)
-  const { data: _cp } = await admin.from("coach_profiles").select("id").eq("id", user!.id).maybeSingle()
-  const isCoach = !!_cp
+  // Coach status is scoped to the current program only (not global)
+  const { isCoach, isLegacyCoach, playerIds: managedPlayerIds } = await getCoachContext(user!.id)
 
   // For coaches, resolve active player
   let activePlayerId: string | null = null
   if (isCoach) {
     const cookiePlayerId = await getActivePlayerId()
-    const { data: coachPlayers } = await supabase
-      .from("coach_players")
-      .select("player_id")
-      .eq("coach_id", user!.id)
 
-    const playerIds = (coachPlayers || []).map(cp => cp.player_id)
+    // Resolve player list: program_members for managed programs, coach_players for legacy
+    let playerIds: string[] = managedPlayerIds
+    if (isLegacyCoach) {
+      const { data: coachPlayers } = await supabase
+        .from("coach_players")
+        .select("player_id")
+        .eq("coach_id", user!.id)
+      playerIds = (coachPlayers || []).map(cp => cp.player_id)
+    }
+
     if (cookiePlayerId && playerIds.includes(cookiePlayerId)) {
       activePlayerId = cookiePlayerId
     } else if (playerIds.length > 0) {
