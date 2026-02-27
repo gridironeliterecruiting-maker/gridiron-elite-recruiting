@@ -25,8 +25,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .eq('id', user.id)
     .single()
 
-  // Check if user has a coach profile (works for coach, admin, or any role)
-  const { data: coachProfile } = await supabase
+  // Check if user has a coach profile — use admin client to bypass RLS
+  // (admin-role users may be blocked by coach_profiles RLS policies)
+  const admin = createAdminClient()
+  const { data: coachProfile } = await admin
     .from('coach_profiles')
     .select('program_name, title, logo_url, primary_color, accent_color')
     .eq('id', user.id)
@@ -45,8 +47,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   // If no coach branding but user entered via a branded program page, load that program's branding
   if (!coachBranding && programSlug) {
-    const admin = createAdminClient()
-
     // Try managed_programs first (new system)
     const { data: program } = await admin
       .from('managed_programs')
