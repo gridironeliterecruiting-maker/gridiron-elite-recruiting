@@ -75,6 +75,7 @@ export function AdminDashboard() {
   const [newEmail, setNewEmail] = useState('')
   const [newRole, setNewRole] = useState<'coach' | 'player'>('coach')
   const [addingMember, setAddingMember] = useState(false)
+  const [pendingMembers, setPendingMembers] = useState<{ email: string; role: 'coach' | 'player' }[]>([])
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -102,6 +103,7 @@ export function AdminDashboard() {
     setLogoPreview(null)
     setEditing(null)
     setCreating(true)
+    setPendingMembers([])
     setError('')
   }
 
@@ -174,6 +176,17 @@ export function AdminDashboard() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to save')
 
+      // If creating, add any pending members after program is saved
+      if (!editing && data.program && pendingMembers.length > 0) {
+        await Promise.all(pendingMembers.map(m =>
+          fetch(`/api/admin/programs/${data.program.id}/members`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(m),
+          })
+        ))
+      }
+
       await loadPrograms()
       if (!editing && data.program) {
         // Open the newly created program for editing (to add members, logo)
@@ -203,7 +216,22 @@ export function AdminDashboard() {
   }
 
   const handleAddMember = async () => {
-    if (!editing || !newEmail.trim()) return
+    if (!newEmail.trim()) return
+
+    // Creating mode — add to local pending list
+    if (creating) {
+      const email = newEmail.trim().toLowerCase()
+      if (pendingMembers.some(m => m.email === email)) {
+        setError('This email is already added')
+        return
+      }
+      setPendingMembers(prev => [...prev, { email, role: newRole }])
+      setNewEmail('')
+      setError('')
+      return
+    }
+
+    if (!editing) return
     setAddingMember(true)
     try {
       const res = await fetch(`/api/admin/programs/${editing.id}/members`, {
@@ -277,8 +305,9 @@ export function AdminDashboard() {
     }
   }
 
-  const coachMembers = editing?.members.filter(m => m.role === 'coach') || []
-  const playerMembers = editing?.members.filter(m => m.role === 'player') || []
+  const activeMembers = creating ? pendingMembers.map(m => ({ ...m, id: `pending-${m.email}`, user_id: null })) : (editing?.members || [])
+  const coachMembers = activeMembers.filter(m => m.role === 'coach')
+  const playerMembers = activeMembers.filter(m => m.role === 'player')
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -578,74 +607,84 @@ export function AdminDashboard() {
                 </div>
               </Section>
 
-              {/* Members (only when editing) */}
-              {editing && (
-                <Section title="Team Members" icon={<Users className="h-4 w-4" />}>
-                  {/* Add Member */}
-                  <div className="mb-4 flex items-end gap-2">
-                    <div className="flex-1">
-                      <label className="mb-1.5 block text-xs font-medium text-gray-700">Email</label>
-                      <input
-                        type="email"
-                        value={newEmail}
-                        onChange={e => setNewEmail(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleAddMember()}
-                        placeholder="name@email.com"
-                        className="input"
-                      />
-                    </div>
-                    <div className="w-28">
-                      <label className="mb-1.5 block text-xs font-medium text-gray-700">Role</label>
-                      <select
-                        value={newRole}
-                        onChange={e => setNewRole(e.target.value as 'coach' | 'player')}
-                        className="input"
-                      >
-                        <option value="coach">Coach</option>
-                        <option value="player">Player</option>
-                      </select>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleAddMember}
-                      disabled={!newEmail.trim() || addingMember}
-                      className="rounded-lg bg-[#0047AB] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#003580] disabled:opacity-50"
-                    >
-                      {addingMember ? '...' : 'Add'}
-                    </button>
+              {/* Members */}
+              <Section title="Team Members" icon={<Users className="h-4 w-4" />}>
+                {/* Add Member */}
+                <div className="mb-4 flex items-end gap-2">
+                  <div className="flex-1">
+                    <label className="mb-1.5 block text-xs font-medium text-gray-700">Email</label>
+                    <input
+                      type="email"
+                      value={newEmail}
+                      onChange={e => setNewEmail(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleAddMember()}
+                      placeholder="name@email.com"
+                      className="input"
+                    />
                   </div>
+                  <div className="w-28">
+                    <label className="mb-1.5 block text-xs font-medium text-gray-700">Role</label>
+                    <select
+                      value={newRole}
+                      onChange={e => setNewRole(e.target.value as 'coach' | 'player')}
+                      className="input"
+                    >
+                      <option value="coach">Coach</option>
+                      <option value="player">Player</option>
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddMember}
+                    disabled={!newEmail.trim() || addingMember}
+                    className="rounded-lg bg-[#0047AB] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#003580] disabled:opacity-50"
+                  >
+                    {addingMember ? '...' : 'Add'}
+                  </button>
+                </div>
 
-                  {/* Coach List */}
-                  {coachMembers.length > 0 && (
-                    <div className="mb-3">
-                      <h4 className="mb-1.5 text-xs font-semibold uppercase text-gray-500">Coaches</h4>
-                      <div className="space-y-1">
-                        {coachMembers.map(m => (
-                          <MemberRow key={m.id} member={m} onRemove={() => handleRemoveMember(m.id)} />
-                        ))}
-                      </div>
+                {/* Coach List */}
+                {coachMembers.length > 0 && (
+                  <div className="mb-3">
+                    <h4 className="mb-1.5 text-xs font-semibold uppercase text-gray-500">Coaches</h4>
+                    <div className="space-y-1">
+                      {coachMembers.map(m => (
+                        <MemberRow key={m.id} member={m} onRemove={() => {
+                          if (creating) {
+                            setPendingMembers(prev => prev.filter(p => `pending-${p.email}` !== m.id))
+                          } else {
+                            handleRemoveMember(m.id)
+                          }
+                        }} />
+                      ))}
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {/* Player List */}
-                  {playerMembers.length > 0 && (
-                    <div>
-                      <h4 className="mb-1.5 text-xs font-semibold uppercase text-gray-500">Players</h4>
-                      <div className="space-y-1">
-                        {playerMembers.map(m => (
-                          <MemberRow key={m.id} member={m} onRemove={() => handleRemoveMember(m.id)} />
-                        ))}
-                      </div>
+                {/* Player List */}
+                {playerMembers.length > 0 && (
+                  <div>
+                    <h4 className="mb-1.5 text-xs font-semibold uppercase text-gray-500">Players</h4>
+                    <div className="space-y-1">
+                      {playerMembers.map(m => (
+                        <MemberRow key={m.id} member={m} onRemove={() => {
+                          if (creating) {
+                            setPendingMembers(prev => prev.filter(p => `pending-${p.email}` !== m.id))
+                          } else {
+                            handleRemoveMember(m.id)
+                          }
+                        }} />
+                      ))}
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {coachMembers.length === 0 && playerMembers.length === 0 && (
-                    <p className="text-center text-sm text-gray-400 py-4">
-                      No members yet. Add coach and player emails above.
-                    </p>
-                  )}
-                </Section>
-              )}
+                {coachMembers.length === 0 && playerMembers.length === 0 && (
+                  <p className="text-center text-sm text-gray-400 py-4">
+                    No members yet. Add coach and player emails above.
+                  </p>
+                )}
+              </Section>
             </div>
           </div>
         </div>
