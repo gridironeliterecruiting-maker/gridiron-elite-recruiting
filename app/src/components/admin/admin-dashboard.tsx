@@ -43,7 +43,6 @@ interface ProgramForm {
   state: string
   landing_slug: string
   primary_color: string
-  secondary_color: string
   accent_color: string
   twitter_username: string
   hudl_url: string
@@ -57,7 +56,6 @@ const emptyForm: ProgramForm = {
   state: '',
   landing_slug: '',
   primary_color: '#0047AB',
-  secondary_color: '#FFFFFF',
   accent_color: '#CC0000',
   twitter_username: '',
   hudl_url: '',
@@ -117,7 +115,6 @@ export function AdminDashboard() {
       state: program.state || '',
       landing_slug: program.landing_slug || '',
       primary_color: program.primary_color || '#0047AB',
-      secondary_color: program.secondary_color || '#FFFFFF',
       accent_color: program.accent_color || '#CC0000',
       twitter_username: program.twitter_username || '',
       hudl_url: program.hudl_url || '',
@@ -412,7 +409,6 @@ export function AdminDashboard() {
                   </div>
                   <div className="mt-3 flex gap-1">
                     <div className="h-2 w-8 rounded-full" style={{ backgroundColor: program.primary_color }} />
-                    <div className="h-2 w-8 rounded-full border border-gray-200" style={{ backgroundColor: program.secondary_color }} />
                     <div className="h-2 w-8 rounded-full" style={{ backgroundColor: program.accent_color }} />
                   </div>
                 </button>
@@ -563,19 +559,16 @@ export function AdminDashboard() {
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-6">
                   <ColorField
-                    label="Primary Color"
+                    label="Primary / Banner"
+                    description="Navbar background, buttons, active states"
                     value={form.primary_color}
                     onChange={v => handleFieldChange('primary_color', v)}
                   />
                   <ColorField
-                    label="Secondary Color"
-                    value={form.secondary_color}
-                    onChange={v => handleFieldChange('secondary_color', v)}
-                  />
-                  <ColorField
-                    label="Accent Color"
+                    label="Secondary / Accents"
+                    description="Top stripe, highlights, badges"
                     value={form.accent_color}
                     onChange={v => handleFieldChange('accent_color', v)}
                   />
@@ -756,10 +749,11 @@ function Field({ label, required, children }: { label: string; required?: boolea
   )
 }
 
-function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function ColorField({ label, description, value, onChange }: { label: string; description?: string; value: string; onChange: (v: string) => void }) {
   return (
     <div>
-      <label className="mb-1.5 block text-xs font-medium text-gray-700">{label}</label>
+      <label className="mb-0.5 block text-xs font-semibold text-gray-700">{label}</label>
+      {description && <p className="mb-2 text-[11px] text-gray-400">{description}</p>}
       <div className="flex items-center gap-2">
         <input
           type="color"
