@@ -60,13 +60,8 @@ export function UnauthorizedPage({
 
         {requested ? (
           <>
-            <div className="mb-6 rounded-xl border-2 p-6" style={{ borderColor: color, backgroundColor: `${color}08` }}>
-              <div className="mb-3 flex justify-center">
-                <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke={color} strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-                </svg>
-              </div>
-              <p className="text-sm leading-relaxed text-gray-700">
+            <div className="mb-6 rounded-xl border-2 p-8 flex items-center justify-center" style={{ borderColor: color, backgroundColor: `${color}08` }}>
+              <p className="text-sm leading-relaxed text-gray-700 text-center">
                 We have sent a request to the program administrator and will send you an email when access has been granted.
               </p>
             </div>
@@ -91,15 +86,11 @@ export function UnauthorizedPage({
               type="button"
               onClick={handleRequestAccess}
               disabled={requesting}
-              className="w-full py-4 px-6 rounded-xl text-white font-semibold text-base transition shadow-sm hover:shadow-md disabled:opacity-50"
-              style={{ backgroundColor: color }}
+              className="w-full py-4 px-6 rounded-xl font-semibold text-base transition shadow-sm hover:shadow-md disabled:opacity-50 border-2"
+              style={{ borderColor: color, color: color, backgroundColor: 'transparent' }}
             >
               {requesting ? 'Sending Request...' : 'Request Access'}
             </button>
-
-            <p className="mt-6 text-sm text-gray-500 leading-relaxed">
-              Click above to notify the program administrator. You&apos;ll receive an email once your access has been approved.
-            </p>
           </>
         )}
       </div>
