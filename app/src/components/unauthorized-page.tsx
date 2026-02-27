@@ -8,8 +8,10 @@ interface UnauthorizedPageProps {
   logoAlt?: string
   programName?: string
   primaryColor?: string
-  coachProfileId: string
-  existingRequestStatus: string | null
+  coachProfileId?: string
+  programId?: string
+  existingRequestStatus?: string | null
+  adminMode?: boolean
 }
 
 export function UnauthorizedPage({
@@ -18,7 +20,9 @@ export function UnauthorizedPage({
   programName,
   primaryColor,
   coachProfileId,
+  programId,
   existingRequestStatus,
+  adminMode,
 }: UnauthorizedPageProps) {
   const color = primaryColor || '#0047AB'
   const [requesting, setRequesting] = useState(false)
@@ -29,10 +33,13 @@ export function UnauthorizedPage({
     setRequesting(true)
     setError('')
     try {
+      const body = adminMode
+        ? { adminRequest: true }
+        : { coachProfileId, programId }
       const response = await fetch('/api/access-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ coachProfileId }),
+        body: JSON.stringify(body),
       })
       if (!response.ok) {
         const data = await response.json()
@@ -45,6 +52,11 @@ export function UnauthorizedPage({
       setRequesting(false)
     }
   }
+
+  const adminLabel = adminMode ? 'platform admin' : 'program administrator'
+  const unauthorizedMessage = adminMode
+    ? 'You do not have administrator access to this platform.'
+    : 'You are not currently an authorized user for this program.'
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -62,7 +74,7 @@ export function UnauthorizedPage({
           <>
             <div className="mb-6 rounded-xl border-2 p-8 flex items-center justify-center" style={{ borderColor: color, backgroundColor: `${color}08` }}>
               <p className="text-sm font-semibold leading-relaxed text-gray-700 text-center">
-                We have sent a request to the program administrator and will send you an email when access has been granted.
+                We have sent a request to the {adminLabel} and will send you an email when access has been granted.
               </p>
             </div>
             <p className="text-xs text-gray-400">
@@ -73,7 +85,7 @@ export function UnauthorizedPage({
           <>
             <h1 className="text-2xl font-bold mb-2" style={{ color }}>Access Required</h1>
             <p className="text-gray-500 mb-8">
-              You are not currently an authorized user for this program.
+              {unauthorizedMessage}
             </p>
 
             {error && (

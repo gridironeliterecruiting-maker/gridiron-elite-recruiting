@@ -7,20 +7,17 @@ export async function POST(request: Request) {
   try {
     const supabase = await createClient()
 
-    // Get the current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { coachProfileId } = await request.json()
-    if (!coachProfileId) {
-      return NextResponse.json({ error: 'Missing coachProfileId' }, { status: 400 })
-    }
+    const body = await request.json()
+    const { coachProfileId, programId, adminRequest } = body
 
     const admin = createAdminClient()
 
-    // Get the requesting user's profile info
+    // Get the requesting user's profile
     const { data: requesterProfile } = await admin
       .from('profiles')
       .select('first_name, last_name, email')
@@ -31,98 +28,206 @@ export async function POST(request: Request) {
       .filter(Boolean).join(' ') || 'Unknown User'
     const requesterEmail = requesterProfile?.email || user.email || ''
 
-    // Get the coach's profile and program info
-    const { data: coachProfile } = await admin
-      .from('coach_profiles')
-      .select('id, program_name')
-      .eq('id', coachProfileId)
-      .single()
+    // ── Admin access request ──
+    if (adminRequest) {
+      const { error: insertError } = await admin
+        .from('access_requests')
+        .upsert({
+          user_id: user.id,
+          user_email: requesterEmail,
+          user_name: requesterName,
+          request_type: 'admin',
+          status: 'pending',
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,coach_profile_id' })
 
-    if (!coachProfile) {
-      return NextResponse.json({ error: 'Program not found' }, { status: 404 })
-    }
-
-    const { data: coachUser } = await admin
-      .from('profiles')
-      .select('email, first_name')
-      .eq('id', coachProfileId)
-      .single()
-
-    // Insert the access request (upsert to handle re-requests)
-    const { error: insertError } = await admin
-      .from('access_requests')
-      .upsert({
-        user_id: user.id,
-        user_email: requesterEmail,
-        user_name: requesterName,
-        coach_profile_id: coachProfileId,
-        status: 'pending',
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,coach_profile_id' })
-
-    if (insertError) {
-      console.error('Error creating access request:', insertError)
-      return NextResponse.json({ error: 'Failed to create request' }, { status: 500 })
-    }
-
-    // Try to send an email notification to the coach via their Gmail
-    if (coachUser?.email) {
-      try {
-        const { data: gmailToken } = await admin
-          .from('gmail_tokens')
-          .select('access_token, refresh_token, token_expiry')
-          .eq('user_id', coachProfileId)
-          .single()
-
-        if (gmailToken) {
-          let accessToken = gmailToken.access_token
-
-          // Refresh token if expired
-          if (gmailToken.token_expiry && new Date(gmailToken.token_expiry) <= new Date()) {
-            const refreshed = await refreshGmailToken(gmailToken.refresh_token)
-            accessToken = refreshed.access_token
-            // Update stored token
-            await admin
-              .from('gmail_tokens')
-              .update({
-                access_token: refreshed.access_token,
-                token_expiry: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
-              })
-              .eq('user_id', coachProfileId)
-          }
-
-          const htmlBody = `
-            <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h2 style="color: #333; margin-bottom: 4px;">New Access Request</h2>
-              <p style="color: #666; margin-top: 0;">Someone wants to join your program on Gridiron Elite Recruiting.</p>
-              <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 20px 0;">
-                <p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${requesterName}</p>
-                <p style="margin: 0;"><strong>Email:</strong> ${requesterEmail}</p>
-              </div>
-              <p style="color: #666; font-size: 14px;">
-                Log in to your Gridiron Elite Recruiting dashboard to approve or deny this request.
-              </p>
-            </div>
-          `
-
-          await sendGmailEmail(
-            accessToken,
-            coachUser.email,
-            `Access Request: ${requesterName} wants to join ${coachProfile.program_name}`,
-            htmlBody,
-            'Gridiron Elite Recruiting',
-            coachUser.email
-          )
-        }
-      } catch (emailError) {
-        // Email notification is best-effort — request is already stored in DB
-        console.error('Failed to send access request email:', emailError)
+      if (insertError) {
+        console.error('Error creating admin access request:', insertError)
+        return NextResponse.json({ error: 'Failed to create request' }, { status: 500 })
       }
+
+      // Email all admin users
+      await notifyAdmins(admin, requesterName, requesterEmail)
+
+      return NextResponse.json({ success: true })
     }
 
-    return NextResponse.json({ success: true })
+    // ── Program access request (managed_programs) ──
+    if (programId) {
+      const { data: program } = await admin
+        .from('managed_programs')
+        .select('id, school_name, mascot')
+        .eq('id', programId)
+        .single()
+
+      if (!program) {
+        return NextResponse.json({ error: 'Program not found' }, { status: 404 })
+      }
+
+      const programName = [program.school_name, program.mascot].filter(Boolean).join(' ')
+
+      const { error: insertError } = await admin
+        .from('access_requests')
+        .upsert({
+          user_id: user.id,
+          user_email: requesterEmail,
+          user_name: requesterName,
+          program_id: programId,
+          request_type: 'program',
+          status: 'pending',
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,coach_profile_id' })
+
+      if (insertError) {
+        console.error('Error creating program access request:', insertError)
+        return NextResponse.json({ error: 'Failed to create request' }, { status: 500 })
+      }
+
+      // Notify program coaches
+      const { data: coachMembers } = await admin
+        .from('program_members')
+        .select('email, user_id')
+        .eq('program_id', programId)
+        .eq('role', 'coach')
+
+      if (coachMembers) {
+        for (const coach of coachMembers) {
+          if (coach.user_id) {
+            await sendNotificationEmail(admin, coach.user_id, coach.email, requesterName, requesterEmail, programName)
+          }
+        }
+      }
+
+      return NextResponse.json({ success: true })
+    }
+
+    // ── Legacy coach_profiles access request ──
+    if (coachProfileId) {
+      const { data: coachProfile } = await admin
+        .from('coach_profiles')
+        .select('id, program_name')
+        .eq('id', coachProfileId)
+        .single()
+
+      if (!coachProfile) {
+        return NextResponse.json({ error: 'Program not found' }, { status: 404 })
+      }
+
+      const { data: coachUser } = await admin
+        .from('profiles')
+        .select('email, first_name')
+        .eq('id', coachProfileId)
+        .single()
+
+      const { error: insertError } = await admin
+        .from('access_requests')
+        .upsert({
+          user_id: user.id,
+          user_email: requesterEmail,
+          user_name: requesterName,
+          coach_profile_id: coachProfileId,
+          request_type: 'program',
+          status: 'pending',
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,coach_profile_id' })
+
+      if (insertError) {
+        console.error('Error creating access request:', insertError)
+        return NextResponse.json({ error: 'Failed to create request' }, { status: 500 })
+      }
+
+      if (coachUser?.email) {
+        await sendNotificationEmail(admin, coachProfileId, coachUser.email, requesterName, requesterEmail, coachProfile.program_name)
+      }
+
+      return NextResponse.json({ success: true })
+    }
+
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   } catch (error) {
     console.error('Unexpected error in POST /api/access-request:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+// Send notification email to a user via their Gmail token
+async function sendNotificationEmail(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  toEmail: string,
+  requesterName: string,
+  requesterEmail: string,
+  programName: string
+) {
+  try {
+    const { data: gmailToken } = await admin
+      .from('gmail_tokens')
+      .select('access_token, refresh_token, token_expiry')
+      .eq('user_id', userId)
+      .single()
+
+    if (!gmailToken) return
+
+    let accessToken = gmailToken.access_token
+    if (gmailToken.token_expiry && new Date(gmailToken.token_expiry) <= new Date()) {
+      const refreshed = await refreshGmailToken(gmailToken.refresh_token)
+      accessToken = refreshed.access_token
+      await admin
+        .from('gmail_tokens')
+        .update({
+          access_token: refreshed.access_token,
+          token_expiry: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
+        })
+        .eq('user_id', userId)
+    }
+
+    const htmlBody = `
+      <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #333; margin-bottom: 4px;">New Access Request</h2>
+        <p style="color: #666; margin-top: 0;">Someone wants to join ${programName} on Gridiron Elite Recruiting.</p>
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 20px 0;">
+          <p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${requesterName}</p>
+          <p style="margin: 0;"><strong>Email:</strong> ${requesterEmail}</p>
+        </div>
+        <p style="color: #666; font-size: 14px;">
+          Log in to your Gridiron Elite Recruiting dashboard to approve or deny this request.
+        </p>
+      </div>
+    `
+
+    await sendGmailEmail(
+      accessToken,
+      toEmail,
+      `Access Request: ${requesterName} wants to join ${programName}`,
+      htmlBody,
+      'Gridiron Elite Recruiting',
+      toEmail
+    )
+  } catch (emailError) {
+    console.error('Failed to send access request email:', emailError)
+  }
+}
+
+// Notify all admin users about a platform admin access request
+async function notifyAdmins(
+  admin: ReturnType<typeof createAdminClient>,
+  requesterName: string,
+  requesterEmail: string
+) {
+  try {
+    const { data: admins } = await admin
+      .from('profiles')
+      .select('id, email')
+      .eq('role', 'admin')
+
+    if (!admins) return
+
+    for (const adm of admins) {
+      if (adm.email) {
+        await sendNotificationEmail(admin, adm.id, adm.email, requesterName, requesterEmail, 'Platform Administration')
+      }
+    }
+  } catch (err) {
+    console.error('Failed to notify admins:', err)
   }
 }
