@@ -74,10 +74,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         programBranding = legacyCoach
       }
     }
-  } else if (coachProfile) {
-    // No slug — direct visit. Fall back to coach_profiles branding.
-    programBranding = coachProfile
   }
+  // No slug = main site. Never apply program branding here — always show Gridiron Elite.
 
   let players: PlayerInfo[] = []
   let activePlayer: PlayerInfo | null = null
