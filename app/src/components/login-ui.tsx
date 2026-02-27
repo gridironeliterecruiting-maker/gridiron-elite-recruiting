@@ -10,6 +10,7 @@ interface LoginUIProps {
   logoAlt?: string
   programName?: string
   primaryColor?: string
+  slug?: string
 }
 
 export function LoginUI({
@@ -17,6 +18,7 @@ export function LoginUI({
   logoAlt = 'Gridiron Elite Recruiting',
   programName,
   primaryColor,
+  slug,
 }: LoginUIProps) {
   const [error, setError] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
@@ -24,13 +26,17 @@ export function LoginUI({
 
   const color = primaryColor || '#0047AB'
 
+  // Only auto-redirect to dashboard for the main login page (no slug).
+  // Branded pages handle auth routing server-side in [slug]/page.tsx.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        window.location.href = '/dashboard'
-      }
-    })
-  }, [supabase.auth])
+    if (!slug) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          window.location.href = '/dashboard'
+        }
+      })
+    }
+  }, [supabase.auth, slug])
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true)
@@ -41,10 +47,16 @@ export function LoginUI({
     overlay.innerHTML = `<div style="text-align:center"><div style="border:4px solid #f3f3f3;border-top:4px solid ${color};border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto 16px"></div><p style="font-family:system-ui;color:#333">Redirecting to Google...</p></div><style>@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style>`
     document.body.appendChild(overlay)
 
+    // If on a branded page, redirect back to it after OAuth so the server
+    // can check authorization. Otherwise, default to /dashboard via callback.
+    const callbackUrl = slug
+      ? `${getAppUrl()}/auth/callback?next=/${slug}`
+      : `${getAppUrl()}/auth/callback`
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${getAppUrl()}/auth/callback`,
+        redirectTo: callbackUrl,
         queryParams: {
           prompt: 'select_account',
         },
