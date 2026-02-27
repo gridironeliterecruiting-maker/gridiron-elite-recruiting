@@ -353,7 +353,10 @@ export function DmCampaignOverlay({ campaignId, onClose, embedded = false, onAll
   }
 
   const handleConnectTwitter = () => {
-    window.location.href = `/api/twitter/authorize?campaign=${campaignId}`
+    const segs = window.location.pathname.split('/').filter(Boolean)
+    const appRoutes = ['dashboard','coaches','pipeline','outreach','profile']
+    const base = segs.length >= 2 && appRoutes.includes(segs[1]) ? `/${segs[0]}` : ''
+    window.location.href = `/api/twitter/authorize?campaign=${campaignId}&returnTo=${encodeURIComponent(`${base}/outreach`)}`
   }
 
   // Notify parent when all DMs have been sent

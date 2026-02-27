@@ -26,19 +26,19 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useActivePlayer } from "@/components/ActivePlayerContext"
 
-const athleteNavItems = [
-  { label: "Hub", icon: LayoutDashboard, href: "/dashboard" },
-  { label: "Programs", icon: Users, href: "/coaches" },
-  { label: "Pipeline", icon: GitBranch, href: "/pipeline" },
-  { label: "Outreach", icon: Mail, href: "/outreach" },
-  { label: "Profile", icon: User, href: "/profile" },
+const athleteRoutes = [
+  { label: "Hub", icon: LayoutDashboard, path: "/dashboard" },
+  { label: "Programs", icon: Users, path: "/coaches" },
+  { label: "Pipeline", icon: GitBranch, path: "/pipeline" },
+  { label: "Outreach", icon: Mail, path: "/outreach" },
+  { label: "Profile", icon: User, path: "/profile" },
 ]
 
-const coachNavItems = [
-  { label: "Hub", icon: LayoutDashboard, href: "/dashboard" },
-  { label: "Programs", icon: Users, href: "/coaches" },
-  { label: "Outreach", icon: Mail, href: "/outreach" },
-  { label: "Profile", icon: User, href: "/profile" },
+const coachRoutes = [
+  { label: "Hub", icon: LayoutDashboard, path: "/dashboard" },
+  { label: "Programs", icon: Users, path: "/coaches" },
+  { label: "Outreach", icon: Mail, path: "/outreach" },
+  { label: "Profile", icon: User, path: "/profile" },
 ]
 
 interface Profile {
@@ -60,24 +60,33 @@ interface CoachBranding {
 export default function NavBar({
   profile,
   coachBranding,
+  basePath = '',
 }: {
   profile: Profile | null
   coachBranding?: CoachBranding | null
+  basePath?: string
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const { activePlayer, isCoach } = useActivePlayer()
 
-  const navItems = isCoach ? coachNavItems : athleteNavItems
+  const routes = isCoach ? coachRoutes : athleteRoutes
+
+  // Prefix routes with basePath (e.g., /cityhigh-ia/dashboard)
+  const navItems = routes.map(r => ({
+    ...r,
+    href: `${basePath}${r.path}`,
+  }))
 
   const handleSignOut = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
-    // Send program users back to their branded login, never the generic /login
-    const slugMatch = document.cookie.match(/(?:^|;\s*)program_slug=([^;]+)/)
-    if (slugMatch) {
-      router.push(`/${slugMatch[1]}`)
+    // Clear program_slug cookie
+    document.cookie = 'program_slug=;path=/;max-age=0'
+    // Send program users to their branded login, others to generic login
+    if (basePath) {
+      router.push(basePath)
     } else {
       router.push("/login")
     }
@@ -87,7 +96,6 @@ export default function NavBar({
     ? `${profile.first_name?.[0] || ""}${profile.last_name?.[0] || ""}`
     : "??"
 
-  // Subtitle in user area
   const userSubtitle = isCoach && coachBranding
     ? coachBranding.program_name
     : profile?.grad_year
@@ -104,7 +112,7 @@ export default function NavBar({
           <div className="mx-auto max-w-7xl px-4 lg:px-8">
             <div className="flex h-16 items-center justify-between">
               {/* Logo & Brand */}
-              <Link href="/dashboard" className="relative flex items-center gap-3">
+              <Link href={`${basePath}/dashboard`} className="relative flex items-center gap-3">
                 <div className="relative -mb-5 shrink-0 drop-shadow-[0_6px_16px_rgba(0,0,0,0.5)]">
                   <Image
                     src={coachBranding?.logo_url || "/logo.png"}
@@ -128,7 +136,7 @@ export default function NavBar({
               {/* Desktop Nav — centered */}
               <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex">
                 {navItems.map((item) => {
-                  const isActive = pathname === item.href
+                  const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
                   return (
                     <Link
                       key={item.label}
@@ -202,7 +210,7 @@ export default function NavBar({
             <div className="border-t border-primary-foreground/10 md:hidden">
               <div className="flex flex-col gap-1 px-4 py-3">
                 {navItems.map((item) => {
-                  const isActive = pathname === item.href
+                  const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
                   return (
                     <Link
                       key={item.label}

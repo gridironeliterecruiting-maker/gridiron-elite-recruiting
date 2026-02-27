@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { cookies } from 'next/headers'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import NavBar from '@/components/NavBar'
 import { ActivePlayerProvider, type PlayerInfo } from '@/components/ActivePlayerContext'
@@ -10,14 +10,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Read program_slug cookie — if set, this user entered through a branded page
-  const cookieStore = await cookies()
-  const programSlug = cookieStore.get('program_slug')?.value
+  // Read program slug from header (set by middleware rewrite)
+  const headerStore = await headers()
+  const programSlug = headerStore.get('x-program-slug')
 
   if (!user) {
-    // Send program users back to their branded login, never the generic /login
     redirect(programSlug ? `/${programSlug}` : '/login')
   }
+
+  const basePath = programSlug ? `/${programSlug}` : ''
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -25,9 +26,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .eq('id', user.id)
     .single()
 
-  // Check if user has a coach profile — use admin client to bypass RLS
-  // (admin-role users may be blocked by coach_profiles RLS policies)
   const admin = createAdminClient()
+
+  // Check if user has a coach profile (for coach UI features like player dropdown)
   const { data: coachProfile } = await admin
     .from('coach_profiles')
     .select('program_name, title, logo_url, primary_color, accent_color')
@@ -36,10 +37,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const isCoach = !!coachProfile
 
-  // Resolve branding — program_slug cookie is the source of truth.
-  // It represents which program the user is currently inside.
-  // Coach_profiles is only a fallback when there's no slug (direct /dashboard visit).
-  let coachBranding: {
+  // Resolve branding from the URL slug (source of truth)
+  let programBranding: {
     program_name: string
     title: string | null
     logo_url: string | null
@@ -48,8 +47,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   } | null = null
 
   if (programSlug) {
-    // User entered via a branded program page — load THAT program's branding
-    // Try managed_programs first (new system)
+    // Load branding from managed_programs by slug
     const { data: program } = await admin
       .from('managed_programs')
       .select('school_name, mascot, logo_url, primary_color, accent_color')
@@ -57,7 +55,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       .maybeSingle()
 
     if (program) {
-      coachBranding = {
+      programBranding = {
         program_name: [program.school_name, program.mascot].filter(Boolean).join(' '),
         title: null,
         logo_url: program.logo_url,
@@ -73,19 +71,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         .maybeSingle()
 
       if (legacyCoach) {
-        coachBranding = legacyCoach
+        programBranding = legacyCoach
       }
     }
   } else if (coachProfile) {
-    // No slug cookie — user came in directly. Fall back to their coach_profiles branding.
-    coachBranding = coachProfile
+    // No slug — direct visit. Fall back to coach_profiles branding.
+    programBranding = coachProfile
   }
 
   let players: PlayerInfo[] = []
   let activePlayer: PlayerInfo | null = null
 
   if (isCoach) {
-    // Fetch linked players
+    // TODO: scope players to current program via program_members
+    // For now, still using coach_players (legacy)
     const { data: coachPlayers } = await supabase
       .from('coach_players')
       .select('player_id, profiles!coach_players_player_id_fkey(id, first_name, last_name, position, grad_year, high_school)')
@@ -102,7 +101,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       }))
     }
 
-    // Resolve active player from cookie
     const cookiePlayerId = await getActivePlayerId()
     const validPlayer = cookiePlayerId ? players.find(p => p.id === cookiePlayerId) : null
     activePlayer = validPlayer || players[0] || null
@@ -110,14 +108,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   // Build CSS variable overrides for program branding
   const styleOverrides: Record<string, string> = {}
-  if (coachBranding?.primary_color) {
-    styleOverrides['--primary'] = coachBranding.primary_color
+  if (programBranding?.primary_color) {
+    styleOverrides['--primary'] = programBranding.primary_color
   }
-  if (coachBranding?.accent_color) {
-    styleOverrides['--accent'] = coachBranding.accent_color
+  if (programBranding?.accent_color) {
+    styleOverrides['--accent'] = programBranding.accent_color
   }
 
-  const isProgramUser = !!coachBranding
+  const isProgramUser = !!programBranding
 
   return (
     <ActivePlayerProvider activePlayer={activePlayer} players={players} isCoach={isCoach}>
@@ -125,14 +123,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         className="min-h-screen bg-background"
         style={Object.keys(styleOverrides).length > 0 ? styleOverrides as React.CSSProperties : undefined}
       >
-        <NavBar profile={profile} coachBranding={coachBranding} />
+        <NavBar profile={profile} coachBranding={programBranding} basePath={basePath} />
         <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
           {children}
         </main>
         <footer className="border-t border-border bg-card">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 lg:px-8">
             <p className="text-xs text-muted-foreground">
-              {coachBranding?.program_name || 'Gridiron Elite Recruiting'}
+              {programBranding?.program_name || 'Gridiron Elite Recruiting'}
             </p>
             <p className="text-xs text-muted-foreground">
               {isProgramUser ? 'Powered by Gridiron Elite Recruiting' : 'Built for athletes, by athletes.'}

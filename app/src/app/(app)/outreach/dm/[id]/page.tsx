@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { DmQueueClient } from "./dm-queue-client"
 
@@ -11,7 +12,11 @@ export default async function DmQueuePage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) redirect("/login")
+  const headerStore = await headers()
+  const programSlug = headerStore.get('x-program-slug')
+  const basePath = programSlug ? `/${programSlug}` : ''
+
+  if (!user) redirect(`${basePath}/login`)
 
   // Fetch campaign
   const { data: campaign } = await supabase
@@ -22,7 +27,7 @@ export default async function DmQueuePage({
     .eq("type", "dm")
     .single()
 
-  if (!campaign) redirect("/outreach")
+  if (!campaign) redirect(`${basePath}/outreach`)
 
   // Fetch recipients
   const { data: recipients } = await supabase

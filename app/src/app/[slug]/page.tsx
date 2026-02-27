@@ -126,7 +126,7 @@ export default async function LandingPage({ params }: LandingPageProps) {
         }
       }
 
-      redirect("/dashboard")
+      redirect(`/${slug}/dashboard`)
     }
 
     // Also check by user_id (for return visits after initial link)
@@ -138,7 +138,7 @@ export default async function LandingPage({ params }: LandingPageProps) {
       .maybeSingle()
 
     if (memberByUserId) {
-      redirect("/dashboard")
+      redirect(`/${slug}/dashboard`)
     }
 
     // Check for existing access request
@@ -178,7 +178,7 @@ export default async function LandingPage({ params }: LandingPageProps) {
   }
 
   if (isCoach || isPlayer) {
-    redirect("/dashboard")
+    redirect(`/${slug}/dashboard`)
   }
 
   // Check for existing access request (legacy)

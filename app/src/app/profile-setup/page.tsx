@@ -77,7 +77,7 @@ export default function ProfileSetupPage() {
 
     // Send program users back to their branded page (triggers auth check → dashboard)
     const programSlug = getCookie('program_slug')
-    router.push(programSlug ? `/${programSlug}` : '/dashboard')
+    router.push(programSlug ? `/${programSlug}/dashboard` : '/dashboard')
   }
 
   const inputClass = "w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0047AB] focus:border-transparent outline-none text-sm"

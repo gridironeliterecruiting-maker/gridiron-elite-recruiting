@@ -76,7 +76,10 @@ export function CoachDetail({ coach, program, onClose }: CoachDetailProps) {
       program: program.id,
       quickEmail: 'true'
     })
-    router.push(`/outreach?${params.toString()}`)
+    const segs = window.location.pathname.split('/').filter(Boolean)
+    const appRoutes = ['dashboard','coaches','pipeline','outreach','profile']
+    const base = segs.length >= 2 && appRoutes.includes(segs[1]) ? `/${segs[0]}` : ''
+    router.push(`${base}/outreach?${params.toString()}`)
   }
 
   const handleDmGoalSelected = (goal: CampaignGoal) => {
@@ -86,7 +89,10 @@ export function CoachDetail({ coach, program, onClose }: CoachDetailProps) {
       program: program.id,
       quickDm: 'true'
     })
-    router.push(`/outreach?${params.toString()}`)
+    const segs = window.location.pathname.split('/').filter(Boolean)
+    const appRoutes = ['dashboard','coaches','pipeline','outreach','profile']
+    const base = segs.length >= 2 && appRoutes.includes(segs[1]) ? `/${segs[0]}` : ''
+    router.push(`${base}/outreach?${params.toString()}`)
   }
 
   const hasDm = coach.twitter_dm_open && coach.twitter_handle

@@ -118,7 +118,8 @@ export function HubClient({
   }, [hasTwitterToken])
 
   const handleConnectTwitter = () => {
-    window.location.href = "/api/twitter/authorize?returnTo=/dashboard"
+    const basePath = window.location.pathname.split('/').slice(0, -1).join('/') || ''
+    window.location.href = `/api/twitter/authorize?returnTo=${basePath}/dashboard`
   }
 
   const firstName = isCoach && coachFirstName ? coachFirstName : (profile.first_name || "Athlete")

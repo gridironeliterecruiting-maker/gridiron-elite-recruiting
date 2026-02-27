@@ -15,6 +15,7 @@ import {
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { resolveMergeTags } from "@/lib/merge-tags"
+import { programPath } from "@/lib/program-utils"
 
 interface Recipient {
   id: string
@@ -157,7 +158,7 @@ export function DmQueueClient({
       {/* Header */}
       <div className="flex items-start gap-4">
         <Link
-          href="/outreach"
+          href={programPath("/outreach")}
           className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
         >
           <ArrowLeft className="h-4 w-4" />

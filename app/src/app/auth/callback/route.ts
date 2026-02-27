@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   // Check for slug cookie set by LoginUI before OAuth
   const slugCookie = cookieStore.get('auth_redirect_slug')
   const next = slugCookie?.value
-    ? `/${slugCookie.value}`
+    ? `/${slugCookie.value}/dashboard`
     : (searchParams.get('next') ?? '/dashboard')
 
   if (code) {

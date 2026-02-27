@@ -32,7 +32,10 @@ export function LoginUI({
     if (!slug) {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) {
-          window.location.href = '/dashboard'
+          // Check if user has a program_slug cookie — redirect to slugged dashboard
+          const match = document.cookie.match(/(?:^|;\s*)program_slug=([^;]+)/)
+          const cookieSlug = match?.[1]
+          window.location.href = cookieSlug ? `/${cookieSlug}/dashboard` : '/dashboard'
         }
       })
     }

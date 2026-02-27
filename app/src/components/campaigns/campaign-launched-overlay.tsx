@@ -96,7 +96,10 @@ export function CampaignLaunchedOverlay({
               </Button>
               <Button 
                 onClick={() => {
-                  window.location.href = '/pipeline'
+                  const segs = window.location.pathname.split('/').filter(Boolean)
+                  const appRoutes = ['dashboard','coaches','pipeline','outreach','profile']
+                  const base = segs.length >= 2 && appRoutes.includes(segs[1]) ? `/${segs[0]}` : ''
+                  window.location.href = `${base}/pipeline`
                 }}
                 className="flex-1 bg-primary"
               >

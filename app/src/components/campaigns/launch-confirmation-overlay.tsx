@@ -189,7 +189,11 @@ export function LaunchConfirmationOverlay({
       }
 
       // Redirect to OAuth with campaign ID in state
-      window.location.href = `/api/gmail/authorize?campaign=${data.campaignId}`
+      // Include returnTo so after Gmail connect user lands back at the right slug path
+      const segs = window.location.pathname.split('/').filter(Boolean)
+      const appRoutes = ['dashboard','coaches','pipeline','outreach','profile']
+      const base = segs.length >= 2 && appRoutes.includes(segs[1]) ? `/${segs[0]}` : ''
+      window.location.href = `/api/gmail/authorize?campaign=${data.campaignId}&returnTo=${encodeURIComponent(`${base}/outreach`)}`
     } catch (error) {
       setIsLaunching(false)
       alert('Failed to save campaign. Please try again.')

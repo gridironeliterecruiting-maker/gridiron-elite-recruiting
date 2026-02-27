@@ -210,7 +210,7 @@ export function OutreachClient({
               
             if (!recipError) {
               // Success - reload page
-              window.location.href = '/outreach?launched=true'
+              window.location.href = `${window.location.pathname}?launched=true`
               return
             }
           }
@@ -230,7 +230,7 @@ export function OutreachClient({
           }
           
           // Success - show the launched overlay
-          window.location.href = '/outreach?launched=true'
+          window.location.href = `${window.location.pathname}?launched=true`
           
           // Clear the URL params
           const url = new URL(window.location.href)
