@@ -36,17 +36,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const isCoach = !!coachProfile
 
-  // Resolve branding: coach_profiles first, then program_slug cookie for players
+  // Resolve branding — program_slug cookie is the source of truth.
+  // It represents which program the user is currently inside.
+  // Coach_profiles is only a fallback when there's no slug (direct /dashboard visit).
   let coachBranding: {
     program_name: string
     title: string | null
     logo_url: string | null
     primary_color: string | null
     accent_color: string | null
-  } | null = coachProfile
+  } | null = null
 
-  // If no coach branding but user entered via a branded program page, load that program's branding
-  if (!coachBranding && programSlug) {
+  if (programSlug) {
+    // User entered via a branded program page — load THAT program's branding
     // Try managed_programs first (new system)
     const { data: program } = await admin
       .from('managed_programs')
@@ -74,6 +76,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         coachBranding = legacyCoach
       }
     }
+  } else if (coachProfile) {
+    // No slug cookie — user came in directly. Fall back to their coach_profiles branding.
+    coachBranding = coachProfile
   }
 
   let players: PlayerInfo[] = []
