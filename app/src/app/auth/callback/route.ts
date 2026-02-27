@@ -9,14 +9,17 @@ export async function GET(request: Request) {
   const appUrl = getAppUrl(request)
   const cookieStore = await cookies()
 
-  // Check for slug cookie set by LoginUI before OAuth
-  const slugCookie = cookieStore.get('auth_redirect_slug')
-  const adminCookie = cookieStore.get('auth_redirect_admin')
-  const next = slugCookie?.value
-    ? `/${slugCookie.value}/dashboard`
-    : adminCookie?.value
-      ? '/admin'
-      : (searchParams.get('next') ?? '/dashboard')
+  // site_session tells us which site the user logged in from
+  const siteSession = cookieStore.get('site_session')?.value
+
+  let next = '/dashboard'
+  if (siteSession && siteSession !== 'main') {
+    if (siteSession === 'admin') {
+      next = '/admin'
+    } else {
+      next = `/${siteSession}/dashboard`
+    }
+  }
 
   if (code) {
     const pendingCookies: { name: string; value: string; options: Record<string, unknown> }[] = []
@@ -47,25 +50,14 @@ export async function GET(request: Request) {
       for (const { name, value, options } of pendingCookies) {
         response.cookies.set(name, value, options as Record<string, unknown>)
       }
-      // Set persistent program_slug cookie so the entire session stays branded
-      if (slugCookie?.value) {
-        response.cookies.set('program_slug', slugCookie.value, {
-          path: '/',
-          maxAge: 60 * 60 * 24 * 30, // 30 days
-          sameSite: 'lax',
-        })
-      }
-      // Clear the short-lived redirect cookies after use
-      if (slugCookie) {
-        response.cookies.set('auth_redirect_slug', '', { path: '/', maxAge: 0 })
-      }
-      if (adminCookie) {
-        response.cookies.set('auth_redirect_admin', '', { path: '/', maxAge: 0 })
-      }
       return response
     }
-
   }
 
-  return NextResponse.redirect(new URL('/login', appUrl).toString())
+  // On error, redirect to the appropriate login page for the site
+  let loginPath = '/login'
+  if (siteSession && siteSession !== 'main') {
+    loginPath = siteSession === 'admin' ? '/admin' : `/${siteSession}`
+  }
+  return NextResponse.redirect(new URL(loginPath, appUrl).toString())
 }

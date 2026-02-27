@@ -26,20 +26,7 @@ export function LoginUI({
 
   const color = primaryColor || '#0047AB'
 
-  // Only auto-redirect to dashboard for the main login page (no slug).
-  // Branded pages handle auth routing server-side in [slug]/page.tsx.
-  useEffect(() => {
-    if (!slug) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
-          // Check if user has a program_slug cookie — redirect to slugged dashboard
-          const match = document.cookie.match(/(?:^|;\s*)program_slug=([^;]+)/)
-          const cookieSlug = match?.[1]
-          window.location.href = cookieSlug ? `/${cookieSlug}/dashboard` : '/dashboard'
-        }
-      })
-    }
-  }, [supabase.auth, slug])
+  // No auto-redirect — site_session cookie + middleware handle all routing.
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true)
@@ -50,18 +37,10 @@ export function LoginUI({
     overlay.innerHTML = `<div style="text-align:center"><div style="border:4px solid #f3f3f3;border-top:4px solid ${color};border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto 16px"></div><p style="font-family:system-ui;color:#333">Redirecting to Google...</p></div><style>@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style>`
     document.body.appendChild(overlay)
 
-    // Store the slug in cookies so the auth callback can redirect back
-    // to the branded page. This survives the OAuth redirect chain reliably
-    // regardless of Supabase's redirect URL allowlist.
-    // Skip for "admin" — it's not a program slug, just uses LoginUI for styling.
-    if (slug && slug !== 'admin') {
-      document.cookie = `auth_redirect_slug=${slug};path=/;max-age=600;samesite=lax`
-      // Also set persistent program_slug so the entire session stays branded
-      document.cookie = `program_slug=${slug};path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
-    }
-    if (slug === 'admin') {
-      document.cookie = `auth_redirect_admin=1;path=/;max-age=600;samesite=lax`
-    }
+    // Record which site the user is logging into.
+    // This survives the OAuth redirect chain and tells the auth callback where to send them.
+    const siteValue = slug || 'main'
+    document.cookie = `site_session=${siteValue};path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',

@@ -75,9 +75,13 @@ export default function ProfileSetupPage() {
       return
     }
 
-    // Send program users back to their branded page (triggers auth check → dashboard)
-    const programSlug = getCookie('program_slug')
-    router.push(programSlug ? `/${programSlug}/dashboard` : '/dashboard')
+    // Send users back to their site's dashboard
+    const siteSession = getCookie('site_session')
+    if (siteSession && siteSession !== 'main') {
+      router.push(`/${siteSession}/dashboard`)
+    } else {
+      router.push('/dashboard')
+    }
   }
 
   const inputClass = "w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0047AB] focus:border-transparent outline-none text-sm"

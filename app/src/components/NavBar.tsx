@@ -82,9 +82,9 @@ export default function NavBar({
   const handleSignOut = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
-    // Clear program_slug cookie
-    document.cookie = 'program_slug=;path=/;max-age=0'
-    // Send program users to their branded login, others to generic login
+    // Clear site_session cookie
+    document.cookie = 'site_session=;path=/;max-age=0'
+    // Send users back to their site's login page
     if (basePath) {
       router.push(basePath)
     } else {

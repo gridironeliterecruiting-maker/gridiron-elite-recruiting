@@ -3,9 +3,13 @@ import { redirect } from 'next/navigation'
 
 export default async function Home() {
   const cookieStore = await cookies()
-  const programSlug = cookieStore.get('program_slug')?.value
-  if (programSlug) {
-    redirect(`/${programSlug}/dashboard`)
+  const siteSession = cookieStore.get('site_session')?.value
+  if (siteSession && siteSession !== 'main') {
+    if (siteSession === 'admin') {
+      redirect('/admin')
+    } else {
+      redirect(`/${siteSession}/dashboard`)
+    }
   }
   redirect('/dashboard')
 }

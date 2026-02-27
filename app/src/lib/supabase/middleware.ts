@@ -7,15 +7,23 @@ const programRoutes = ['dashboard', 'coaches', 'pipeline', 'outreach', 'profile'
 // All known top-level routes (not program slugs)
 const knownTopLevel = ['dashboard', 'coaches', 'pipeline', 'outreach', 'profile', 'profile-setup', 'login', 'signup', 'auth', 'api', 'recruit', 'admin']
 
+// Routes the middleware never blocks (no auth or site_session check)
+const alwaysPublic = ['/auth/callback', '/api/track', '/api/unsubscribe', '/api/email/process-queue', '/api/email/check-replies', '/api/gmail/oauth-callback', '/api/gmail/authorize', '/api/twitter/oauth-callback', '/api/access-request', '/recruit']
+
 export async function updateSession(request: NextRequest) {
   // Serve static public files without auth
   if (request.nextUrl.pathname.match(/\.(txt|md)$/)) {
     return NextResponse.next()
   }
 
+  // Always-public routes — skip all checks
+  const isAlwaysPublic = alwaysPublic.some(route => request.nextUrl.pathname.startsWith(route))
+  if (isAlwaysPublic) {
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
-  // Track all cookies Supabase wants to set
   const cookiesToSet: { name: string; value: string; options: Record<string, unknown> }[] = []
 
   const supabase = createServerClient(
@@ -40,73 +48,71 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // Skip getUser() for OAuth callbacks to preserve PKCE code_verifier cookies.
-  const isOAuthCallback = request.nextUrl.pathname.startsWith('/auth/callback')
-    || request.nextUrl.pathname.startsWith('/api/twitter/oauth-callback')
-    || request.nextUrl.pathname.startsWith('/api/gmail/oauth-callback')
-
-  let user = null
-  if (!isOAuthCallback) {
-    const { data: { user: sessionUser }, error: userError } = await supabase.auth.getUser()
-    user = sessionUser
-    if (userError) {
-      console.error(`[Middleware] getUser error on ${request.nextUrl.pathname}: ${userError.message}`)
-    }
-  }
+  const { data: { user } } = await supabase.auth.getUser()
 
   const pathSegments = request.nextUrl.pathname.split('/').filter(Boolean)
   const firstSegment = pathSegments[0]
   const secondSegment = pathSegments[1]
 
-  // Read existing program_slug cookie
-  const programSlug = request.cookies.get('program_slug')?.value
+  // Which site is the user currently logged into?
+  const siteSession = request.cookies.get('site_session')?.value
 
-  // ─── Detect URL patterns ───────────────────────────────────
-  // /{slug} — branded login page (single segment, not a known route)
-  const isPotentialSlug = pathSegments.length === 1 && firstSegment !== 'admin' && !knownTopLevel.includes(firstSegment)
-
-  // /{slug}/dashboard, /{slug}/pipeline, etc. — program-scoped app route
-  const isProgramRoute = pathSegments.length >= 2
-    && !knownTopLevel.includes(firstSegment)
-    && firstSegment !== 'admin'
-    && programRoutes.includes(secondSegment)
-
-  // /dashboard, /pipeline, etc. — bare app route (no slug prefix)
-  const isBareAppRoute = pathSegments.length >= 1 && programRoutes.includes(firstSegment)
-
-  // Public routes — no auth required
-  const publicRoutes = ['/login', '/signup', '/auth/callback', '/admin', '/api/track', '/api/unsubscribe', '/api/email/process-queue', '/api/email/check-replies', '/api/gmail/oauth-callback', '/api/gmail/authorize', '/api/twitter/oauth-callback', '/api/access-request', '/recruit']
-  const isPublicRoute = publicRoutes.some(route =>
-    request.nextUrl.pathname.startsWith(route)
-  )
-
-  // Helper: create a redirect that preserves Supabase auth cookies
-  const redirectWithCookies = (pathname: string, slug?: string) => {
+  // Helper: redirect preserving Supabase cookies, setting site_session
+  const redirectTo = (pathname: string, setSiteSession?: string) => {
     const url = request.nextUrl.clone()
     url.pathname = pathname
-    url.search = '' // clear search params on redirects
+    url.search = ''
     const response = NextResponse.redirect(url)
     for (const { name, value, options } of cookiesToSet) {
       response.cookies.set(name, value, options)
     }
-    const effectiveSlug = slug || programSlug
-    if (effectiveSlug) {
-      response.cookies.set('program_slug', effectiveSlug, { path: '/', maxAge: 60 * 60 * 24 * 30, sameSite: 'lax' })
+    if (setSiteSession) {
+      response.cookies.set('site_session', setSiteSession, {
+        path: '/', maxAge: 60 * 60 * 24 * 30, sameSite: 'lax'
+      })
     }
     return response
   }
 
-  // ─── Program-scoped routes: /{slug}/dashboard etc. ─────────
+  // Helper: pass-through preserving Supabase cookies
+  const passThrough = () => {
+    for (const { name, value, options } of cookiesToSet) {
+      supabaseResponse.cookies.set(name, value, options)
+    }
+    return supabaseResponse
+  }
+
+  // ─── DETECT URL PATTERN ────────────────────────────────────
+
+  // /{slug}/dashboard etc. — program-scoped app route
+  const isProgramRoute = pathSegments.length >= 2
+    && !knownTopLevel.includes(firstSegment)
+    && programRoutes.includes(secondSegment)
+
+  // /{slug} — branded login page (single segment, not a known route)
+  const isProgramLogin = pathSegments.length === 1
+    && !knownTopLevel.includes(firstSegment)
+
+  // /dashboard, /pipeline etc. — generic app route (no slug)
+  const isGenericAppRoute = pathSegments.length >= 1 && programRoutes.includes(firstSegment)
+
+  // /admin — admin site
+  const isAdminRoute = firstSegment === 'admin'
+
+  // /login, /signup — generic login pages
+  const isGenericLoginRoute = request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup'
+
+  // ─── PROGRAM-SCOPED ROUTES: /{slug}/dashboard etc. ─────────
   if (isProgramRoute) {
     const slug = firstSegment
     const remainingPath = '/' + pathSegments.slice(1).join('/')
 
-    // Not authenticated → redirect to branded login
-    if (!user) {
-      return redirectWithCookies(`/${slug}`, slug)
+    // Must be logged into THIS site
+    if (!user || siteSession !== slug) {
+      return redirectTo(`/${slug}`)
     }
 
-    // Check if user needs profile setup
+    // Check profile setup
     const { data: profile } = await supabase
       .from('profiles')
       .select('id, first_name, position, role')
@@ -122,11 +128,10 @@ export async function updateSession(request: NextRequest) {
       for (const { name, value, options } of cookiesToSet) {
         response.cookies.set(name, value, options)
       }
-      response.cookies.set('program_slug', slug, { path: '/', maxAge: 60 * 60 * 24 * 30, sameSite: 'lax' })
       return response
     }
 
-    // Authenticated + profile complete → rewrite to bare route, pass slug via header
+    // Rewrite to bare route, pass slug via header
     const rewriteUrl = request.nextUrl.clone()
     rewriteUrl.pathname = remainingPath
 
@@ -137,72 +142,78 @@ export async function updateSession(request: NextRequest) {
       request: { headers: requestHeaders },
     })
 
-    // Set cookies on the rewrite response
     for (const { name, value, options } of cookiesToSet) {
       response.cookies.set(name, value, options)
     }
-    response.cookies.set('program_slug', slug, { path: '/', maxAge: 60 * 60 * 24 * 30, sameSite: 'lax' })
-
     return response
   }
 
-  // ─── Bare app routes: /dashboard etc. ──────────────────────
-  // If a program user hits /dashboard directly, redirect to /{slug}/dashboard
-  if (isBareAppRoute && user && programSlug) {
-    const sluggedPath = `/${programSlug}${request.nextUrl.pathname}`
-    return redirectWithCookies(sluggedPath)
-  }
-
-  // ─── Branded login page: /{slug} ──────────────────────────
-  if (isPotentialSlug) {
-    // Set program_slug cookie when visiting a branded page
-    supabaseResponse.cookies.set('program_slug', firstSegment, {
-      path: '/',
-      maxAge: 60 * 60 * 24 * 30,
-      sameSite: 'lax',
-    })
-  }
-
-  // ─── Standard auth checks ─────────────────────────────────
-  if (!user && !isPublicRoute && !isPotentialSlug) {
-    if (programSlug) {
-      return redirectWithCookies(`/${programSlug}`)
+  // ─── PROGRAM LOGIN PAGE: /{slug} ───────────────────────────
+  if (isProgramLogin) {
+    // If already logged into THIS site, redirect to dashboard
+    if (user && siteSession === firstSegment) {
+      return redirectTo(`/${firstSegment}/dashboard`)
     }
-    return redirectWithCookies('/login')
+    // Otherwise show the login page (regardless of Supabase session)
+    return passThrough()
   }
 
-  // Redirect authenticated users away from login/signup
-  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup')) {
-    if (programSlug) {
-      return redirectWithCookies(`/${programSlug}/dashboard`)
-    }
-    return redirectWithCookies('/dashboard')
-  }
-
-  // Check if authenticated user needs profile setup (for non-program routes)
-  if (user && !isPotentialSlug && !request.nextUrl.pathname.startsWith('/profile-setup') && !request.nextUrl.pathname.startsWith('/api/') && !request.nextUrl.pathname.startsWith('/auth/') && !request.nextUrl.pathname.startsWith('/recruit')) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id, first_name, position, role')
-      .eq('id', user.id)
-      .single()
-
-    const needsSetup = !profile || !profile.first_name || (profile.role !== 'coach' && profile.role !== 'admin' && !profile.position)
-    if (needsSetup) {
-      if (programSlug) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/profile-setup'
-        url.searchParams.set('slug', programSlug)
-        const response = NextResponse.redirect(url)
-        for (const { name, value, options } of cookiesToSet) {
-          response.cookies.set(name, value, options)
-        }
-        response.cookies.set('program_slug', programSlug, { path: '/', maxAge: 60 * 60 * 24 * 30, sameSite: 'lax' })
-        return response
+  // ─── ADMIN ROUTES ──────────────────────────────────────────
+  if (isAdminRoute) {
+    // /admin itself — show login page if not logged into admin site
+    if (pathSegments.length === 1) {
+      // If already logged into admin, pass through to admin page (it handles role check)
+      if (user && siteSession === 'admin') {
+        return passThrough()
       }
-      return redirectWithCookies('/profile-setup')
+      // Not logged into admin — show admin login page
+      return passThrough()
     }
+    // Any sub-routes under /admin — must be logged into admin site
+    if (!user || siteSession !== 'admin') {
+      return redirectTo('/admin')
+    }
+    return passThrough()
   }
 
-  return supabaseResponse
+  // ─── GENERIC LOGIN: /login, /signup ────────────────────────
+  if (isGenericLoginRoute) {
+    // Already logged into main site → dashboard
+    if (user && siteSession === 'main') {
+      return redirectTo('/dashboard')
+    }
+    return passThrough()
+  }
+
+  // ─── GENERIC APP ROUTES: /dashboard etc. ───────────────────
+  if (isGenericAppRoute) {
+    // Must be logged into main site
+    if (!user || siteSession !== 'main') {
+      return redirectTo('/login')
+    }
+
+    // Check profile setup
+    if (!request.nextUrl.pathname.startsWith('/profile-setup')) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, first_name, position, role')
+        .eq('id', user.id)
+        .single()
+
+      const needsSetup = !profile || !profile.first_name || (profile.role !== 'coach' && profile.role !== 'admin' && !profile.position)
+      if (needsSetup) {
+        return redirectTo('/profile-setup')
+      }
+    }
+
+    return passThrough()
+  }
+
+  // ─── PROFILE SETUP ─────────────────────────────────────────
+  if (request.nextUrl.pathname.startsWith('/profile-setup')) {
+    if (!user) return redirectTo('/login')
+    return passThrough()
+  }
+
+  return passThrough()
 }
