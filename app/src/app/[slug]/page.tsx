@@ -90,12 +90,20 @@ export default async function LandingPage({ params }: LandingPageProps) {
           .eq("id", member.id)
       }
 
-      // Set profile role based on membership
-      const profileRole = member.role === "coach" ? "coach" : "athlete"
-      await admin
+      // Set profile role based on membership — but never downgrade an admin
+      const { data: currentProfile } = await admin
         .from("profiles")
-        .update({ role: profileRole })
+        .select("role")
         .eq("id", user.id)
+        .single()
+
+      if (currentProfile?.role !== "admin") {
+        const profileRole = member.role === "coach" ? "coach" : "athlete"
+        await admin
+          .from("profiles")
+          .update({ role: profileRole })
+          .eq("id", user.id)
+      }
 
       // For coaches: ensure coach_profiles entry exists
       if (member.role === "coach") {
