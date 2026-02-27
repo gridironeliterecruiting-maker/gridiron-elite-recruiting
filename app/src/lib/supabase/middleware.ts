@@ -54,7 +54,10 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  // Helper: create a redirect that preserves Supabase auth cookies
+  // Read the persistent program slug cookie (set when user enters via a branded page)
+  const programSlug = request.cookies.get('program_slug')?.value
+
+  // Helper: create a redirect that preserves Supabase auth cookies + program_slug
   const redirectWithCookies = (pathname: string) => {
     const url = request.nextUrl.clone()
     url.pathname = pathname
@@ -62,6 +65,10 @@ export async function updateSession(request: NextRequest) {
     // Copy ALL auth cookies to the redirect response
     for (const { name, value, options } of cookiesToSet) {
       response.cookies.set(name, value, options)
+    }
+    // Preserve program_slug cookie on redirects
+    if (programSlug) {
+      response.cookies.set('program_slug', programSlug, { path: '/', maxAge: 60 * 60 * 24 * 30, sameSite: 'lax' })
     }
     return response
   }
@@ -77,12 +84,28 @@ export async function updateSession(request: NextRequest) {
   const knownTopLevel = ['dashboard', 'coaches', 'pipeline', 'outreach', 'profile', 'profile-setup', 'login', 'signup', 'auth', 'api', 'recruit']
   const isPotentialSlug = pathSegments.length === 1 && !knownTopLevel.includes(pathSegments[0])
 
+  // When visiting a branded program page, set the persistent program_slug cookie
+  // so the entire session stays branded (layout, redirects, sign-out all respect it).
+  // Exclude 'admin' — that's the admin panel, not a program page.
+  if (isPotentialSlug && pathSegments[0] !== 'admin') {
+    supabaseResponse.cookies.set('program_slug', pathSegments[0], {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+      sameSite: 'lax',
+    })
+  }
+
   if (!user && !isPublicRoute && !isPotentialSlug) {
+    // If user entered through a branded page, send them back there instead of generic /login
+    if (programSlug) {
+      return redirectWithCookies(`/${programSlug}`)
+    }
     return redirectWithCookies('/login')
   }
 
   // Redirect authenticated users away from login/signup
   if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup')) {
+    // If user belongs to a program, send them to /dashboard (layout will brand it)
     return redirectWithCookies('/dashboard')
   }
 
@@ -97,6 +120,18 @@ export async function updateSession(request: NextRequest) {
     // Coaches and admins only need first_name set; athletes need first_name + position
     const needsSetup = !profile || !profile.first_name || (profile.role !== 'coach' && profile.role !== 'admin' && !profile.position)
     if (needsSetup) {
+      // Preserve program context through profile setup
+      if (programSlug) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/profile-setup'
+        url.searchParams.set('slug', programSlug)
+        const response = NextResponse.redirect(url)
+        for (const { name, value, options } of cookiesToSet) {
+          response.cookies.set(name, value, options)
+        }
+        response.cookies.set('program_slug', programSlug, { path: '/', maxAge: 60 * 60 * 24 * 30, sameSite: 'lax' })
+        return response
+      }
       return redirectWithCookies('/profile-setup')
     }
   }

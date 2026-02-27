@@ -74,7 +74,13 @@ export default function NavBar({
   const handleSignOut = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push("/login")
+    // Send program users back to their branded login, never the generic /login
+    const slugMatch = document.cookie.match(/(?:^|;\s*)program_slug=([^;]+)/)
+    if (slugMatch) {
+      router.push(`/${slugMatch[1]}`)
+    } else {
+      router.push("/login")
+    }
   }
 
   const initials = profile

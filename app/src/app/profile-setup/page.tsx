@@ -5,6 +5,12 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`))
+  return match ? match[1] : null
+}
+
 export default function ProfileSetupPage() {
   const [form, setForm] = useState({
     first_name: '', last_name: '', position: '', grad_year: '',
@@ -69,7 +75,9 @@ export default function ProfileSetupPage() {
       return
     }
 
-    router.push('/dashboard')
+    // Send program users back to their branded page (triggers auth check → dashboard)
+    const programSlug = getCookie('program_slug')
+    router.push(programSlug ? `/${programSlug}` : '/dashboard')
   }
 
   const inputClass = "w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0047AB] focus:border-transparent outline-none text-sm"

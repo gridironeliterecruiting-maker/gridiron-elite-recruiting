@@ -44,7 +44,15 @@ export async function GET(request: Request) {
       for (const { name, value, options } of pendingCookies) {
         response.cookies.set(name, value, options as Record<string, unknown>)
       }
-      // Clear the slug cookie after use
+      // Set persistent program_slug cookie so the entire session stays branded
+      if (slugCookie?.value) {
+        response.cookies.set('program_slug', slugCookie.value, {
+          path: '/',
+          maxAge: 60 * 60 * 24 * 30, // 30 days
+          sameSite: 'lax',
+        })
+      }
+      // Clear the short-lived redirect slug cookie after use
       if (slugCookie) {
         response.cookies.set('auth_redirect_slug', '', { path: '/', maxAge: 0 })
       }

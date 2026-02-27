@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import NavBar from '@/components/NavBar'
 import { ActivePlayerProvider, type PlayerInfo } from '@/components/ActivePlayerContext'
@@ -8,7 +10,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) redirect('/login')
+  // Read program_slug cookie — if set, this user entered through a branded page
+  const cookieStore = await cookies()
+  const programSlug = cookieStore.get('program_slug')?.value
+
+  if (!user) {
+    // Send program users back to their branded login, never the generic /login
+    redirect(programSlug ? `/${programSlug}` : '/login')
+  }
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -25,7 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const isCoach = !!coachProfile
 
-  // Coach-specific data
+  // Resolve branding: coach_profiles first, then program_slug cookie for players
   let coachBranding: {
     program_name: string
     title: string | null
@@ -33,11 +42,44 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     primary_color: string | null
     accent_color: string | null
   } | null = coachProfile
+
+  // If no coach branding but user entered via a branded program page, load that program's branding
+  if (!coachBranding && programSlug) {
+    const admin = createAdminClient()
+
+    // Try managed_programs first (new system)
+    const { data: program } = await admin
+      .from('managed_programs')
+      .select('school_name, mascot, logo_url, primary_color, accent_color')
+      .eq('landing_slug', programSlug)
+      .maybeSingle()
+
+    if (program) {
+      coachBranding = {
+        program_name: [program.school_name, program.mascot].filter(Boolean).join(' '),
+        title: null,
+        logo_url: program.logo_url,
+        primary_color: program.primary_color,
+        accent_color: program.accent_color,
+      }
+    } else {
+      // Fall back to coach_profiles by slug (legacy)
+      const { data: legacyCoach } = await admin
+        .from('coach_profiles')
+        .select('program_name, title, logo_url, primary_color, accent_color')
+        .eq('landing_slug', programSlug)
+        .maybeSingle()
+
+      if (legacyCoach) {
+        coachBranding = legacyCoach
+      }
+    }
+  }
+
   let players: PlayerInfo[] = []
   let activePlayer: PlayerInfo | null = null
 
   if (isCoach) {
-
     // Fetch linked players
     const { data: coachPlayers } = await supabase
       .from('coach_players')
@@ -61,7 +103,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     activePlayer = validPlayer || players[0] || null
   }
 
-  // Build CSS variable overrides for coach branding
+  // Build CSS variable overrides for program branding
   const styleOverrides: Record<string, string> = {}
   if (coachBranding?.primary_color) {
     styleOverrides['--primary'] = coachBranding.primary_color
@@ -69,6 +111,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (coachBranding?.accent_color) {
     styleOverrides['--accent'] = coachBranding.accent_color
   }
+
+  const isProgramUser = !!coachBranding
 
   return (
     <ActivePlayerProvider activePlayer={activePlayer} players={players} isCoach={isCoach}>
@@ -86,7 +130,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               {coachBranding?.program_name || 'Gridiron Elite Recruiting'}
             </p>
             <p className="text-xs text-muted-foreground">
-              {isCoach ? 'Powered by Gridiron Elite Recruiting' : 'Built for athletes, by athletes.'}
+              {isProgramUser ? 'Powered by Gridiron Elite Recruiting' : 'Built for athletes, by athletes.'}
             </p>
           </div>
         </footer>
