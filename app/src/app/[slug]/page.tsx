@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
+import { cookies } from "next/headers"
 import { LoginUI } from "@/components/login-ui"
 import { UnauthorizedPage } from "@/components/unauthorized-page"
 import { Suspense } from "react"
@@ -50,12 +51,14 @@ export default async function LandingPage({ params }: LandingPageProps) {
         color: legacyCoach!.primary_color || undefined,
       }
 
-  // Check if user is authenticated
+  // Check if user is authenticated AND logged into this specific site
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const cookieStore = await cookies()
+  const siteSession = cookieStore.get('site_session')?.value
 
-  // Not logged in — show branded login page
-  if (!user) {
+  // Not logged in, or logged into a different site — show branded login page
+  if (!user || siteSession !== slug) {
     return (
       <Suspense>
         <LoginUI
