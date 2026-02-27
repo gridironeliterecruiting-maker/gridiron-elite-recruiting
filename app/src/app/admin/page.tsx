@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { cookies } from "next/headers"
 import { LoginUI } from "@/components/login-ui"
 import { UnauthorizedPage } from "@/components/unauthorized-page"
 import { AdminDashboard } from "@/components/admin/admin-dashboard"
@@ -9,9 +10,11 @@ export const dynamic = "force-dynamic"
 export default async function AdminPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const cookieStore = await cookies()
+  const siteSession = cookieStore.get('site_session')?.value
 
-  // Not logged in — show login page
-  if (!user) {
+  // Not logged in, or logged into a different site — show admin login page
+  if (!user || siteSession !== 'admin') {
     return (
       <Suspense>
         <LoginUI
