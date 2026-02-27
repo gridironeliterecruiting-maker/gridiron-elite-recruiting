@@ -61,7 +61,7 @@ export function UnauthorizedPage({
         {requested ? (
           <>
             <div className="mb-6 rounded-xl border-2 p-8 flex items-center justify-center" style={{ borderColor: color, backgroundColor: `${color}08` }}>
-              <p className="text-sm leading-relaxed text-gray-700 text-center">
+              <p className="text-sm font-semibold leading-relaxed text-gray-700 text-center">
                 We have sent a request to the program administrator and will send you an email when access has been granted.
               </p>
             </div>
