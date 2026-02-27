@@ -36,6 +36,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const isCoach = !!coachProfile
 
+  // DEBUG: trace coach detection — remove after confirming fix
+  console.log(`[Layout DEBUG] user.id=${user.id}, profile.role=${profile?.role}, coachProfile=${JSON.stringify(coachProfile)}, isCoach=${isCoach}, programSlug=${programSlug}`)
+
   // Resolve branding: coach_profiles first, then program_slug cookie for players
   let coachBranding: {
     program_name: string
