@@ -11,9 +11,12 @@ export async function GET(request: Request) {
 
   // Check for slug cookie set by LoginUI before OAuth
   const slugCookie = cookieStore.get('auth_redirect_slug')
+  const adminCookie = cookieStore.get('auth_redirect_admin')
   const next = slugCookie?.value
     ? `/${slugCookie.value}/dashboard`
-    : (searchParams.get('next') ?? '/dashboard')
+    : adminCookie?.value
+      ? '/admin'
+      : (searchParams.get('next') ?? '/dashboard')
 
   if (code) {
     const pendingCookies: { name: string; value: string; options: Record<string, unknown> }[] = []
@@ -52,9 +55,12 @@ export async function GET(request: Request) {
           sameSite: 'lax',
         })
       }
-      // Clear the short-lived redirect slug cookie after use
+      // Clear the short-lived redirect cookies after use
       if (slugCookie) {
         response.cookies.set('auth_redirect_slug', '', { path: '/', maxAge: 0 })
+      }
+      if (adminCookie) {
+        response.cookies.set('auth_redirect_admin', '', { path: '/', maxAge: 0 })
       }
       return response
     }

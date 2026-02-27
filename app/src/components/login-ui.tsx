@@ -53,10 +53,14 @@ export function LoginUI({
     // Store the slug in cookies so the auth callback can redirect back
     // to the branded page. This survives the OAuth redirect chain reliably
     // regardless of Supabase's redirect URL allowlist.
-    if (slug) {
+    // Skip for "admin" — it's not a program slug, just uses LoginUI for styling.
+    if (slug && slug !== 'admin') {
       document.cookie = `auth_redirect_slug=${slug};path=/;max-age=600;samesite=lax`
       // Also set persistent program_slug so the entire session stays branded
       document.cookie = `program_slug=${slug};path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
+    }
+    if (slug === 'admin') {
+      document.cookie = `auth_redirect_admin=1;path=/;max-age=600;samesite=lax`
     }
 
     const { error } = await supabase.auth.signInWithOAuth({
