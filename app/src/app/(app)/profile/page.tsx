@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { ProfileForm } from "./profile-form"
 import { RecruitingDrive } from "@/components/profile/recruiting-drive"
 import { getActivePlayerId } from "@/lib/active-player"
@@ -6,6 +7,7 @@ import { ProfileHeader } from "./profile-header"
 
 export default async function ProfilePage() {
   const supabase = await createClient()
+  const admin = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   const { data: profile } = await supabase
@@ -14,7 +16,9 @@ export default async function ProfilePage() {
     .eq("id", user?.id)
     .single()
 
-  const isCoach = profile?.role === "coach"
+  // Check coach_profiles existence (not role string — admin users can also be coaches)
+  const { data: _cp } = await admin.from("coach_profiles").select("id").eq("id", user!.id).maybeSingle()
+  const isCoach = !!_cp
 
   // Coach-specific data
   let coachProfile: { program_name: string; title: string | null } | null = null

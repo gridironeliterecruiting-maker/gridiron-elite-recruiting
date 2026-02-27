@@ -20,7 +20,9 @@ export default async function OutreachPage({
     .eq("id", user!.id)
     .single()
 
-  const isCoach = userProfile?.role === "coach"
+  // Check coach_profiles existence (not role string — admin users can also be coaches)
+  const { data: _cp } = await admin.from("coach_profiles").select("id").eq("id", user!.id).maybeSingle()
+  const isCoach = !!_cp
 
   // For coaches, resolve active player
   let activePlayerId: string | null = null

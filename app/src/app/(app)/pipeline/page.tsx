@@ -1,19 +1,17 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { redirect } from "next/navigation"
 import { PipelineClient } from "./pipeline-client"
 
 export default async function PipelinePage() {
   const supabase = await createClient()
+  const admin = createAdminClient()
 
   // Coach guard — coaches don't have a Pipeline tab
   const { data: { user } } = await supabase.auth.getUser()
   if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-    if (profile?.role === "coach") {
+    const { data: _cp } = await admin.from("coach_profiles").select("id").eq("id", user.id).maybeSingle()
+    if (_cp) {
       redirect("/dashboard")
     }
   }

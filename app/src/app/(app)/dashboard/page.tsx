@@ -17,7 +17,9 @@ export default async function HubPage() {
         .single()
     : { data: null }
 
-  const isCoach = userProfile?.role === "coach"
+  // Check coach_profiles existence (not role string — admin users can also be coaches)
+  const { data: _cp } = await admin.from("coach_profiles").select("id").eq("id", user!.id).maybeSingle()
+  const isCoach = !!_cp
 
   // For coaches, determine active player and use their profile for merge tag preview data
   let activePlayerId: string | null = null
