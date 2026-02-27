@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Plus, X, Trash2, Upload, Users, Globe, Palette } from 'lucide-react'
-import Image from 'next/image'
+/* eslint-disable @next/next/no-img-element */
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA',
@@ -78,6 +78,7 @@ export function AdminDashboard() {
   const [pendingMembers, setPendingMembers] = useState<{ email: string; role: 'coach' | 'player' }[]>([])
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const isOpen = creating || editing !== null
@@ -101,6 +102,7 @@ export function AdminDashboard() {
   const openCreate = () => {
     setForm(emptyForm)
     setLogoPreview(null)
+    setPendingLogoFile(null)
     setEditing(null)
     setCreating(true)
     setPendingMembers([])
@@ -176,15 +178,24 @@ export function AdminDashboard() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to save')
 
-      // If creating, add any pending members after program is saved
-      if (!editing && data.program && pendingMembers.length > 0) {
-        await Promise.all(pendingMembers.map(m =>
-          fetch(`/api/admin/programs/${data.program.id}/members`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(m),
-          })
-        ))
+      // If creating, upload pending logo and add pending members
+      if (!editing && data.program) {
+        if (pendingLogoFile) {
+          try {
+            await uploadLogoForProgram(data.program.id, pendingLogoFile)
+          } catch {
+            console.error('Failed to upload logo during creation')
+          }
+        }
+        if (pendingMembers.length > 0) {
+          await Promise.all(pendingMembers.map(m =>
+            fetch(`/api/admin/programs/${data.program.id}/members`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(m),
+            })
+          ))
+        }
       }
 
       await loadPrograms()
@@ -279,23 +290,37 @@ export function AdminDashboard() {
     }
   }
 
+  const uploadLogoForProgram = async (programId: string, file: File) => {
+    const formData = new FormData()
+    formData.append('logo', file)
+    const res = await fetch(`/api/admin/programs/${programId}/logo`, {
+      method: 'POST',
+      body: formData,
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error)
+    return data.logo_url as string
+  }
+
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!editing || !e.target.files?.[0]) return
+    if (!e.target.files?.[0]) return
     const file = e.target.files[0]
+
+    // Creating mode — hold the file locally and show a preview
+    if (creating) {
+      setPendingLogoFile(file)
+      setLogoPreview(URL.createObjectURL(file))
+      return
+    }
+
+    if (!editing) return
     setUploadingLogo(true)
     try {
-      const formData = new FormData()
-      formData.append('logo', file)
-      const res = await fetch(`/api/admin/programs/${editing.id}/logo`, {
-        method: 'POST',
-        body: formData,
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setLogoPreview(data.logo_url)
-      setEditing(prev => prev ? { ...prev, logo_url: data.logo_url } : null)
+      const logoUrl = await uploadLogoForProgram(editing.id, file)
+      setLogoPreview(logoUrl)
+      setEditing(prev => prev ? { ...prev, logo_url: logoUrl } : null)
       setPrograms(prev => prev.map(p => p.id === editing.id
-        ? { ...p, logo_url: data.logo_url }
+        ? { ...p, logo_url: logoUrl }
         : p
       ))
     } catch (err: unknown) {
@@ -354,11 +379,9 @@ export function AdminDashboard() {
                 >
                   <div className="mb-3 flex items-center gap-3">
                     {program.logo_url ? (
-                      <Image
+                      <img
                         src={program.logo_url}
                         alt={program.school_name}
-                        width={48}
-                        height={48}
                         className="h-12 w-12 rounded-lg object-contain"
                       />
                     ) : (
@@ -508,11 +531,9 @@ export function AdminDashboard() {
                   <label className="mb-1.5 block text-xs font-medium text-gray-700">Program Logo</label>
                   <div className="flex items-center gap-4">
                     {logoPreview ? (
-                      <Image
+                      <img
                         src={logoPreview}
                         alt="Logo preview"
-                        width={80}
-                        height={80}
                         className="h-20 w-20 rounded-lg border border-gray-200 object-contain"
                       />
                     ) : (
@@ -524,7 +545,7 @@ export function AdminDashboard() {
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        disabled={!editing || uploadingLogo}
+                        disabled={uploadingLogo}
                         className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
                       >
                         {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
@@ -532,11 +553,6 @@ export function AdminDashboard() {
                       <p className="mt-1 text-xs text-gray-400">
                         Optimal: 500x500px PNG with transparent background
                       </p>
-                      {creating && (
-                        <p className="mt-1 text-xs text-amber-600">
-                          Save the program first, then upload a logo
-                        </p>
-                      )}
                       <input
                         ref={fileInputRef}
                         type="file"
