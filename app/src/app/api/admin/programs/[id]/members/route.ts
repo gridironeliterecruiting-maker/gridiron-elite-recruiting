@@ -118,7 +118,7 @@ async function sendWelcomeEmail(
         access_token: refreshed.access_token,
         token_expiry: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
       })
-      .eq('user_id', gmailUserId)
+      .eq('user_id', gmailToken.user_id)
   }
 
   const color = program.primary_color || '#1a3a6e'
