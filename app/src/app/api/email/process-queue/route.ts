@@ -190,7 +190,7 @@ export async function GET(request: Request) {
       // For now, fetch the sender's own profile as the default merge tag source
       const { data: senderProfile } = await admin
         .from('profiles')
-        .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, phone')
+        .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, phone, email')
         .eq('id', userId)
         .single()
 
@@ -272,7 +272,7 @@ export async function GET(request: Request) {
           if (campaign.player_id) {
             const { data: playerProfile } = await admin
               .from('profiles')
-              .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, phone')
+              .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, phone, email')
               .eq('id', campaign.player_id)
               .single()
             if (playerProfile) {
@@ -282,74 +282,107 @@ export async function GET(request: Request) {
             }
           }
 
-          // Prepare merge data - support both underscore and space formats
-          const profileData = {
-            // Coach/School info
-            Coach_Name: recipient.coach_name || 'Coach',
-            Coach_Last_Name: recipient.coach_name?.split(' ').pop() || 'Coach',
-            Last_Name_Coach: recipient.coach_name?.split(' ').pop() || 'Coach', // Alternative format
-            School: recipient.program_name || '',
-            School_Name: recipient.program_name || '',
+          // Build merge data — canonical ((Player ...)) / ((Coach ...)) / ((School Name)) tags
+          // plus full backwards compat for old formats
+          const coachFirstName = recipient.coach_name?.split(' ')[0] || ''
+          const coachLastName = recipient.coach_name?.split(' ').pop() || ''
+          const cityState = [mergeProfile?.city, mergeProfile?.state].filter(Boolean).join(', ')
+          const playerEmail = (mergeProfile as any)?.email || userProfile?.email || ''
 
-            // Player info (from player profile for coach campaigns, or sender's own for athlete campaigns)
-            First_Name: mergeProfile?.first_name || '',
-            Last_Name: mergeProfile?.last_name || '',
-            Position: mergeProfile?.position || '',
-            Grad_Year: mergeProfile?.grad_year?.toString() || '',
-            High_School: mergeProfile?.high_school || '',
-            City: mergeProfile?.city || '',
-            State: mergeProfile?.state || '',
-            City_State: [mergeProfile?.city, mergeProfile?.state].filter(Boolean).join(', '),
+          const profileData: Record<string, string> = {
+            // ── Canonical tags (preferred) ────────────────────────────────────
+            // Recipient college coach
+            'Coach_Last_Name':    coachLastName,
+            'Coach_First_Name':   coachFirstName,
+            'Coach_Name':         recipient.coach_name || '',
+            // College / program
+            'School_Name':        recipient.program_name || '',
+            // Player being recruited
+            'Player_First_Name':  mergeProfile?.first_name || '',
+            'Player_Last_Name':   mergeProfile?.last_name || '',
+            'Player_Position':    mergeProfile?.position || '',
+            'Player_Grad_Year':   mergeProfile?.grad_year?.toString() || '',
+            'Player_High_School': mergeProfile?.high_school || '',
+            'Player_City':        mergeProfile?.city || '',
+            'Player_State':       mergeProfile?.state || '',
+            'Player_GPA':         mergeProfile?.gpa?.toString() || '',
+            'Player_Film_Link':   mergeProfile?.hudl_url || '',
+            'Player_Phone':       mergeProfile?.phone || '',
+            'Player_Email':       playerEmail,
+            // Sender (for coach campaigns — the sending coach's own name)
+            'My_First_Name':      senderProfile?.first_name || '',
+            'My_Last_Name':       senderProfile?.last_name || '',
 
-            // Stats and contact
-            GPA: mergeProfile?.gpa?.toString() || '',
-            Film_Link: mergeProfile?.hudl_url || '',
-            Hudl_URL: mergeProfile?.hudl_url || '',
-            Stats: mergeProfile?.position === 'QB' ?
-              `• ${mergeProfile?.grad_year || 'Senior'} QB\n• GPA: ${mergeProfile?.gpa || 'N/A'}\n• Height: 6'2" Weight: 195 lbs` :
-              `• ${mergeProfile?.grad_year || 'Senior'} ${mergeProfile?.position || 'Player'}\n• GPA: ${mergeProfile?.gpa || 'N/A'}`,
-            Phone: mergeProfile?.phone || '',
-            Email: userProfile?.email || '',
-
-            // Additional fields
-            Recent_Achievement: '',
-            Improvement_Area: '',
-            Recent_Game_Event: '',
-            Recent_Performance: '',
-            Specific_Reason: '',
-            All_Contact_Info: [userProfile?.email, mergeProfile?.phone].filter(Boolean).join(' • '),
+            // ── Legacy aliases (backwards compat) ───────────────────────────
+            'Last_Name_Coach':    coachLastName,
+            'School':             recipient.program_name || '',
+            'First_Name':         mergeProfile?.first_name || '',
+            'Last_Name':          mergeProfile?.last_name || '',
+            'Position':           mergeProfile?.position || '',
+            'Grad_Year':          mergeProfile?.grad_year?.toString() || '',
+            'High_School':        mergeProfile?.high_school || '',
+            'City':               mergeProfile?.city || '',
+            'State':              mergeProfile?.state || '',
+            'City_State':         cityState,
+            'GPA':                mergeProfile?.gpa?.toString() || '',
+            'Film_Link':          mergeProfile?.hudl_url || '',
+            'Hudl_URL':           mergeProfile?.hudl_url || '',
+            'Phone':              mergeProfile?.phone || '',
+            'Email':              playerEmail,
+            'Stats':              mergeProfile?.position
+              ? `• Class of ${mergeProfile?.grad_year || ''} ${mergeProfile.position}\n• GPA: ${mergeProfile?.gpa || 'N/A'}`
+              : '',
+            'Recent_Achievement': '',
+            'Improvement_Area':   '',
+            'Recent_Game_Event':  '',
+            'Recent_Performance': '',
+            'Specific_Reason':    '',
+            'All_Contact_Info':   [playerEmail, mergeProfile?.phone].filter(Boolean).join(' • '),
           }
 
-          // Create merge data with all possible formats
+          // Expand every key into all lookup variations the resolver might try
           const mergeData: Record<string, string> = {}
-          
-          // Add all keys in multiple formats
           Object.entries(profileData).forEach(([key, value]) => {
-            // Original format with underscores (First_Name)
             mergeData[key] = value
-            
-            // With spaces (First Name)
-            const spaceKey = key.replace(/_/g, ' ')
-            mergeData[spaceKey] = value
-            
-            // All lowercase with underscores (first_name)
-            const lowerKey = key.toLowerCase()
-            mergeData[lowerKey] = value
-            
-            // All lowercase with spaces (first name)  
-            const lowerSpaceKey = spaceKey.toLowerCase()
-            mergeData[lowerSpaceKey] = value
+            mergeData[key.replace(/_/g, ' ')] = value              // underscores → spaces
+            mergeData[key.toLowerCase()] = value                   // all lowercase (underscores)
+            mergeData[key.replace(/_/g, ' ').toLowerCase()] = value // all lowercase (spaces)
           })
-          
-          // Add some common variations
-          mergeData['coach_name'] = mergeData['Coach_Name']
-          mergeData['school_name'] = mergeData['School_Name']
-          mergeData['city_state'] = mergeData['City_State']
-          mergeData['hudl_url'] = mergeData['Film_Link']
+
+          // Extra legacy keys for old {{athlete_*}} / {{coach_*}} format
+          mergeData['athlete_first_name'] = profileData['Player_First_Name']
+          mergeData['athlete_last_name']  = profileData['Player_Last_Name']
+          mergeData['coach_first_name']   = profileData['Coach_First_Name']
+          mergeData['coach_last_name']    = profileData['Coach_Last_Name']
+          mergeData['school_name']        = profileData['School_Name']
+          mergeData['hudl_url']           = profileData['Player_Film_Link']
+          mergeData['city_state']         = profileData['City_State']
 
           // Resolve merge tags
           const subject = resolveEmailMergeTags(emailTemplate.subject, mergeData)
           let body = resolveEmailMergeTags(emailTemplate.body, mergeData)
+
+          // ============================================================
+          // SAFETY CHECK: Block send if any merge tags remain unresolved.
+          // An email with ((Coach Last Name)) or {{field}} still visible
+          // would be deeply unprofessional and must never leave the system.
+          // ============================================================
+          const unresolvedPattern = /\(\([^)]+\)\)|\{\{[^}]+\}\}/
+          if (unresolvedPattern.test(subject) || unresolvedPattern.test(body)) {
+            console.error(`BLOCKED: Unresolved merge tags for recipient ${recipient.id} (campaign ${recipient.campaign_id} step ${recipient.current_step})`)
+            await admin
+              .from('campaign_recipients')
+              .update({ status: 'error', updated_at: new Date().toISOString() })
+              .eq('id', recipient.id)
+            await admin.from('email_events').insert({
+              campaign_id: recipient.campaign_id,
+              recipient_id: recipient.id,
+              event_type: 'bounced',
+              metadata: { reason: 'unresolved_merge_tags', step: recipient.current_step },
+            })
+            totalErrors++
+            continue
+          }
 
           // Convert plain text body to HTML
           let htmlBody = body

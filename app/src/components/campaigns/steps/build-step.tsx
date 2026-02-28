@@ -42,55 +42,56 @@ interface DatabaseTemplate {
   updated_at: string
 }
 
-// Default templates for each goal (fallback if database is empty)
-const GOAL_TEMPLATES: Record<CampaignGoal, EmailTemplate[]> = {
+// Fallback templates (used if the database returns nothing for a goal)
+// All use canonical ((Player ...)) / ((Coach ...)) / ((School Name)) tags.
+const PLAYER_GOAL_TEMPLATES: Record<CampaignGoal, EmailTemplate[]> = {
   get_response: [
     {
-      name: "Introduction Email",
-      subject: "((First Name)), I'm Interested in Your Program",
-      body: "Dear Coach ((Last Name)),\n\nMy name is ((First Name)) ((Last Name)), and I'm a ((Position)) from ((High School)) in ((City)), ((State)). I'm reaching out because I'm very interested in your program at ((School)).\n\n((Stats))\n\nI'd love to learn more about your program and what you look for in recruits. My highlight film is available at: ((Film Link))\n\nThank you for your time!\n\n((First Name)) ((Last Name))\n((Phone))\n((Email))",
+      name: "Initial Introduction",
+      subject: "((Player First Name)) ((Player Last Name)) | ((Player Position)) | Class of ((Player Grad Year))",
+      body: "Dear Coach ((Coach Last Name)),\n\nMy name is ((Player First Name)) ((Player Last Name)). I'm a ((Player Position)) from ((Player High School)) in ((Player City)), ((Player State)), Class of ((Player Grad Year)).\n\nI'm very interested in your program at ((School Name)). Here is my film:\n((Player Film Link))\n\nGPA: ((Player GPA))\n\nThank you for your time!\n\n((Player First Name)) ((Player Last Name))\n((Player Phone))\n((Player Email))",
       delayDays: null
     },
     {
       name: "Follow-Up #1",
-      subject: "Following Up - ((First Name)) ((Last Name)), ((Position))",
-      body: "Coach ((Last Name)),\n\nI wanted to follow up on my previous email about my interest in ((School)). I know you're busy, but I'd really appreciate any feedback you might have.\n\nI've been working hard on ((Improvement Area)) and recently ((Recent Achievement)).\n\nMy updated stats:\n((Stats))\n\nFilm: ((Film Link))\n\nThank you for considering me!\n\n((First Name)) ((Last Name))",
+      subject: "Following Up — ((Player First Name)) ((Player Last Name)), ((Player Position))",
+      body: "Coach ((Coach Last Name)),\n\nI wanted to follow up on my previous email about my interest in ((School Name)).\n\nFilm: ((Player Film Link))\n\nThank you for considering me!\n\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
       delayDays: 7
     },
     {
       name: "Follow-Up #2",
-      subject: "Quick Update from ((First Name)) ((Last Name))",
-      body: "Hi Coach ((Last Name)),\n\nI hope this finds you well. I wanted to share a quick update from my recent ((Recent Game/Event)).\n\n((Recent Performance))\n\nI'm still very interested in ((School)) and would love to know:\n- What you look for in a ((Position))\n- Your recruiting timeline\n- If there's anything specific you'd like to see from me\n\nThanks again for your time.\n\n((First Name)) ((Last Name))\n((Phone))",
+      subject: "Quick Update — ((Player First Name)) ((Player Last Name))",
+      body: "Hi Coach ((Coach Last Name)),\n\nI'm still very interested in ((School Name)) and wanted to share a quick update.\n\nFilm: ((Player Film Link))\nGPA: ((Player GPA)) | Class of ((Player Grad Year))\n\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
       delayDays: 14
     },
     {
       name: "Final Follow-Up",
-      subject: "One More Try - ((First Name)) ((Last Name))",
-      body: "Coach ((Last Name)),\n\nI understand you're extremely busy, and I don't want to be a bother. This will be my last email unless I hear back from you.\n\nI remain very interested in ((School)) because ((Specific Reason)). If there's any possibility of discussing your program, I'd be grateful for the opportunity.\n\nIf the timing isn't right or you're not interested, I completely understand. Either way, I appreciate you taking the time to read my emails.\n\nBest of luck with your season!\n\n((First Name)) ((Last Name))\n((All Contact Info))",
+      subject: "One Last Note — ((Player First Name)) ((Player Last Name))",
+      body: "Coach ((Coach Last Name)),\n\nThis will be my last email unless I hear back from you. I remain very interested in ((School Name)).\n\nFilm: ((Player Film Link))\n\nBest of luck with your season!\n\n((Player First Name)) ((Player Last Name))\n((Player Phone))\n((Player Email))",
       delayDays: 21
     }
   ],
   evaluate_film: [
     {
       name: "Film Share",
-      subject: "((First Name)) ((Last Name)) - ((Position)) Film",
-      body: "Coach ((Last Name)),\n\nI wanted to share my latest film with you. I've had a strong season and would appreciate your evaluation.\n\n((Film Link))\n\nKey highlights:\n((Stats))\n\nI look forward to hearing your thoughts.\n\n((First Name)) ((Last Name))",
+      subject: "((Player First Name)) ((Player Last Name)) — ((Player Position)) Film",
+      body: "Coach ((Coach Last Name)),\n\nI wanted to share my latest film with you:\n((Player Film Link))\n\nGPA: ((Player GPA)) | Class of ((Player Grad Year)) | ((Player High School))\n\n((Player First Name)) ((Player Last Name))",
       delayDays: null
     }
   ],
   build_interest: [
     {
-      name: "Personal Story",
-      subject: "Why ((School)) Is My Top Choice",
-      body: "Coach ((Last Name)),\n\nI wanted to share more about myself beyond the field. ((Personal Story))\n\nAcademically, I maintain a ((GPA)) GPA and am interested in studying ((Major)).\n\nI believe I'd be a great fit for your program both athletically and academically.\n\n((First Name)) ((Last Name))",
+      name: "Build Interest",
+      subject: "Why ((School Name)) Is My Top Choice",
+      body: "Coach ((Coach Last Name)),\n\nI wanted to share more about myself beyond the field. ((School Name)) is my top choice because of your program's culture and academics.\n\nGPA: ((Player GPA)) | ((Player Position)) | Class of ((Player Grad Year))\n\nFilm: ((Player Film Link))\n\n((Player First Name)) ((Player Last Name))",
       delayDays: null
     }
   ],
   secure_visit: [
     {
       name: "Visit Request",
-      subject: "Campus Visit Opportunity",
-      body: "Coach ((Last Name)),\n\nThank you for your interest in me as a recruit. I'm very excited about the possibility of joining your program.\n\nI'd love to schedule a campus visit to meet you and the team. I'm available ((Availability)).\n\nPlease let me know what dates work best for you.\n\n((First Name)) ((Last Name))",
+      subject: "Campus Visit — ((Player First Name)) ((Player Last Name))",
+      body: "Coach ((Coach Last Name)),\n\nThank you for your interest in me as a recruit. I'd love to schedule a campus visit to meet you and the team at ((School Name)).\n\nFilm: ((Player Film Link))\n\nPlease let me know what dates work best.\n\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
       delayDays: null
     }
   ],
@@ -98,29 +99,92 @@ const GOAL_TEMPLATES: Record<CampaignGoal, EmailTemplate[]> = {
     {
       name: "Custom Message",
       subject: "",
-      body: "Coach ((Last Name)),\n\n\n\n((First Name)) ((Last Name))",
+      body: "Coach ((Coach Last Name)),\n\n\n\n((Player First Name)) ((Player Last Name))",
       delayDays: null
     }
   ]
 }
 
-const MERGE_TAGS = [
-  { key: "first_name", label: "First Name" },
-  { key: "last_name", label: "Last Name" },
-  { key: "position", label: "Position" },
-  { key: "high_school", label: "High School" },
-  { key: "city", label: "City" },
-  { key: "state", label: "State" },
-  { key: "school", label: "School" },
-  { key: "coach_name", label: "Coach Name" },
-  { key: "stats", label: "Stats" },
-  { key: "film_link", label: "Film Link" },
-  { key: "phone", label: "Phone" },
-  { key: "email", label: "Email" },
-  { key: "gpa", label: "GPA" },
-  { key: "major", label: "Major" },
-  { key: "personal_story", label: "Personal Story" },
-  { key: "availability", label: "Availability" }
+const COACH_GOAL_TEMPLATES: Record<CampaignGoal, EmailTemplate[]> = {
+  get_response: [
+    {
+      name: "Player Introduction",
+      subject: "Prospect Introduction — ((Player First Name)) ((Player Last Name)), ((Player Position))",
+      body: "Dear Coach ((Coach Last Name)),\n\nMy name is ((My First Name)), a coach at ((Player High School)). I'm reaching out to introduce you to one of my players, ((Player First Name)) ((Player Last Name)), a ((Player Position)) in the Class of ((Player Grad Year)).\n\nFilm: ((Player Film Link))\nGPA: ((Player GPA))\n\nI believe ((Player First Name)) would be a great fit for your program at ((School Name)). Please reach out if you'd like to learn more.\n\nThank you,\n((My First Name))",
+      delayDays: null
+    },
+    {
+      name: "Follow-Up Recommendation",
+      subject: "Following Up — ((Player First Name)) ((Player Last Name))",
+      body: "Coach ((Coach Last Name)),\n\nI wanted to follow up on my previous email about ((Player First Name)) ((Player Last Name)). ((Player First Name)) is very interested in ((School Name)) and I strongly believe in their potential.\n\nFilm: ((Player Film Link))\n\nThank you,\n((My First Name))",
+      delayDays: 7
+    }
+  ],
+  evaluate_film: [
+    {
+      name: "Film Recommendation",
+      subject: "Film — ((Player First Name)) ((Player Last Name)), ((Player Position))",
+      body: "Coach ((Coach Last Name)),\n\nI'd like to share film on ((Player First Name)) ((Player Last Name)), a ((Player Position)) from ((Player High School)) in the Class of ((Player Grad Year)).\n\n((Player Film Link))\n\nGPA: ((Player GPA))\n\nI think ((Player First Name)) has what it takes to compete at ((School Name)). Happy to discuss further.\n\n((My First Name))",
+      delayDays: null
+    }
+  ],
+  build_interest: [
+    {
+      name: "Camp Recommendation",
+      subject: "Camp Invite for ((Player First Name)) ((Player Last Name))",
+      body: "Coach ((Coach Last Name)),\n\nI'm reaching out on behalf of ((Player First Name)) ((Player Last Name)), a ((Player Position)) with a ((Player GPA)) GPA in the Class of ((Player Grad Year)).\n\nFilm: ((Player Film Link))\n\nI believe ((Player First Name)) would benefit greatly from attending your camp at ((School Name)).\n\nThank you,\n((My First Name))",
+      delayDays: null
+    }
+  ],
+  secure_visit: [
+    {
+      name: "Visit Request",
+      subject: "Campus Visit for ((Player First Name)) ((Player Last Name))",
+      body: "Coach ((Coach Last Name)),\n\n((Player First Name)) ((Player Last Name)) is very interested in ((School Name)) and would love to schedule a campus visit. ((Player First Name)) is a ((Player Position)) from ((Player High School)) with a ((Player GPA)) GPA.\n\nFilm: ((Player Film Link))\n\nPlease let us know what dates work best.\n\nThank you,\n((My First Name))",
+      delayDays: null
+    }
+  ],
+  other: [
+    {
+      name: "Custom Message",
+      subject: "",
+      body: "Coach ((Coach Last Name)),\n\n\n\n((My First Name))",
+      delayDays: null
+    }
+  ]
+}
+
+// Merge tag buttons shown in the editor — audience-specific to avoid confusion
+const PLAYER_MERGE_TAGS = [
+  "Coach Last Name",
+  "Coach First Name",
+  "School Name",
+  "Player First Name",
+  "Player Last Name",
+  "Player Position",
+  "Player Grad Year",
+  "Player High School",
+  "Player City",
+  "Player State",
+  "Player GPA",
+  "Player Film Link",
+  "Player Phone",
+  "Player Email",
+]
+
+const COACH_MERGE_TAGS = [
+  "Coach Last Name",
+  "Coach First Name",
+  "School Name",
+  "Player First Name",
+  "Player Last Name",
+  "Player Position",
+  "Player Grad Year",
+  "Player High School",
+  "Player Film Link",
+  "Player GPA",
+  "My First Name",
+  "My Last Name",
 ]
 
 export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }: BuildStepProps) {
@@ -129,15 +193,17 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
   const [availableTemplates, setAvailableTemplates] = useState<DatabaseTemplate[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(true)
   const [showCustomCreator, setShowCustomCreator] = useState(false)
+  const [audience, setAudience] = useState<'player' | 'coach'>('player')
 
-  // Load templates from database
+  // Load templates from database — also captures audience so we show the right defaults
   useEffect(() => {
     const loadTemplates = async () => {
       try {
         const response = await fetch('/api/templates')
         if (response.ok) {
-          const { templates: dbTemplates } = await response.json()
+          const { templates: dbTemplates, audience: dbAudience } = await response.json()
           setAvailableTemplates(dbTemplates || [])
+          if (dbAudience === 'coach') setAudience('coach')
         } else {
           console.error('Failed to load templates')
         }
@@ -150,12 +216,13 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
     loadTemplates()
   }, [])
 
-  // Initialize templates from defaults if empty
+  // Initialize templates from audience-appropriate defaults if empty
   useEffect(() => {
     if (templates.length === 0) {
-      onTemplatesChange(GOAL_TEMPLATES[goal] || GOAL_TEMPLATES.get_response)
+      const goalTemplates = audience === 'coach' ? COACH_GOAL_TEMPLATES : PLAYER_GOAL_TEMPLATES
+      onTemplatesChange(goalTemplates[goal] || goalTemplates.get_response)
     }
-  }, [goal]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [goal, audience]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateTemplate = (index: number, updates: Partial<EmailTemplate>) => {
     let updated = templates.map((t: EmailTemplate, i: number) => (i === index ? { ...t, ...updates } : t))
@@ -313,6 +380,7 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
           key={editingIndex}
           template={templates[editingIndex]}
           index={editingIndex}
+          mergeTags={audience === 'coach' ? COACH_MERGE_TAGS : PLAYER_MERGE_TAGS}
           onUpdate={(updates) => updateTemplate(editingIndex, updates)}
           onClose={() => setEditingIndex(null)}
           existingTemplateNames={availableTemplates.filter(t => !t.is_system).map(t => t.name)}
@@ -597,6 +665,7 @@ function AddTemplateOverlay({
 function TemplateEditorOverlay({
   template,
   index,
+  mergeTags,
   onUpdate,
   onClose,
   onSaveAsTemplate,
@@ -604,6 +673,7 @@ function TemplateEditorOverlay({
 }: {
   template: EmailTemplate
   index: number
+  mergeTags: string[]
   onUpdate: (updates: Partial<EmailTemplate>) => void
   onClose: () => void
   onSaveAsTemplate: (data: { name: string; subject: string; body: string }) => Promise<void>
@@ -905,14 +975,14 @@ function TemplateEditorOverlay({
 
             {/* Merge Tags */}
             <div className="mb-3 flex flex-wrap gap-1">
-              {MERGE_TAGS.map((tag) => (
+              {mergeTags.map((label) => (
                 <button
-                  key={tag.key}
+                  key={label}
                   type="button"
-                  onClick={() => insertMergeTag(tag.label)}
+                  onClick={() => insertMergeTag(label)}
                   className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
                 >
-                  {tag.label}
+                  {label}
                 </button>
               ))}
             </div>

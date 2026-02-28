@@ -2,30 +2,46 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
-// GET /api/templates - List role-appropriate templates (system + user's own)
+type TemplateAudience = 'player' | 'coach'
+
+/**
+ * Determine if this user is a coach by checking program_members and coach_profiles.
+ * Does NOT use profiles.role — that column only controls /admin access.
+ */
+async function detectCoach(userId: string): Promise<boolean> {
+  const admin = createAdminClient()
+  const [{ data: membership }, { data: legacyCoach }] = await Promise.all([
+    admin
+      .from('program_members')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('role', 'coach')
+      .maybeSingle(),
+    admin
+      .from('coach_profiles')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle(),
+  ])
+  return !!(membership || legacyCoach)
+}
+
+// GET /api/templates — return role-appropriate system templates + user's own
 export async function GET() {
   try {
     const supabase = await createClient()
-
-    // Get the current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Look up user's role
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-    const userRole = profile?.role || 'athlete'
+    const isCoach = await detectCoach(user.id)
+    const audience: TemplateAudience = isCoach ? 'coach' : 'player'
 
-    // Fetch system templates matching user's role + user's own templates
     const { data: templates, error } = await supabase
       .from('email_templates')
       .select('*')
-      .or(`and(is_system.eq.true,for_role.eq.${userRole}),created_by.eq.${user.id}`)
+      .or(`and(is_system.eq.true,for_role.eq.${audience}),created_by.eq.${user.id}`)
       .order('is_system', { ascending: false })
       .order('created_at', { ascending: false })
 
@@ -34,47 +50,34 @@ export async function GET() {
       return NextResponse.json({ error: 'Failed to fetch templates' }, { status: 500 })
     }
 
-    return NextResponse.json({ templates })
+    return NextResponse.json({ templates, audience })
   } catch (error) {
     console.error('Unexpected error in GET /api/templates:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
-// POST /api/templates - Create a new template
+// POST /api/templates — save a custom template tagged with the user's audience
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
-    
-    // Get the current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Parse request body
     const body = await request.json()
     const { name, subject, body: templateBody } = body
-
-    // Validate required fields
     if (!name || !subject || !templateBody) {
-      return NextResponse.json(
-        { error: 'Name, subject, and body are required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Name, subject, and body are required' }, { status: 400 })
     }
 
-    // Look up user's role to tag template
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-    const userRole = profile?.role || 'athlete'
+    const isCoach = await detectCoach(user.id)
+    const audience: TemplateAudience = isCoach ? 'coach' : 'player'
 
-    // Delete any existing user template with this name, then insert fresh.
-    // This avoids race conditions from check-then-insert patterns.
     const admin = createAdminClient()
+
+    // Delete any existing user template with this name (upsert-by-name pattern)
     await admin
       .from('email_templates')
       .delete()
@@ -90,7 +93,7 @@ export async function POST(request: Request) {
         body: templateBody,
         created_by: user.id,
         is_system: false,
-        for_role: userRole
+        for_role: audience,
       })
       .select()
       .single()
