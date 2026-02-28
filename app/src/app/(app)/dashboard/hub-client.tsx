@@ -13,6 +13,7 @@ import { InstagramPlaceholder } from "@/components/hub/instagram-placeholder"
 import { TargetSchoolsX, type PipelineProgram } from "@/components/hub/target-schools-x"
 import { AccessRequestBanner, type PendingRequest } from "@/components/hub/access-request-banner"
 import { TeamTwitterConnect } from "@/components/hub/team-twitter-connect"
+import { XPartnerProfiles } from "@/components/hub/x-partner-profiles"
 
 interface AthleteProfile {
   first_name: string | null
@@ -186,6 +187,9 @@ export function HubClient({
 
               {/* Engage Target Schools on X */}
               <TargetSchoolsX programs={pipelinePrograms} />
+
+              {/* X Partner Profiles */}
+              <XPartnerProfiles />
 
               {/* Instagram placeholder */}
               <InstagramPlaceholder />
