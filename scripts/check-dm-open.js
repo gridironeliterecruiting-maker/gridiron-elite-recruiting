@@ -129,8 +129,32 @@ async function main() {
     for (let i = 0; i < coaches.length; i += BATCH_SIZE) {
       if (retryBatch) { i -= BATCH_SIZE; retryBatch = false }
 
-      const batch     = coaches.slice(i, i + BATCH_SIZE)
-      const usernames = batch.map(c => c.twitter_handle).join(',')
+      const batch = coaches.slice(i, i + BATCH_SIZE)
+
+      // Sanitize handles: strip leading @, skip URLs and anything not matching Twitter's format
+      const VALID_HANDLE = /^[A-Za-z0-9_]{1,15}$/
+      const sanitizedBatch = batch.map(c => {
+        let h = (c.twitter_handle || '').trim().replace(/^@/, '')
+        // Strip full URLs down to just the handle segment
+        const urlMatch = h.match(/(?:twitter\.com|x\.com)\/([A-Za-z0-9_]{1,15})/i)
+        if (urlMatch) h = urlMatch[1]
+        return { ...c, _handle: VALID_HANDLE.test(h) ? h : null }
+      })
+
+      // Mark invalid handles as not-found immediately
+      for (const c of sanitizedBatch.filter(c => !c._handle)) {
+        notFound++
+        await pool.query(
+          `UPDATE coaches SET twitter_dm_open = false, twitter_dm_checked_at = NOW() WHERE id = $1`,
+          [c.id]
+        )
+        checked++
+      }
+
+      const validBatch = sanitizedBatch.filter(c => c._handle)
+      if (validBatch.length === 0) continue
+
+      const usernames = validBatch.map(c => c._handle).join(',')
 
       try {
         const res = await fetch(
@@ -155,7 +179,7 @@ async function main() {
         if (!res.ok) {
           const errBody = await res.text()
           console.error(`\nAPI error ${res.status} for batch starting at ${i}: ${errBody}`)
-          errors += batch.length
+          errors += validBatch.length
           await new Promise(r => setTimeout(r, REQUEST_DELAY_MS * 4))
           continue
         }
@@ -163,15 +187,15 @@ async function main() {
         const data  = await res.json()
         const users = data.data || []
 
-        // Build handle → can_dm map from response
+        // Build handle → receives_your_dm map from response
         const dmMap = new Map()
         for (const u of users) {
           dmMap.set(u.username.toLowerCase(), u.receives_your_dm ?? false)
         }
 
         // Update each coach in this batch
-        for (const coach of batch) {
-          const handle = coach.twitter_handle.toLowerCase()
+        for (const coach of validBatch) {
+          const handle = coach._handle.toLowerCase()
           const found  = dmMap.has(handle)
           const canDm  = found ? dmMap.get(handle) : false
 
@@ -198,7 +222,7 @@ async function main() {
 
       } catch (err) {
         console.error(`\nBatch error: ${err.message}`)
-        errors += batch.length
+        errors += validBatch.length
       }
 
       // Respect rate limits between batches
