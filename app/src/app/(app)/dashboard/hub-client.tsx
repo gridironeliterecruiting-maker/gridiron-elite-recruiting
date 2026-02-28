@@ -12,6 +12,7 @@ import { CoachTwitterCard } from "@/components/hub/coach-twitter-card"
 import { InstagramPlaceholder } from "@/components/hub/instagram-placeholder"
 import { TargetSchoolsX, type PipelineProgram } from "@/components/hub/target-schools-x"
 import { AccessRequestBanner, type PendingRequest } from "@/components/hub/access-request-banner"
+import { TeamTwitterConnect } from "@/components/hub/team-twitter-connect"
 
 interface AthleteProfile {
   first_name: string | null
@@ -66,6 +67,8 @@ interface HubClientProps {
   campaignCount: number
   pipelinePrograms: PipelineProgram[]
   pendingAccessRequests: PendingRequest[]
+  managedProgramId: string | null
+  programTwitterHandle: string | null
 }
 
 export function HubClient({
@@ -86,6 +89,8 @@ export function HubClient({
   campaignCount,
   pipelinePrograms,
   pendingAccessRequests,
+  managedProgramId,
+  programTwitterHandle,
 }: HubClientProps) {
   const [twitterProfile, setTwitterProfile] = useState<TwitterProfile | null>(null)
   const [twitterLoading, setTwitterLoading] = useState(hasTwitterToken)
@@ -196,6 +201,18 @@ export function HubClient({
                   playerHandle={playerTwitterHandle || null}
                   playerHasToken={playerHasTwitterToken}
                   playerFirstName={activePlayerName?.split(" ")[0] || "Player"}
+                />
+              )}
+
+              {/* Engage Target Schools on X — pulled from active player's pipeline */}
+              <TargetSchoolsX programs={pipelinePrograms} />
+
+              {/* Program X account — connect or show connected handle */}
+              {managedProgramId && coachProgramName && (
+                <TeamTwitterConnect
+                  programId={managedProgramId}
+                  programName={coachProgramName}
+                  twitterHandle={programTwitterHandle}
                 />
               )}
 

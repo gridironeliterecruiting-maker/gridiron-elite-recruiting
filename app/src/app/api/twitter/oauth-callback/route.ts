@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
   // Parse state (try base64url first, then standard base64)
   let campaignId: string | null = null
   let returnTo: string | null = null
+  let programId: string | null = null
   try {
     if (stateParam) {
       let stateJson: string
@@ -31,7 +32,8 @@ export async function GET(request: NextRequest) {
       const state = JSON.parse(stateJson)
       campaignId = state.campaignId
       returnTo = state.returnTo
-      console.log('[Twitter Callback] Parsed state - returnTo:', returnTo, 'campaignId:', campaignId)
+      programId = state.programId || null
+      console.log('[Twitter Callback] Parsed state - returnTo:', returnTo, 'campaignId:', campaignId, 'programId:', programId)
     }
   } catch (e) {
     console.error('[Twitter Callback] Failed to parse state:', e)
@@ -92,25 +94,51 @@ export async function GET(request: NextRequest) {
 
     // Upsert tokens using admin client (bypasses RLS)
     const admin = createAdminClient()
-    const { error: upsertError } = await admin
-      .from('twitter_tokens')
-      .upsert(
-        {
-          user_id: user.id,
-          twitter_user_id: twitterUser.id,
-          twitter_handle: twitterUser.username,
-          access_token,
-          refresh_token: refresh_token || null,
-          token_expiry: tokenExpiry,
-          connected_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id' }
-      )
 
-    if (upsertError) {
-      console.error('[Twitter Callback] Upsert failed:', JSON.stringify(upsertError))
-      return NextResponse.redirect(`${redirectBase}${redirectBase.includes('?') ? '&' : '?'}twitter=error&reason=store_failed`)
+    if (programId) {
+      // Program-level token — store in program_twitter_tokens
+      const { error: upsertError } = await admin
+        .from('program_twitter_tokens')
+        .upsert(
+          {
+            program_id: programId,
+            twitter_user_id: twitterUser.id,
+            twitter_handle: twitterUser.username,
+            access_token,
+            refresh_token: refresh_token || null,
+            token_expiry: tokenExpiry,
+            connected_at: new Date().toISOString(),
+            connected_by: user.id,
+          },
+          { onConflict: 'program_id' }
+        )
+
+      if (upsertError) {
+        console.error('[Twitter Callback] Program token upsert failed:', JSON.stringify(upsertError))
+        return NextResponse.redirect(`${redirectBase}${redirectBase.includes('?') ? '&' : '?'}twitter=error&reason=store_failed`)
+      }
+    } else {
+      // Per-user token — existing behaviour
+      const { error: upsertError } = await admin
+        .from('twitter_tokens')
+        .upsert(
+          {
+            user_id: user.id,
+            twitter_user_id: twitterUser.id,
+            twitter_handle: twitterUser.username,
+            access_token,
+            refresh_token: refresh_token || null,
+            token_expiry: tokenExpiry,
+            connected_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' }
+        )
+
+      if (upsertError) {
+        console.error('[Twitter Callback] Upsert failed:', JSON.stringify(upsertError))
+        return NextResponse.redirect(`${redirectBase}${redirectBase.includes('?') ? '&' : '?'}twitter=error&reason=store_failed`)
+      }
     }
 
     console.log(`[Twitter Callback] ===== SUCCESS ===== user=${user.id} handle=@${twitterUser.username}`)

@@ -156,7 +156,7 @@ export default async function HubPage() {
   type PipelineProgram = { programId: string; schoolName: string; logoUrl: string | null; twitterHandle: string }
   let pipelinePrograms: PipelineProgram[] = []
 
-  if (!isCoach && pipelineAthleteId) {
+  if (pipelineAthleteId) {
     const { data: activeEntries } = await supabase
       .from("pipeline_entries")
       .select("program_id, programs(id, school_name, logo_url)")
@@ -199,6 +199,17 @@ export default async function HubPage() {
       .eq('program_id', managedProgramId)
       .eq('status', 'pending')
     pendingAccessRequests = accessRequests || []
+  }
+
+  // Fetch program Twitter token for coaches
+  let programTwitterHandle: string | null = null
+  if (isCoach && managedProgramId) {
+    const { data: programToken } = await admin
+      .from('program_twitter_tokens')
+      .select('twitter_handle')
+      .eq('program_id', managedProgramId)
+      .maybeSingle()
+    programTwitterHandle = programToken?.twitter_handle || null
   }
 
   // Get outreach stats — emails sent + DMs sent
@@ -257,6 +268,8 @@ export default async function HubPage() {
       campaignCount={campaignIds.length}
       pipelinePrograms={pipelinePrograms}
       pendingAccessRequests={pendingAccessRequests}
+      managedProgramId={managedProgramId}
+      programTwitterHandle={programTwitterHandle}
     />
   )
 }

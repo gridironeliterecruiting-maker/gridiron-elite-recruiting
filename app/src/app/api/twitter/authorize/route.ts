@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const campaignId = searchParams.get('campaign')
     const returnTo = searchParams.get('returnTo')
+    const programId = searchParams.get('programId')
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -29,6 +30,7 @@ export async function GET(request: NextRequest) {
       userId: user.id,
       campaignId: campaignId || null,
       returnTo: returnTo || null,
+      programId: programId || null,
     })
 
     const params = new URLSearchParams({
