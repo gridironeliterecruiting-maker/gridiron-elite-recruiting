@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import NavBar from '@/components/NavBar'
 import { ActivePlayerProvider, type PlayerInfo } from '@/components/ActivePlayerContext'
 import { getActivePlayerId } from '@/lib/active-player'
+import { UnauthorizedPage } from '@/components/unauthorized-page'
 
 /** Convert a hex color (#RRGGBB) to the raw HSL string Tailwind expects ("H S% L%"). */
 function hexToHsl(hex: string): string {
@@ -131,9 +132,40 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
   // No programSlug → main site → no program membership required
 
-  // Gate access: bounce back to the branded landing page, which shows UnauthorizedPage
+  // Gate access: render UnauthorizedPage directly (no redirect — redirecting would loop
+  // because the middleware sends /{slug} back to /{slug}/dashboard for logged-in users)
   if (programAccessDenied) {
-    redirect(basePath)
+    // Check for an existing pending access request so the UI shows the right state
+    let existingRequestStatus: string | null = null
+    if (managedProgramId) {
+      const { data: existingRequest } = await admin
+        .from('access_requests')
+        .select('status')
+        .eq('user_id', user.id)
+        .eq('program_id', managedProgramId)
+        .maybeSingle()
+      existingRequestStatus = existingRequest?.status || null
+    } else if (legacyCoachId) {
+      const { data: existingRequest } = await admin
+        .from('access_requests')
+        .select('status')
+        .eq('user_id', user.id)
+        .eq('coach_profile_id', legacyCoachId)
+        .maybeSingle()
+      existingRequestStatus = existingRequest?.status || null
+    }
+
+    return (
+      <UnauthorizedPage
+        logoSrc={programBranding?.logo_url || '/logo.png'}
+        logoAlt={programBranding?.program_name || 'Program'}
+        programName={programBranding?.program_name || undefined}
+        primaryColor={programBranding?.primary_color || undefined}
+        programId={managedProgramId || undefined}
+        coachProfileId={legacyCoachId || undefined}
+        existingRequestStatus={existingRequestStatus}
+      />
+    )
   }
 
   let players: PlayerInfo[] = []
