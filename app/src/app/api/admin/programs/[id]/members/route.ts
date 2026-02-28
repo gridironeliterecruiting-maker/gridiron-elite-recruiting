@@ -99,19 +99,11 @@ async function sendWelcomeEmail(
     : null
 
   // Always use the admin Gmail token — system emails send from gridironeliterecruiting@gmail.com
-  const { data: adminProfile } = await admin
-    .from('profiles')
-    .select('id')
-    .eq('role', 'admin')
-    .limit(1)
-    .single()
-
-  if (!adminProfile) return
-
   const { data: gmailToken } = await admin
     .from('gmail_tokens')
-    .select('access_token, refresh_token, token_expiry')
-    .eq('user_id', adminProfile.id)
+    .select('user_id, access_token, refresh_token, token_expiry, profiles!inner(role)')
+    .eq('profiles.role', 'admin')
+    .limit(1)
     .single()
 
   if (!gmailToken) return

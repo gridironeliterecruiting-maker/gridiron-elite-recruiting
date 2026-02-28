@@ -162,20 +162,14 @@ async function sendNotificationEmail(
   programName: string
 ) {
   try {
-    // Always use the admin Gmail token for system notifications
-    const { data: adminProfile } = await admin
-      .from('profiles')
-      .select('id')
-      .eq('role', 'admin')
-      .limit(1)
-      .single()
-
-    if (!adminProfile) return
-
+    // Always use the admin Gmail token for system notifications.
+    // Query gmail_tokens directly joined to admin profiles so we only get
+    // admins who actually have a connected token.
     const { data: gmailToken } = await admin
       .from('gmail_tokens')
-      .select('access_token, refresh_token, token_expiry')
-      .eq('user_id', adminProfile.id)
+      .select('user_id, access_token, refresh_token, token_expiry, profiles!inner(role)')
+      .eq('profiles.role', 'admin')
+      .limit(1)
       .single()
 
     if (!gmailToken) return
