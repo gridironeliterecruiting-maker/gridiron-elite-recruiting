@@ -1,8 +1,8 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { Card } from "@/components/ui/card"
-import { Check, X as XIcon, AlertCircle } from "lucide-react"
+import { Check, X as XIcon, AlertCircle, ChevronDown } from "lucide-react"
 
 interface TwitterProfile {
   username: string
@@ -43,6 +43,8 @@ interface CheckItem {
 }
 
 export function ReadinessScore({ twitterProfile, athleteProfile }: ReadinessScoreProps) {
+  const [isOpen, setIsOpen] = useState(true)
+
   const checks = useMemo((): CheckItem[] => {
     if (!twitterProfile) return []
 
@@ -179,11 +181,19 @@ export function ReadinessScore({ twitterProfile, athleteProfile }: ReadinessScor
 
   return (
     <Card className="overflow-hidden">
-      <div className="p-5 sm:p-6">
-        <h3 className="mb-4 font-display text-sm font-bold uppercase tracking-wider text-foreground">
+      <button
+        onClick={() => setIsOpen(v => !v)}
+        className="flex w-full items-center justify-between px-5 py-4 sm:px-6"
+      >
+        <h3 className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wider text-foreground">
+          <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-black font-black text-white" style={{ fontSize: 11 }}>X</span>
           Recruiting Readiness Score
         </h3>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+      </button>
 
+      {isOpen && (
+      <div className="px-5 pb-5 sm:px-6 sm:pb-6">
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
           {/* Score Ring */}
           <div className="relative flex shrink-0 items-center justify-center">
@@ -259,6 +269,7 @@ export function ReadinessScore({ twitterProfile, athleteProfile }: ReadinessScor
           </div>
         </div>
       </div>
+      )}
     </Card>
   )
 }

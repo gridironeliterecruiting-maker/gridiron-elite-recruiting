@@ -152,6 +152,44 @@ export default async function HubPage() {
     count: stageCounts[stage.id] || 0,
   }))
 
+  // Fetch active pipeline programs with team Twitter handles (for "Engage Target Schools on X")
+  type PipelineProgram = { programId: string; schoolName: string; logoUrl: string | null; twitterHandle: string }
+  let pipelinePrograms: PipelineProgram[] = []
+
+  if (!isCoach && pipelineAthleteId) {
+    const { data: activeEntries } = await supabase
+      .from("pipeline_entries")
+      .select("program_id, programs(id, school_name, logo_url)")
+      .eq("athlete_id", pipelineAthleteId)
+      .eq("status", "active")
+
+    if (activeEntries && activeEntries.length > 0) {
+      const programIds = activeEntries.map((e: any) => e.program_id)
+      const { data: teamTwitter } = await supabase
+        .from("coaches")
+        .select("program_id, twitter_handle")
+        .in("program_id", programIds)
+        .eq("title", "Team Twitter")
+        .eq("is_active", true)
+
+      if (teamTwitter && teamTwitter.length > 0) {
+        const handleMap: Record<string, string> = {}
+        for (const t of teamTwitter) {
+          if (t.twitter_handle) handleMap[t.program_id] = t.twitter_handle
+        }
+        pipelinePrograms = (activeEntries as any[])
+          .filter(e => handleMap[e.program_id])
+          .map(e => ({
+            programId: e.program_id,
+            schoolName: e.programs?.school_name || "",
+            logoUrl: e.programs?.logo_url || null,
+            twitterHandle: handleMap[e.program_id],
+          }))
+          .sort((a, b) => a.schoolName.localeCompare(b.schoolName))
+      }
+    }
+  }
+
   // Get outreach stats — emails sent + DMs sent
   const campaignIds = (campaigns || []).map((c) => c.id)
   let emailsSent = 0
@@ -206,6 +244,7 @@ export default async function HubPage() {
       emailsSent={emailsSent}
       dmsSent={dmsSent}
       campaignCount={campaignIds.length}
+      pipelinePrograms={pipelinePrograms}
     />
   )
 }

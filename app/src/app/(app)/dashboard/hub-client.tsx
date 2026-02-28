@@ -10,6 +10,7 @@ import { ContentCalendar } from "@/components/hub/content-calendar"
 import { HubActionItems } from "@/components/hub/hub-action-items"
 import { CoachTwitterCard } from "@/components/hub/coach-twitter-card"
 import { InstagramPlaceholder } from "@/components/hub/instagram-placeholder"
+import { TargetSchoolsX, type PipelineProgram } from "@/components/hub/target-schools-x"
 
 interface AthleteProfile {
   first_name: string | null
@@ -62,6 +63,7 @@ interface HubClientProps {
   emailsSent: number
   dmsSent: number
   campaignCount: number
+  pipelinePrograms: PipelineProgram[]
 }
 
 export function HubClient({
@@ -80,6 +82,7 @@ export function HubClient({
   emailsSent,
   dmsSent,
   campaignCount,
+  pipelinePrograms,
 }: HubClientProps) {
   const [twitterProfile, setTwitterProfile] = useState<TwitterProfile | null>(null)
   const [twitterLoading, setTwitterLoading] = useState(hasTwitterToken)
@@ -164,6 +167,9 @@ export function HubClient({
                   athleteProfile={profile}
                 />
               ) : null}
+
+              {/* Engage Target Schools on X */}
+              <TargetSchoolsX programs={pipelinePrograms} />
 
               {/* Instagram placeholder */}
               <InstagramPlaceholder />
