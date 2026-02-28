@@ -19,7 +19,7 @@ export default async function HubPage() {
     : { data: null }
 
   // Coach status is scoped to the current program only (not global)
-  const { isCoach, isLegacyCoach, playerIds: managedPlayerIds, programName: managedProgramName } = await getCoachContext(user!.id)
+  const { isCoach, isLegacyCoach, managedProgramId, playerIds: managedPlayerIds, programName: managedProgramName } = await getCoachContext(user!.id)
 
   // For coaches, determine active player and use their profile for merge tag preview data
   let activePlayerId: string | null = null
@@ -190,6 +190,17 @@ export default async function HubPage() {
     }
   }
 
+  // Fetch pending access requests for coaches on managed programs
+  let pendingAccessRequests: { id: string; user_email: string; user_name: string | null }[] = []
+  if (isCoach && managedProgramId) {
+    const { data: accessRequests } = await admin
+      .from('access_requests')
+      .select('id, user_email, user_name')
+      .eq('program_id', managedProgramId)
+      .eq('status', 'pending')
+    pendingAccessRequests = accessRequests || []
+  }
+
   // Get outreach stats — emails sent + DMs sent
   const campaignIds = (campaigns || []).map((c) => c.id)
   let emailsSent = 0
@@ -245,6 +256,7 @@ export default async function HubPage() {
       dmsSent={dmsSent}
       campaignCount={campaignIds.length}
       pipelinePrograms={pipelinePrograms}
+      pendingAccessRequests={pendingAccessRequests}
     />
   )
 }

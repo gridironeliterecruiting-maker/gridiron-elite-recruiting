@@ -11,6 +11,7 @@ import { HubActionItems } from "@/components/hub/hub-action-items"
 import { CoachTwitterCard } from "@/components/hub/coach-twitter-card"
 import { InstagramPlaceholder } from "@/components/hub/instagram-placeholder"
 import { TargetSchoolsX, type PipelineProgram } from "@/components/hub/target-schools-x"
+import { AccessRequestBanner, type PendingRequest } from "@/components/hub/access-request-banner"
 
 interface AthleteProfile {
   first_name: string | null
@@ -64,6 +65,7 @@ interface HubClientProps {
   dmsSent: number
   campaignCount: number
   pipelinePrograms: PipelineProgram[]
+  pendingAccessRequests: PendingRequest[]
 }
 
 export function HubClient({
@@ -83,6 +85,7 @@ export function HubClient({
   dmsSent,
   campaignCount,
   pipelinePrograms,
+  pendingAccessRequests,
 }: HubClientProps) {
   const [twitterProfile, setTwitterProfile] = useState<TwitterProfile | null>(null)
   const [twitterLoading, setTwitterLoading] = useState(hasTwitterToken)
@@ -140,6 +143,14 @@ export function HubClient({
         isCoach={isCoach}
         activePlayerName={activePlayerName}
       />
+
+      {/* Pending access request banners — coaches only */}
+      {isCoach && pendingAccessRequests.length > 0 && coachProgramName && (
+        <AccessRequestBanner
+          requests={pendingAccessRequests}
+          programName={coachProgramName}
+        />
+      )}
 
       {/* Main layout: two-column on desktop */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
