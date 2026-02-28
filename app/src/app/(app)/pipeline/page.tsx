@@ -1,22 +1,21 @@
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
+import { getCoachContext } from "@/lib/coach-context"
 import { PipelineClient } from "./pipeline-client"
 
 export default async function PipelinePage() {
   const supabase = await createClient()
-  const admin = createAdminClient()
 
   const headerStore = await headers()
   const programSlug = headerStore.get('x-program-slug')
   const basePath = programSlug ? `/${programSlug}` : ''
 
-  // Coach guard — coaches don't have a Pipeline tab
+  // Coach guard — coaches don't have a Pipeline tab (scoped to current program)
   const { data: { user } } = await supabase.auth.getUser()
   if (user) {
-    const { data: _cp } = await admin.from("coach_profiles").select("id").eq("id", user.id).maybeSingle()
-    if (_cp) {
+    const { isCoach } = await getCoachContext(user.id)
+    if (isCoach) {
       redirect(`${basePath}/dashboard`)
     }
   }
