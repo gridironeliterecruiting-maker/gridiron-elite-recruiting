@@ -91,7 +91,6 @@ export function XPartnerProfiles() {
               X
             </span>
             Partner Profiles
-            <Users2 className="h-3.5 w-3.5 text-muted-foreground" />
           </h3>
           <ChevronDown
             className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
@@ -129,7 +128,7 @@ export function XPartnerProfiles() {
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col gap-1">
+              <div className="grid grid-cols-2 gap-1">
                 {partners.map(partner => (
                   <PartnerRow
                     key={partner.id}

@@ -1,8 +1,10 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
-import { Check, X as XIcon, AlertCircle, ChevronDown } from "lucide-react"
+import { Check, X as XIcon, AlertCircle, ChevronDown, Trash2 } from "lucide-react"
+
+const DISMISSED_KEY = "readiness_score_dismissed"
 
 interface TwitterProfile {
   username: string
@@ -44,6 +46,16 @@ interface CheckItem {
 
 export function ReadinessScore({ twitterProfile, athleteProfile }: ReadinessScoreProps) {
   const [isOpen, setIsOpen] = useState(true)
+  const [dismissed, setDismissed] = useState(false)
+
+  useEffect(() => {
+    setDismissed(localStorage.getItem(DISMISSED_KEY) === "true")
+  }, [])
+
+  const handleDismiss = () => {
+    localStorage.setItem(DISMISSED_KEY, "true")
+    setDismissed(true)
+  }
 
   const checks = useMemo((): CheckItem[] => {
     if (!twitterProfile) return []
@@ -175,7 +187,7 @@ export function ReadinessScore({ twitterProfile, athleteProfile }: ReadinessScor
   const failingChecks = checks.filter(c => !c.passed)
   const passingChecks = checks.filter(c => c.passed)
 
-  if (!twitterProfile) {
+  if (!twitterProfile || dismissed) {
     return null
   }
 
@@ -268,6 +280,19 @@ export function ReadinessScore({ twitterProfile, athleteProfile }: ReadinessScor
             )}
           </div>
         </div>
+
+        {/* Dismiss — only available once score is coach-ready */}
+        {score >= 70 && (
+          <div className="mt-4 flex justify-end border-t border-border pt-4">
+            <button
+              onClick={handleDismiss}
+              className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Dismiss this card
+            </button>
+          </div>
+        )}
       </div>
       )}
     </Card>
