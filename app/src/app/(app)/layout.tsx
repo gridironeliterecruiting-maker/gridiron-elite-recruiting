@@ -97,7 +97,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   // Determine isCoach based on the current program only — not globally.
   // The same user can be a coach on one program and a player on another.
+  // Also enforce program membership: users not in program_members are denied access.
   let isCoach = false
+  let programAccessDenied = false
+
   if (managedProgramId) {
     const { data: membership } = await admin
       .from('program_members')
@@ -105,12 +108,58 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       .eq('program_id', managedProgramId)
       .eq('user_id', user.id)
       .maybeSingle()
-    isCoach = membership?.role === 'coach'
+    if (!membership) {
+      programAccessDenied = true
+    } else {
+      isCoach = membership.role === 'coach'
+    }
   } else if (legacyCoachId) {
     // Legacy: the coach IS the user whose profile owns the slug
     isCoach = user.id === legacyCoachId
+    if (!isCoach) {
+      // Check if user is a registered player for this legacy coach
+      const { data: playerRecord } = await admin
+        .from('coach_players')
+        .select('player_id')
+        .eq('coach_id', legacyCoachId)
+        .eq('player_id', user.id)
+        .maybeSingle()
+      if (!playerRecord) {
+        programAccessDenied = true
+      }
+    }
   }
-  // No programSlug → main site → isCoach = false
+  // No programSlug → main site → no program membership required
+
+  // Gate access: render a branded "Access Required" screen instead of the app
+  if (programAccessDenied) {
+    const accessStyleOverrides: Record<string, string> = {}
+    if (programBranding?.primary_color) accessStyleOverrides['--primary'] = hexToHsl(programBranding.primary_color)
+    if (programBranding?.accent_color) accessStyleOverrides['--accent'] = hexToHsl(programBranding.accent_color)
+    return (
+      <div
+        className="min-h-screen bg-background"
+        style={Object.keys(accessStyleOverrides).length > 0 ? accessStyleOverrides as React.CSSProperties : undefined}
+      >
+        <NavBar profile={profile} coachBranding={programBranding} basePath={basePath} />
+        <main className="mx-auto max-w-7xl px-4 py-24 lg:px-8">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+              <span className="font-display text-3xl font-black text-muted-foreground">!</span>
+            </div>
+            <h1 className="font-display text-2xl font-bold uppercase tracking-tight">Access Required</h1>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              Your account hasn&apos;t been added to{' '}
+              <span className="font-semibold text-foreground">
+                {programBranding?.program_name || 'this program'}
+              </span>
+              &apos;s portal. Contact your coach to get access.
+            </p>
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   let players: PlayerInfo[] = []
   let activePlayer: PlayerInfo | null = null
