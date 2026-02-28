@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card"
 import { Check, X as XIcon, AlertCircle, ChevronDown, Trash2 } from "lucide-react"
 
 const DISMISSED_KEY = "readiness_score_dismissed"
+const OPEN_KEY = "readiness_score_open"
 
 interface TwitterProfile {
   username: string
@@ -50,7 +51,15 @@ export function ReadinessScore({ twitterProfile, athleteProfile }: ReadinessScor
 
   useEffect(() => {
     setDismissed(localStorage.getItem(DISMISSED_KEY) === "true")
+    const saved = localStorage.getItem(OPEN_KEY)
+    if (saved !== null) setIsOpen(saved !== "false")
   }, [])
+
+  const toggleOpen = () => {
+    const next = !isOpen
+    setIsOpen(next)
+    localStorage.setItem(OPEN_KEY, String(next))
+  }
 
   const handleDismiss = () => {
     localStorage.setItem(DISMISSED_KEY, "true")
@@ -194,12 +203,17 @@ export function ReadinessScore({ twitterProfile, athleteProfile }: ReadinessScor
   return (
     <Card className="overflow-hidden">
       <button
-        onClick={() => setIsOpen(v => !v)}
+        onClick={toggleOpen}
         className="flex w-full items-center justify-between px-5 py-4 sm:px-6"
       >
         <h3 className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wider text-foreground">
           <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-black font-black text-white" style={{ fontSize: 11 }}>X</span>
           Recruiting Readiness Score
+          {!isOpen && (
+            <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-bold tabular-nums ${scoreBg} ${scoreColor}`}>
+              {score}
+            </span>
+          )}
         </h3>
         <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
       </button>

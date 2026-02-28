@@ -91,6 +91,11 @@ export function XPartnerProfiles() {
               X
             </span>
             Partner Profiles
+            {!isOpen && !loading && partners.length > 0 && (
+              <span className="inline-flex items-center rounded bg-secondary px-1.5 py-0.5 text-xs font-semibold tabular-nums text-muted-foreground">
+                {partners.length}
+              </span>
+            )}
           </h3>
           <ChevronDown
             className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}

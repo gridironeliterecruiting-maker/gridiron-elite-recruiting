@@ -474,6 +474,7 @@ async function main() {
         WHERE program_id = ANY($1::uuid[])
           AND id        != ALL($2::uuid[])
           AND is_active  = true
+          AND title      != 'Team Twitter'
       `, [
         Array.from(processedProgIds),
         Array.from(processedCoachIds),

@@ -26,6 +26,11 @@ export function TargetSchoolsX({ programs }: { programs: PipelineProgram[] }) {
         <h3 className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wider text-foreground">
           <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-black font-black text-white" style={{ fontSize: 11 }}>X</span>
           Engage Target Schools
+          {!isOpen && (
+            <span className="inline-flex items-center rounded bg-secondary px-1.5 py-0.5 text-xs font-semibold tabular-nums text-muted-foreground">
+              {programs.length}
+            </span>
+          )}
         </h3>
         <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
       </button>
