@@ -131,34 +131,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
   // No programSlug → main site → no program membership required
 
-  // Gate access: render a branded "Access Required" screen instead of the app
+  // Gate access: bounce back to the branded landing page, which shows UnauthorizedPage
   if (programAccessDenied) {
-    const accessStyleOverrides: Record<string, string> = {}
-    if (programBranding?.primary_color) accessStyleOverrides['--primary'] = hexToHsl(programBranding.primary_color)
-    if (programBranding?.accent_color) accessStyleOverrides['--accent'] = hexToHsl(programBranding.accent_color)
-    return (
-      <div
-        className="min-h-screen bg-background"
-        style={Object.keys(accessStyleOverrides).length > 0 ? accessStyleOverrides as React.CSSProperties : undefined}
-      >
-        <NavBar profile={profile} coachBranding={programBranding} basePath={basePath} />
-        <main className="mx-auto max-w-7xl px-4 py-24 lg:px-8">
-          <div className="flex flex-col items-center gap-4 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-              <span className="font-display text-3xl font-black text-muted-foreground">!</span>
-            </div>
-            <h1 className="font-display text-2xl font-bold uppercase tracking-tight">Access Required</h1>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              Your account hasn&apos;t been added to{' '}
-              <span className="font-semibold text-foreground">
-                {programBranding?.program_name || 'this program'}
-              </span>
-              &apos;s portal. Contact your coach to get access.
-            </p>
-          </div>
-        </main>
-      </div>
-    )
+    redirect(basePath)
   }
 
   let players: PlayerInfo[] = []
