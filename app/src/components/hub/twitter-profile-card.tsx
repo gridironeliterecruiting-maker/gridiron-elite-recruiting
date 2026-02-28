@@ -76,7 +76,7 @@ export function TwitterProfileCard({ profile, handle, onConnect }: TwitterProfil
         <div className="bg-gradient-to-r from-primary to-primary/80 px-5 py-3 sm:px-6">
           <div className="flex items-center justify-between">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary-foreground/60">
-              Coach&apos;s View of Your Profile
+              My X Profile
             </p>
             <a
               href={`https://x.com/${handle}`}
@@ -112,7 +112,7 @@ export function TwitterProfileCard({ profile, handle, onConnect }: TwitterProfil
       <div className="bg-gradient-to-r from-primary to-primary/80 px-5 py-3 sm:px-6">
         <div className="flex items-center justify-between">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary-foreground/60">
-            Coach&apos;s View of Your Profile
+            My X Profile
           </p>
           <a
             href={`https://x.com/${profile.username}`}
