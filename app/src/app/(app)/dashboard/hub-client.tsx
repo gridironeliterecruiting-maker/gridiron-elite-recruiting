@@ -70,6 +70,7 @@ interface HubClientProps {
   pendingAccessRequests: PendingRequest[]
   managedProgramId: string | null
   programTwitterHandle: string | null
+  readinessScoreOpen: boolean
 }
 
 export function HubClient({
@@ -92,6 +93,7 @@ export function HubClient({
   pendingAccessRequests,
   managedProgramId,
   programTwitterHandle,
+  readinessScoreOpen,
 }: HubClientProps) {
   const [twitterProfile, setTwitterProfile] = useState<TwitterProfile | null>(null)
   const [twitterLoading, setTwitterLoading] = useState(hasTwitterToken)
@@ -182,6 +184,7 @@ export function HubClient({
                 <ReadinessScore
                   twitterProfile={twitterProfile}
                   athleteProfile={profile}
+                  defaultOpen={readinessScoreOpen}
                 />
               ) : null}
 

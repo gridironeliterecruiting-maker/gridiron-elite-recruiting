@@ -3,9 +3,9 @@
 import { useMemo, useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Check, X as XIcon, AlertCircle, ChevronDown, Trash2 } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 const DISMISSED_KEY = "readiness_score_dismissed"
-const OPEN_KEY = "readiness_score_open"
 
 interface TwitterProfile {
   username: string
@@ -36,6 +36,7 @@ interface AthleteProfile {
 interface ReadinessScoreProps {
   twitterProfile: TwitterProfile | null
   athleteProfile: AthleteProfile
+  defaultOpen: boolean
 }
 
 interface CheckItem {
@@ -45,20 +46,22 @@ interface CheckItem {
   fix: string
 }
 
-export function ReadinessScore({ twitterProfile, athleteProfile }: ReadinessScoreProps) {
-  const [isOpen, setIsOpen] = useState(true)
+export function ReadinessScore({ twitterProfile, athleteProfile, defaultOpen }: ReadinessScoreProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
     setDismissed(localStorage.getItem(DISMISSED_KEY) === "true")
-    const saved = localStorage.getItem(OPEN_KEY)
-    if (saved !== null) setIsOpen(saved !== "false")
   }, [])
 
-  const toggleOpen = () => {
+  const toggleOpen = async () => {
     const next = !isOpen
     setIsOpen(next)
-    localStorage.setItem(OPEN_KEY, String(next))
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      supabase.from("profiles").update({ readiness_score_open: next }).eq("id", user.id)
+    }
   }
 
   const handleDismiss = () => {

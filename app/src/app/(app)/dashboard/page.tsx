@@ -13,7 +13,7 @@ export default async function HubPage() {
   const { data: userProfile } = user
     ? await supabase
         .from("profiles")
-        .select("first_name, last_name, position, grad_year, high_school, hudl_url, city, state, twitter_handle, role")
+        .select("first_name, last_name, position, grad_year, high_school, hudl_url, city, state, twitter_handle, role, readiness_score_open")
         .eq("id", user.id)
         .single()
     : { data: null }
@@ -270,6 +270,7 @@ export default async function HubPage() {
       pendingAccessRequests={pendingAccessRequests}
       managedProgramId={managedProgramId}
       programTwitterHandle={programTwitterHandle}
+      readinessScoreOpen={userProfile?.readiness_score_open ?? true}
     />
   )
 }
