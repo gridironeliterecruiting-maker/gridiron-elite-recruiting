@@ -65,7 +65,7 @@ export async function POST(
     }
 
     // Send "you've been granted access" email — best-effort, never fails the request
-    sendWelcomeEmail(admin, user.id, id, email.trim().toLowerCase(), role).catch(err => {
+    sendWelcomeEmail(admin, id, email.trim().toLowerCase(), role).catch(err => {
       console.error('Welcome email failed (non-fatal):', err)
     })
 
@@ -78,7 +78,6 @@ export async function POST(
 
 async function sendWelcomeEmail(
   admin: ReturnType<typeof createAdminClient>,
-  adminUserId: string,
   programId: string,
   memberEmail: string,
   role: string
@@ -99,43 +98,20 @@ async function sendWelcomeEmail(
     ? (program.logo_url.startsWith('http') ? program.logo_url : `${baseUrl}${program.logo_url}`)
     : null
 
-  // Find a gmail token: prefer a coach in the program, fall back to the admin user
-  let gmailUserId: string | null = null
+  // Always use the admin Gmail token — system emails send from gridironeliterecruiting@gmail.com
+  const { data: adminProfile } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('role', 'admin')
+    .limit(1)
+    .single()
 
-  const { data: coaches } = await admin
-    .from('program_members')
-    .select('user_id')
-    .eq('program_id', programId)
-    .eq('role', 'coach')
-    .not('user_id', 'is', null)
-
-  if (coaches) {
-    for (const coach of coaches) {
-      if (!coach.user_id) continue
-      const { data: token } = await admin
-        .from('gmail_tokens')
-        .select('id')
-        .eq('user_id', coach.user_id)
-        .maybeSingle()
-      if (token) { gmailUserId = coach.user_id; break }
-    }
-  }
-
-  if (!gmailUserId) {
-    const { data: adminToken } = await admin
-      .from('gmail_tokens')
-      .select('id')
-      .eq('user_id', adminUserId)
-      .maybeSingle()
-    if (adminToken) gmailUserId = adminUserId
-  }
-
-  if (!gmailUserId) return // No gmail token available — skip
+  if (!adminProfile) return
 
   const { data: gmailToken } = await admin
     .from('gmail_tokens')
     .select('access_token, refresh_token, token_expiry')
-    .eq('user_id', gmailUserId)
+    .eq('user_id', adminProfile.id)
     .single()
 
   if (!gmailToken) return

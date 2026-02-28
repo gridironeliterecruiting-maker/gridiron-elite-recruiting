@@ -150,36 +150,37 @@ export async function POST(request: Request) {
   }
 }
 
-// Send notification email to a user via their Gmail token
+// Send a system notification email using the admin Gmail account.
+// All internal notifications (access requests, welcome emails, etc.) send
+// from gridironeliterecruiting@gmail.com — no per-user token needed.
 async function sendNotificationEmail(
   admin: ReturnType<typeof createAdminClient>,
-  userId: string,
+  _userId: string,  // kept for call-site compatibility, no longer used for token lookup
   toEmail: string,
   requesterName: string,
   requesterEmail: string,
   programName: string
 ) {
   try {
+    // Always use the admin Gmail token for system notifications
+    const { data: adminProfile } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('role', 'admin')
+      .limit(1)
+      .single()
+
+    if (!adminProfile) return
+
     const { data: gmailToken } = await admin
       .from('gmail_tokens')
       .select('access_token, refresh_token, token_expiry')
-      .eq('user_id', userId)
+      .eq('user_id', adminProfile.id)
       .single()
 
     if (!gmailToken) return
 
-    let accessToken = gmailToken.access_token
-    if (gmailToken.token_expiry && new Date(gmailToken.token_expiry) <= new Date()) {
-      const refreshed = await refreshGmailToken(gmailToken.refresh_token)
-      accessToken = refreshed.access_token
-      await admin
-        .from('gmail_tokens')
-        .update({
-          access_token: refreshed.access_token,
-          token_expiry: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
-        })
-        .eq('user_id', userId)
-    }
+    const accessToken = gmailToken.access_token
 
     const htmlBody = `
       <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
