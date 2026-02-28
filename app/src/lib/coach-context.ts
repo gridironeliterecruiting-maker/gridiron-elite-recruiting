@@ -52,6 +52,7 @@ export async function getCoachContext(userId: string): Promise<CoachContext> {
         .eq('program_id', program.id)
         .eq('role', 'player')
         .not('user_id', 'is', null)
+        .order('created_at')
       playerIds = (members || []).map((m: any) => m.user_id)
     }
 

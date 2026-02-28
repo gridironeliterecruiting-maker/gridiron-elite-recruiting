@@ -180,6 +180,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         .eq('program_id', managedProgramId)
         .eq('role', 'player')
         .not('user_id', 'is', null)
+        .order('created_at')
 
       if (playerMembers && playerMembers.length > 0) {
         const userIds = playerMembers.map((m: any) => m.user_id)
@@ -189,14 +190,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           .in('id', userIds)
 
         if (playerProfiles) {
-          players = playerProfiles.map((p: any) => ({
-            id: p.id,
-            first_name: p.first_name,
-            last_name: p.last_name,
-            position: p.position,
-            grad_year: p.grad_year,
-            high_school: p.high_school,
-          }))
+          // Preserve the program_members ORDER BY created_at ordering
+          const profileMap = Object.fromEntries(playerProfiles.map((p: any) => [p.id, p]))
+          players = userIds
+            .map(id => profileMap[id])
+            .filter(Boolean)
+            .map((p: any) => ({
+              id: p.id,
+              first_name: p.first_name,
+              last_name: p.last_name,
+              position: p.position,
+              grad_year: p.grad_year,
+              high_school: p.high_school,
+            }))
         }
       }
     } else if (legacyCoachId) {

@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useCallback } from "react"
+import { createContext, useContext, useCallback, useEffect } from "react"
 import { setActivePlayerCookie } from "@/lib/active-player-client"
 
 export interface PlayerInfo {
@@ -39,6 +39,14 @@ export function ActivePlayerProvider({
   players,
   isCoach,
 }: ActivePlayerProviderProps) {
+  // Keep cookie in sync with whatever the server resolved as the active player.
+  // This fires on first render so subsequent server requests always read the correct cookie.
+  useEffect(() => {
+    if (activePlayer) {
+      setActivePlayerCookie(activePlayer.id)
+    }
+  }, [activePlayer])
+
   const setActivePlayer = useCallback((id: string) => {
     setActivePlayerCookie(id)
     window.location.reload()
