@@ -60,10 +60,10 @@ export function TeamTwitterConnect({ programId, programName, twitterHandle }: Te
           </div>
           <div>
             <h3 className="font-display text-lg font-bold uppercase tracking-tight text-foreground">
-              Connect {programName}&apos;s X Account
+              Connect the {programName} X Account
             </h3>
             <p className="mt-1 max-w-md text-sm text-muted-foreground">
-              Connect the football program&apos;s X account to engage with recruits, repost highlights, and build your program&apos;s recruiting presence on X.
+              Connect the football program&apos;s X account in order to engage with players, share posts, and boost your team&apos;s recruiting profile on X.
             </p>
           </div>
           <button
@@ -72,7 +72,7 @@ export function TeamTwitterConnect({ programId, programName, twitterHandle }: Te
             className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
           >
             <Link2 className="h-4 w-4" />
-            Connect Program X Account
+            Connect Team X Account
           </button>
         </div>
       </div>

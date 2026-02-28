@@ -207,15 +207,6 @@ export function HubClient({
               {/* Engage Target Schools on X — pulled from active player's pipeline */}
               <TargetSchoolsX programs={pipelinePrograms} />
 
-              {/* Program X account — connect or show connected handle */}
-              {managedProgramId && coachProgramName && (
-                <TeamTwitterConnect
-                  programId={managedProgramId}
-                  programName={coachProgramName}
-                  twitterHandle={programTwitterHandle}
-                />
-              )}
-
               {/* Coach quick stats for active player */}
               <HubActionItems
                 pipelineCount={pipelineCount}
@@ -230,6 +221,15 @@ export function HubClient({
 
         {/* Right column — content + actions */}
         <div className="flex flex-col gap-6 lg:col-span-5">
+          {/* Program X account — top of right column for coaches */}
+          {isCoach && managedProgramId && coachProgramName && (
+            <TeamTwitterConnect
+              programId={managedProgramId}
+              programName={coachProgramName}
+              twitterHandle={programTwitterHandle}
+            />
+          )}
+
           {!isCoach && (
             <>
               {/* Content calendar */}
