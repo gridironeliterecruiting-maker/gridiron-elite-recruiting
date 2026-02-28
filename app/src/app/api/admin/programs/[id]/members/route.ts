@@ -101,9 +101,8 @@ async function sendWelcomeEmail(
   // Always use the admin Gmail token — system emails send from gridironeliterecruiting@gmail.com
   const { data: gmailToken } = await admin
     .from('gmail_tokens')
-    .select('user_id, access_token, refresh_token, token_expiry, profiles!inner(role)')
-    .eq('profiles.role', 'admin')
-    .limit(1)
+    .select('user_id, access_token, refresh_token, token_expiry')
+    .eq('email', 'gridironeliterecruiting@gmail.com')
     .single()
 
   if (!gmailToken) return
