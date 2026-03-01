@@ -14,7 +14,7 @@ const oswald = Oswald({
 })
 
 export const metadata: Metadata = {
-  title: "Gridiron Elite Recruiting",
+  title: "Runway Elite Recruiting",
   description: "Your recruiting command center - track programs, coaches, outreach, and pipeline.",
 }
 

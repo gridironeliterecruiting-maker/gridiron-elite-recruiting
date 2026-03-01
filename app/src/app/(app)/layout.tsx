@@ -94,7 +94,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       }
     }
   }
-  // No slug = main site. Never apply program branding here — always show Gridiron Elite.
+  // No slug = main site. Never apply program branding here — always show Runway Elite.
 
   // Determine isCoach based on the current program only — not globally.
   // The same user can be a coach on one program and a player on another.
@@ -255,10 +255,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <footer className="border-t border-border bg-card">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 lg:px-8">
             <p className="text-xs text-muted-foreground">
-              {programBranding?.program_name || 'Gridiron Elite Recruiting'}
+              {programBranding?.program_name || 'Runway Elite Recruiting'}
             </p>
             <p className="text-xs text-muted-foreground">
-              {isProgramUser ? 'Powered by Gridiron Elite Recruiting' : 'Built for athletes, by athletes.'}
+              {isProgramUser ? 'Powered by Runway Elite Recruiting' : 'Built for athletes, by athletes.'}
             </p>
           </div>
         </footer>

@@ -51,7 +51,7 @@ export function Navbar({ activePage = "Dashboard" }: NavbarProps) {
                 <div className="relative h-28 w-28 drop-shadow-[0_6px_16px_rgba(0,0,0,0.5)] lg:h-32 lg:w-32">
                   <Image
                     src="/logo.png"
-                    alt="Gridiron Elite Recruiting logo"
+                    alt="Runway Elite Recruiting logo"
                     fill
                     className="object-contain"
                     priority
@@ -60,7 +60,7 @@ export function Navbar({ activePage = "Dashboard" }: NavbarProps) {
               </div>
               <div className="hidden sm:block">
                 <h1 className="font-display text-lg font-bold uppercase leading-tight tracking-wide text-primary-foreground">
-                  Gridiron Elite
+                  Runway Elite
                 </h1>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary-foreground/50">
                   Recruiting

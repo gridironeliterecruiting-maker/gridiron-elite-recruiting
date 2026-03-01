@@ -128,20 +128,20 @@ async function sendWelcomeEmail(
       <h2 style="color: ${color}; font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 24px 0;">${programName}</h2>
       <h1 style="font-size: 24px; font-weight: 700; color: #111; margin: 0 0 12px 0;">You've Been Granted Access</h1>
       <p style="color: #555; font-size: 15px; line-height: 1.6; margin: 0 0 32px 0;">
-        You have been added to the <strong>${programName}</strong> ${roleLabel} on Gridiron Elite Recruiting.
+        You have been added to the <strong>${programName}</strong> ${roleLabel} on Runway Elite Recruiting.
         Click below to log in and get started.
       </p>
       <a href="${loginUrl}" style="display: inline-block; background-color: ${color}; color: #ffffff; font-weight: 700; font-size: 15px; padding: 14px 32px; border-radius: 8px; text-decoration: none; letter-spacing: 0.02em;">
         Access ${programName} Portal
       </a>
-      <p style="color: #999; font-size: 12px; margin-top: 32px;">Powered by Gridiron Elite Recruiting</p>
+      <p style="color: #999; font-size: 12px; margin-top: 32px;">Powered by Runway Elite Recruiting</p>
     </div>
   `
 
   await sendGmailEmail(
     accessToken,
     memberEmail,
-    `You've been added to ${programName} on Gridiron Elite Recruiting`,
+    `You've been added to ${programName} on Runway Elite Recruiting`,
     htmlBody,
   )
 }

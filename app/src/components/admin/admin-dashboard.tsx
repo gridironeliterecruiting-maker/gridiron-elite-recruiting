@@ -508,7 +508,7 @@ export function AdminDashboard() {
                 <div className="mt-4">
                   <Field label="Landing Page URL">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500">gridironeliterecruiting.com/</span>
+                      <span className="text-sm text-gray-500">runwayeliterecruiting.com/</span>
                       <input
                         type="text"
                         value={form.landing_slug}

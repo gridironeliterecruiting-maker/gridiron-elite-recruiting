@@ -15,7 +15,7 @@ interface LoginUIProps {
 
 export function LoginUI({
   logoSrc = '/logo.png',
-  logoAlt = 'Gridiron Elite Recruiting',
+  logoAlt = 'Runway Elite Recruiting',
   programName,
   primaryColor,
   slug,

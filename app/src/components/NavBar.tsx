@@ -116,7 +116,7 @@ export default function NavBar({
                 <div className="relative -mb-5 shrink-0 drop-shadow-[0_6px_16px_rgba(0,0,0,0.5)]">
                   <Image
                     src={coachBranding?.logo_url || "/logo.png"}
-                    alt={coachBranding?.program_name ? `${coachBranding.program_name} logo` : "Gridiron Elite Recruiting logo"}
+                    alt={coachBranding?.program_name ? `${coachBranding.program_name} logo` : "Runway Elite Recruiting logo"}
                     width={200}
                     height={200}
                     className="h-[72px] w-auto lg:h-[80px]"

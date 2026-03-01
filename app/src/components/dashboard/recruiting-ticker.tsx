@@ -7,7 +7,7 @@ const tickerItems = [
   "NCAA D1 Early Signing Period: Dec 18-20",
   "D2/D3 Signing Day: Feb 5",
   "Spring Evaluation Period Opens: Apr 15",
-  "Gridiron Elite Tip: Update your highlight reel monthly",
+  "Runway Elite Tip: Update your highlight reel monthly",
   "10 programs tracked across 3 conferences",
 ]
 
