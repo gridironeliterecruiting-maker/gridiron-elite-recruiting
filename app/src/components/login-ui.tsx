@@ -70,7 +70,7 @@ export function LoginUI({
           </h2>
         )}
         <h1 className="text-2xl font-bold mb-1" style={{ color }}>Welcome</h1>
-        <p className="text-gray-500 mb-8">Sign in to your recruiting dashboard</p>
+        <p className="text-gray-500 mb-8">Sign in to your recruiting dashboard.</p>
 
         {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>}
 
