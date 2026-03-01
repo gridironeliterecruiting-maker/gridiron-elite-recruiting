@@ -183,7 +183,9 @@ export default function NavBar({
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem>Profile Settings</DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href={`${basePath}/profile`}>Profile Settings</Link>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
                       <LogOut className="mr-2 h-4 w-4" />
