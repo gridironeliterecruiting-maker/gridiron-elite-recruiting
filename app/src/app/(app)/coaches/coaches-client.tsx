@@ -336,7 +336,7 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
           </h1>
           <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
             <Search className="h-3.5 w-3.5 text-accent" />
-            BROWSE COACHING STAFFS
+            BROWSE COACHING STAFFS.
           </p>
         </div>
 

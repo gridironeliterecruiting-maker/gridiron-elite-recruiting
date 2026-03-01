@@ -16,7 +16,7 @@ export function ProfileHeader({ isCoach }: ProfileHeaderProps) {
         </h1>
         <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
           <Settings className="h-3.5 w-3.5 text-accent" />
-          {isCoach ? "YOUR INFO & ACTIVE PLAYER DETAILS" : "MANAGE YOUR INFO THAT POWERS OUTREACH"}
+          {isCoach ? "YOUR INFO & ACTIVE PLAYER DETAILS." : "MANAGE YOUR INFO THAT POWERS OUTREACH."}
         </p>
       </div>
       {isCoach && <PlayerSwitcher />}

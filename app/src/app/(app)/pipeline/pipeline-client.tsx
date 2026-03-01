@@ -240,7 +240,7 @@ export function PipelineClient({
           </h1>
           <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
             <Target className="h-3.5 w-3.5 text-accent" />
-            TRACK PROGRESS TOWARDS OFFERS
+            TRACK PROGRESS TOWARDS OFFERS.
           </p>
         </div>
         <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>

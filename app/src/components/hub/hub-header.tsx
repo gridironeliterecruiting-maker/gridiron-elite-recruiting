@@ -32,8 +32,8 @@ export function HubHeader({ firstName, isCoach = false, activePlayerName }: HubH
             <>
               <Users className="h-3.5 w-3.5 text-accent" />
               {activePlayerName
-                ? `MANAGING ${activePlayerName.toUpperCase()}'S RECRUITING`
-                : "SELECT A PLAYER TO GET STARTED"}
+                ? `MANAGING ${activePlayerName.toUpperCase()}'S RECRUITING.`
+                : "SELECT A PLAYER TO GET STARTED."}
             </>
           ) : (
             <>
