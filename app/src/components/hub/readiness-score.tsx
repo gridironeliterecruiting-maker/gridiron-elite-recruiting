@@ -3,7 +3,6 @@
 import { useMemo, useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Check, X as XIcon, AlertCircle, ChevronDown, Trash2 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 
 const DISMISSED_KEY = "readiness_score_dismissed"
 
@@ -54,14 +53,14 @@ export function ReadinessScore({ twitterProfile, athleteProfile, defaultOpen }: 
     setDismissed(localStorage.getItem(DISMISSED_KEY) === "true")
   }, [])
 
-  const toggleOpen = async () => {
+  const toggleOpen = () => {
     const next = !isOpen
     setIsOpen(next)
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      supabase.from("profiles").update({ readiness_score_open: next }).eq("id", user.id)
-    }
+    fetch("/api/profile/preferences", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ readiness_score_open: next }),
+    })
   }
 
   const handleDismiss = () => {
