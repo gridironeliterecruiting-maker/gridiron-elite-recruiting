@@ -114,14 +114,15 @@ export default function NavBar({
               {/* Logo & Brand */}
               <Link href={`${basePath}/dashboard`} className="relative flex items-center gap-3">
                 <div className="relative -mb-5 shrink-0 drop-shadow-[0_6px_16px_rgba(0,0,0,0.5)]">
-                  <Image
-                    src={coachBranding?.logo_url || "/logo.png"}
-                    alt={coachBranding?.program_name ? `${coachBranding.program_name} logo` : "Runway Elite Recruiting logo"}
-                    width={200}
-                    height={200}
-                    className="h-[72px] w-auto lg:h-[80px]"
-                    priority
-                  />
+                  <div className="relative h-[72px] w-[72px] lg:h-[80px] lg:w-[80px]">
+                    <Image
+                      src={coachBranding?.logo_url || "/logo.png"}
+                      alt={coachBranding?.program_name ? `${coachBranding.program_name} logo` : "Runway Elite Recruiting logo"}
+                      fill
+                      className="object-contain"
+                      priority
+                    />
+                  </div>
                 </div>
                 <div className="hidden sm:block">
                   <h1 className="font-display text-lg font-bold uppercase leading-tight tracking-wide text-primary-foreground">
