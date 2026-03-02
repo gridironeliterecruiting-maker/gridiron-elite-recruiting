@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   title: "Runway Elite Recruiting",
   description: "Your recruiting command center - track programs, coaches, outreach, and pipeline.",
   verification: {
-    google: "BQaj2mJF3p7UEX",
+    google: "BQaj2mJF3p7UEXgdpKARMq6eFCdtCXthF9pYyH_3Y30",
   },
 }
 
