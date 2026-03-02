@@ -104,6 +104,16 @@ export function LoginUI({
             Create one here
           </a>
         </p>
+
+        <p className="mt-6 text-xs text-gray-400">
+          <a href="https://runwayeliterecruiting.com/privacy" target="_blank" rel="noopener noreferrer" className="hover:underline">
+            Privacy Policy
+          </a>
+          {' · '}
+          <a href="https://runwayeliterecruiting.com/terms" target="_blank" rel="noopener noreferrer" className="hover:underline">
+            Terms of Service
+          </a>
+        </p>
       </div>
     </div>
   )
