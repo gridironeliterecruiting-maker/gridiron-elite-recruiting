@@ -38,19 +38,21 @@ const POSITION_ALIASES: Record<string, string[]> = {
   ATH: [],
 }
 
-function matchesPosition(coachTitle: string, playerPosition: string): boolean {
+function matchesPosition(coachTitle: string | null, playerPosition: string): boolean {
+  if (!coachTitle) return false
   const title = coachTitle.toLowerCase()
   const pos = playerPosition.toUpperCase().trim()
   const aliases = POSITION_ALIASES[pos] || []
   return aliases.some((alias) => title.includes(alias))
 }
 
-function isRecruitingCoach(title: string): boolean {
+function isRecruitingCoach(title: string | null): boolean {
+  if (!title) return false
   const t = title.toLowerCase()
   return t.includes("recruit") || t.includes("scout")
 }
 
-function shouldAutoSelect(coachTitle: string, playerPosition: string): boolean {
+function shouldAutoSelect(coachTitle: string | null, playerPosition: string): boolean {
   return isRecruitingCoach(coachTitle) || matchesPosition(coachTitle, playerPosition)
 }
 
