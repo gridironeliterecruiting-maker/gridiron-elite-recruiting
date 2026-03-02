@@ -16,6 +16,9 @@ const oswald = Oswald({
 export const metadata: Metadata = {
   title: "Runway Elite Recruiting",
   description: "Your recruiting command center - track programs, coaches, outreach, and pipeline.",
+  verification: {
+    google: "BQaj2mJF3p7UEX",
+  },
 }
 
 export const viewport: Viewport = {
