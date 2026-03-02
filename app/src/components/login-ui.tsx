@@ -61,7 +61,7 @@ export function LoginUI({
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-md p-8 text-center">
-        <div className="flex justify-center mb-0">
+        <div className="flex justify-center mb-3">
           <Image src={logoSrc} alt={logoAlt} width={220} height={220} className="object-contain" />
         </div>
         {programName && (
