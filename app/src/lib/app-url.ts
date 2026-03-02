@@ -37,5 +37,5 @@ export function getAppUrl(request?: Request) {
   }
   
   // Production fallback - only use this if nothing else works
-  return 'https://gridironeliterecruiting.com'
+  return 'https://runwayeliterecruiting.com'
 }
