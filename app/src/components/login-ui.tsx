@@ -62,7 +62,9 @@ export function LoginUI({
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-md p-8 text-center">
         <div className="flex justify-center mb-3">
-          <Image src={logoSrc} alt={logoAlt} width={220} height={220} className="object-contain" />
+          <div className="relative h-[220px] w-[220px]">
+            <Image src={logoSrc} alt={logoAlt} fill className="object-contain" priority />
+          </div>
         </div>
         {programName && (
           <h2 className="font-display text-xl font-bold uppercase tracking-wide mb-[30px]" style={{ color }}>
