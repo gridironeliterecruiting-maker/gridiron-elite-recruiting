@@ -4,14 +4,6 @@ import { getAppUrl } from './app-url'
 const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1'
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 
-// Account tier limits — 500/day (Gmail hard limit), no hourly cap
-const TIER_LIMITS: Record<string, { daily: number; hourly: number; description: string }> = {
-  new: { daily: 500, hourly: 500, description: 'Standard' },
-  building: { daily: 500, hourly: 500, description: 'Standard' },
-  established: { daily: 500, hourly: 500, description: 'Standard' },
-  veteran: { daily: 500, hourly: 500, description: 'Standard' },
-}
-
 /**
  * Refresh an expired Gmail access token using the refresh token
  */
@@ -262,35 +254,10 @@ export function addUnsubscribeFooter(
  */
 export function calculateSendSchedule(
   recipientCount: number,
-  accountTier: string,
   startDate?: Date
 ): Date[] {
   const sendAt = startDate || new Date()
   return Array(recipientCount).fill(sendAt)
-}
-
-/**
- * Determine account tier based on connection date and send history
- */
-export function getAccountTier(
-  connectedAt: Date | string,
-  totalSends: number
-): string {
-  const connected = new Date(connectedAt)
-  const now = new Date()
-  const daysSinceConnect = Math.floor((now.getTime() - connected.getTime()) / (1000 * 60 * 60 * 24))
-
-  if (daysSinceConnect >= 90 && totalSends >= 500) return 'veteran'
-  if (daysSinceConnect >= 30 && totalSends >= 100) return 'established'
-  if (daysSinceConnect >= 14 && totalSends >= 30) return 'building'
-  return 'new'
-}
-
-/**
- * Get tier limits
- */
-export function getTierLimits(tier: string) {
-  return TIER_LIMITS[tier] || TIER_LIMITS.new
 }
 
 /**

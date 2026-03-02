@@ -58,7 +58,7 @@ export default async function OutreachPage({
   ] = await Promise.all([
     supabase.from("email_templates").select("*").eq("for_role", templateRole).order("name"),
     supabase.from("programs").select("id, school_name, division, conference, logo_url").order("school_name"),
-    admin.from("gmail_tokens").select("email, connected_at, account_tier, token_expiry").eq("user_id", user!.id).single(),
+    admin.from("gmail_tokens").select("email, connected_at, token_expiry").eq("user_id", user!.id).single(),
     admin.from("twitter_tokens").select("twitter_handle, connected_at, token_expiry").eq("user_id", user!.id).single(),
     supabase.from("campaigns").select("*").eq("user_id", user!.id).order("created_at", { ascending: false }),
   ])
@@ -163,7 +163,6 @@ export default async function OutreachPage({
       programs={programs || []}
       playerPosition={playerPosition}
       gmailEmail={gmailToken?.email || null}
-      gmailTier={gmailToken?.account_tier || null}
       hasGmailToken={!!gmailToken}
       gmailTokenExpired={gmailToken ? new Date(gmailToken.token_expiry) <= new Date() : false}
       twitterHandle={twitterToken?.twitter_handle || null}

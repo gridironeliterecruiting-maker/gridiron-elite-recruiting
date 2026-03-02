@@ -106,7 +106,6 @@ interface OutreachClientProps {
   programs: Program[]
   playerPosition: string
   gmailEmail: string | null
-  gmailTier: string | null
   hasGmailToken: boolean
   gmailTokenExpired: boolean
   twitterHandle: string | null
@@ -124,7 +123,6 @@ export function OutreachClient({
   programs,
   playerPosition,
   gmailEmail,
-  gmailTier,
   hasGmailToken,
   gmailTokenExpired,
   twitterHandle,
@@ -353,7 +351,6 @@ export function OutreachClient({
           programs={programs}
           playerPosition={playerPosition}
           gmailEmail={gmailEmail}
-          gmailTier={gmailTier}
           hasGmailToken={hasGmailToken}
           gmailTokenExpired={gmailTokenExpired}
           quickEmailData={quickEmailData}

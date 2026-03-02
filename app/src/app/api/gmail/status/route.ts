@@ -12,7 +12,7 @@ export async function GET() {
 
     const { data: token } = await supabase
       .from('gmail_tokens')
-      .select('email, connected_at, account_tier')
+      .select('email, connected_at')
       .eq('user_id', user.id)
       .single()
 
@@ -24,7 +24,6 @@ export async function GET() {
       connected: true,
       email: token.email,
       connectedAt: token.connected_at,
-      accountTier: token.account_tier,
     })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

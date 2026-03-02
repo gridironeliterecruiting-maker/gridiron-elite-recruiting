@@ -85,11 +85,6 @@ export async function GET(request: NextRequest) {
     const userInfo = await userInfoRes.json()
     const email = userInfo.email
 
-    // Determine account tier based on Supabase account age
-    const createdAt = new Date(user.created_at)
-    const daysSinceCreation = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24))
-    const accountTier = daysSinceCreation >= 90 ? 'veteran' : daysSinceCreation >= 30 ? 'established' : daysSinceCreation >= 14 ? 'building' : 'new'
-
     // Token expiry
     const tokenExpiry = new Date(Date.now() + (expires_in || 3600) * 1000).toISOString()
 
@@ -106,7 +101,6 @@ export async function GET(request: NextRequest) {
           email,
           connected_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          account_tier: accountTier,
         },
         { onConflict: 'user_id' }
       )
@@ -119,7 +113,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(redirectUrl)
     }
 
-    console.log(`Gmail connected for user ${user.id} (${email}), tier: ${accountTier}`)
+    console.log(`Gmail connected for user ${user.id} (${email})`)
     
     // If we have a campaign ID, redirect to the campaign editor
     const successUrl = campaignId 

@@ -20,7 +20,6 @@ interface LaunchConfirmationOverlayProps {
   selectedCoaches: SelectedCoach[]
   templates: EmailTemplate[]
   gmailEmail: string | null
-  gmailTier: string | null
   hasGmailToken: boolean
   gmailTokenExpired: boolean
   campaignName: string
@@ -48,7 +47,6 @@ export function LaunchConfirmationOverlay({
   selectedCoaches,
   templates,
   gmailEmail,
-  gmailTier,
   hasGmailToken,
   gmailTokenExpired,
   campaignName,

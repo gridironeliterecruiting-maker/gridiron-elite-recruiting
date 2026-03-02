@@ -58,7 +58,7 @@ export async function POST(
     // Check if user has Gmail connected
     const { data: gmailToken } = await supabase
       .from('gmail_tokens')
-      .select('account_tier, connected_at, token_expiry')
+      .select('token_expiry')
       .eq('user_id', user.id)
       .single()
 
@@ -91,12 +91,7 @@ export async function POST(
       // No body or invalid JSON — launch now
     }
 
-    // Calculate send schedule based on tier
-    const schedule = calculateSendSchedule(
-      recipients.length,
-      gmailToken.account_tier || 'new',
-      launchTime
-    )
+    const schedule = calculateSendSchedule(recipients.length, launchTime)
 
     // Update each recipient with their scheduled send time
     const updates = recipients.map((r, i) => ({

@@ -44,7 +44,6 @@ interface CreateCampaignOverlayProps {
   programs: Program[]
   playerPosition: string
   gmailEmail: string | null
-  gmailTier: string | null
   hasGmailToken: boolean
   gmailTokenExpired: boolean
   quickEmailData?: {
@@ -71,7 +70,7 @@ interface CreateCampaignOverlayProps {
   }) => void
 }
 
-export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gmailTier, hasGmailToken, gmailTokenExpired, quickEmailData, quickDmData, followupData, initialCampaignType = 'email', activePlayerId, onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
+export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, hasGmailToken, gmailTokenExpired, quickEmailData, quickDmData, followupData, initialCampaignType = 'email', activePlayerId, onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
   const router = useRouter()
   const campaignType = initialCampaignType
   // Quick email/DM skips goal and target, goes straight to build/compose (step 3)
@@ -410,7 +409,6 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, gm
             selectedCoaches={draft.selectedCoaches}
             templates={draft.templates}
             gmailEmail={gmailEmail}
-            gmailTier={gmailTier}
             hasGmailToken={hasGmailToken}
             gmailTokenExpired={gmailTokenExpired}
             activePlayerId={activePlayerId}

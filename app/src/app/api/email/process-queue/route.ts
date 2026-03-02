@@ -7,8 +7,6 @@ import {
   addTrackingPixel,
   wrapLinksForTracking,
   addUnsubscribeFooter,
-  getTierLimits,
-  getAccountTier,
 } from '@/lib/gmail'
 
 /**
@@ -141,28 +139,6 @@ export async function GET(request: Request) {
         continue
       }
 
-      // Check rate limits
-      const { data: recentSends } = await admin
-        .from('email_send_log')
-        .select('sent_at')
-        .eq('user_id', userId)
-        .gte('sent_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-
-      // Update account tier
-      const totalSendCount = recentSends?.length || 0
-      const newTier = getAccountTier(gmailToken.connected_at, totalSendCount)
-      if (newTier !== gmailToken.account_tier) {
-        await admin.from('gmail_tokens').update({ account_tier: newTier }).eq('id', gmailToken.id)
-      }
-
-      const limits = getTierLimits(newTier)
-      const sentToday = recentSends?.length || 0
-
-      if (sentToday >= limits.daily) {
-        console.log(`User ${userId} has reached daily limit (${limits.daily})`)
-        continue
-      }
-
       // Refresh token if expired
       let accessToken = gmailToken.access_token
       const tokenExpiry = new Date(gmailToken.token_expiry)
@@ -194,9 +170,7 @@ export async function GET(request: Request) {
         .eq('id', userId)
         .single()
 
-      const remainingToday = limits.daily - sentToday
-
-      for (let i = 0; i < Math.min(recipients.length, remainingToday); i++) {
+      for (let i = 0; i < recipients.length; i++) {
         const recipient = recipients[i]
         const campaign = recipient.campaigns as unknown as { id: string; name: string; goal: string; player_id: string | null }
 

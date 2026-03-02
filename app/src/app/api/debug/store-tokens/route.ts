@@ -24,7 +24,6 @@ export async function GET() {
     refresh_token: session.provider_refresh_token || '',
     token_expiry: new Date(Date.now() + 3600 * 1000).toISOString(),
     email: user.email || '',
-    account_tier: 'veteran',
     connected_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }, { onConflict: 'user_id' })

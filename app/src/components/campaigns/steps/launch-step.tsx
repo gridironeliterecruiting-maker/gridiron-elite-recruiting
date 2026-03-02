@@ -38,7 +38,6 @@ interface LaunchStepProps {
   selectedCoaches: SelectedCoach[]
   templates: EmailTemplate[]
   gmailEmail: string | null
-  gmailTier: string | null
   hasGmailToken: boolean
   gmailTokenExpired: boolean
   activePlayerId?: string | null
@@ -57,7 +56,6 @@ export function LaunchStep({
   selectedCoaches,
   templates,
   gmailEmail,
-  gmailTier,
   hasGmailToken,
   gmailTokenExpired,
   activePlayerId,
@@ -317,11 +315,6 @@ export function LaunchStep({
             <p className="text-sm font-semibold text-green-800">
               {launchNow ? "Your campaign is live! 🚀" : "Your campaign is scheduled! 🚀"}
             </p>
-            {selectedCoaches.length > 20 && (
-              <p className="mt-1 text-xs text-green-600">
-                Due to the number of recipients, emails will be paced according to your account&apos;s daily sending limits.
-              </p>
-            )}
           </div>
         </div>
       )}
@@ -367,7 +360,6 @@ export function LaunchStep({
           selectedCoaches={selectedCoaches}
           templates={templates}
           gmailEmail={gmailEmail}
-          gmailTier={gmailTier}
           hasGmailToken={hasGmailToken}
           gmailTokenExpired={gmailTokenExpired}
           campaignName={campaignName}
