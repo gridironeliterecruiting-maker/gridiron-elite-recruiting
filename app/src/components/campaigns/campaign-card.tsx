@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Mail, MailOpen, Users, Play, Pause, Rocket, AlertCircle, MessageCircle, Reply, MousePointerClick } from "lucide-react"
+import { Mail, MailOpen, Users, Play, Pause, Rocket, AlertCircle, MessageCircle, MousePointerClick, Send } from "lucide-react"
 import { useState } from "react"
 
 interface CampaignCardProps {
@@ -101,8 +101,8 @@ export function CampaignCard({ campaign, onClick, onStatusChange }: CampaignCard
           </p>
         </div>
 
-        {/* Stats — shared grid so DM and Email columns align */}
-        <div className="hidden shrink-0 sm:grid sm:grid-cols-4 sm:gap-6">
+        {/* Stats */}
+        <div className={`hidden shrink-0 sm:flex sm:items-center sm:justify-end sm:gap-6`}>
           <div className="flex flex-col items-center">
             <div className="flex items-center gap-1">
               <Users className="h-3.5 w-3.5 text-muted-foreground" />
@@ -112,10 +112,13 @@ export function CampaignCard({ campaign, onClick, onStatusChange }: CampaignCard
           </div>
 
           {isDm ? (
-            <>
-              <div />
-              <div />
-            </>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-1">
+                <Send className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-sm font-semibold text-foreground">{campaign.stats.sent}/{campaign.stats.total}</span>
+              </div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Sent</p>
+            </div>
           ) : (
             <>
               <div className="flex flex-col items-center">
@@ -134,22 +137,6 @@ export function CampaignCard({ campaign, onClick, onStatusChange }: CampaignCard
               </div>
             </>
           )}
-
-          <div className="flex flex-col items-center">
-            <div className="flex items-center gap-1">
-              {isDm ? (
-                <MessageCircle className="h-3.5 w-3.5 text-muted-foreground" />
-              ) : (
-                <Reply className="h-3.5 w-3.5 text-muted-foreground" />
-              )}
-              <span className="text-sm font-semibold text-foreground">
-                {isDm ? `${campaign.stats.sent}/${campaign.stats.total}` : campaign.stats.replied}
-              </span>
-            </div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {isDm ? 'Sent' : 'Replies'}
-            </p>
-          </div>
         </div>
       </div>
 

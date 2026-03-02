@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   Users,
   MailOpen,
-  Reply,
   Loader2,
   Pause,
   Play,
@@ -199,7 +198,7 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
   const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState('')
   const [savingName, setSavingName] = useState(false)
-  const [sortField, setSortField] = useState<'opened' | 'clicked' | 'replied' | null>(null)
+  const [sortField, setSortField] = useState<'opened' | 'clicked' | null>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const [showGoalPicker, setShowGoalPicker] = useState(false)
 
@@ -461,12 +460,11 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
             <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
               <div className="flex flex-col gap-6">
                 {/* Stats Row */}
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                   {[
                     { label: "Recipients", value: campaign.stats.total, icon: Users },
                     { label: "Open Rate", value: `${openRate}%`, icon: MailOpen },
                     { label: "Clicks", value: campaign.stats.clicked, icon: MousePointerClick },
-                    { label: "Replies", value: campaign.stats.replied, icon: Reply },
                   ].map((stat) => (
                     <Card key={stat.label} className="flex items-center gap-3 p-4">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -530,7 +528,7 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
                                   {pStats.total} recipient{pStats.total !== 1 ? 's' : ''}
                                 </p>
                               </div>
-                              <div className="hidden shrink-0 sm:grid sm:grid-cols-3 sm:gap-8">
+                              <div className="hidden shrink-0 sm:flex sm:items-center sm:justify-end sm:gap-8">
                                 <div className="flex flex-col items-center">
                                   <p className="text-sm font-semibold text-foreground">{pStats.openRate}%</p>
                                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Open</p>
@@ -539,17 +537,13 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
                                   <p className="text-sm font-semibold text-foreground">{pStats.clicked}</p>
                                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Clicks</p>
                                 </div>
-                                <div className="flex flex-col items-center">
-                                  <p className="text-sm font-semibold text-foreground">{pStats.replied}</p>
-                                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Replies</p>
-                                </div>
                               </div>
                               <ChevronRight className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                             </button>
 
                             {isExpanded && (
                               <Card className="mt-2 overflow-hidden">
-                                <div className="grid grid-cols-[1fr_72px_72px_72px] items-center border-b border-border bg-secondary/50 px-4 py-2 sm:grid-cols-[1fr_88px_88px_88px]">
+                                <div className="grid grid-cols-[1fr_72px_72px] items-center border-b border-border bg-secondary/50 px-4 py-2 sm:grid-cols-[1fr_88px_88px]">
                                   <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Coach</span>
                                   <button type="button" onClick={() => setSortField(prev => prev === 'opened' ? null : 'opened')} className="flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
                                     Opened
@@ -558,10 +552,6 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
                                   <button type="button" onClick={() => setSortField(prev => prev === 'clicked' ? null : 'clicked')} className="flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
                                     Clicked
                                     <ArrowUpDown className={`h-3 w-3 ${sortField === 'clicked' ? 'text-primary' : 'text-muted-foreground/50'}`} />
-                                  </button>
-                                  <button type="button" onClick={() => setSortField(prev => prev === 'replied' ? null : 'replied')} className="flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
-                                    Replied
-                                    <ArrowUpDown className={`h-3 w-3 ${sortField === 'replied' ? 'text-primary' : 'text-muted-foreground/50'}`} />
                                   </button>
                                 </div>
                                 {sortCoaches(program.coaches).map((coach, i) => {
@@ -573,7 +563,7 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
                                       type="button"
                                       onClick={(e) => handleCoachClick(e, coach.coach_id, coach.coach_name, program.program_name)}
                                       disabled={isLoading}
-                                      className={`group grid w-full grid-cols-[1fr_72px_72px_72px] items-center px-4 py-3 text-left transition-colors hover:bg-primary/[0.03] sm:grid-cols-[1fr_88px_88px_88px] ${i > 0 ? 'border-t border-border/50' : ''}`}
+                                      className={`group grid w-full grid-cols-[1fr_72px_72px] items-center px-4 py-3 text-left transition-colors hover:bg-primary/[0.03] sm:grid-cols-[1fr_88px_88px] ${i > 0 ? 'border-t border-border/50' : ''}`}
                                     >
                                       <div className="flex min-w-0 items-center gap-2">
                                         {isLoading && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />}
@@ -587,9 +577,6 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
                                       </div>
                                       <div className="flex justify-center">
                                         {coach.clicked_at ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Minus className="h-4 w-4 text-muted-foreground/30" />}
-                                      </div>
-                                      <div className="flex justify-center">
-                                        {coach.replied_at ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Minus className="h-4 w-4 text-muted-foreground/30" />}
                                       </div>
                                     </button>
                                   )
