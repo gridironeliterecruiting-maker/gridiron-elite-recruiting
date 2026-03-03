@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const alwaysPublic = ['/auth/callback', '/api/stripe/webhook']
+const alwaysPublic = ['/auth/callback', '/auth/exchange', '/api/stripe/webhook']
 
 export async function updateSession(request: NextRequest) {
   const isAlwaysPublic = alwaysPublic.some(r => request.nextUrl.pathname.startsWith(r))
