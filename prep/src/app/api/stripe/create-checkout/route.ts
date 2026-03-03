@@ -57,6 +57,7 @@ export async function POST(request: Request) {
     mode: 'subscription',
     success_url: `${appUrl}/settings?upgraded=1`,
     cancel_url: `${appUrl}/settings`,
+    metadata: { supabase_user_id: user.id, plan },
     subscription_data: {
       metadata: { supabase_user_id: user.id, plan },
     },

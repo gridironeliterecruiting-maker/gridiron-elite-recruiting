@@ -26,8 +26,8 @@ export async function POST(request: Request) {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
-    const userId = session.subscription_data?.metadata?.supabase_user_id
-    const plan = session.subscription_data?.metadata?.plan ?? 'starter'
+    const userId = session.metadata?.supabase_user_id
+    const plan = session.metadata?.plan ?? 'starter'
 
     if (userId) {
       await supabase.from('subscriptions').upsert({
