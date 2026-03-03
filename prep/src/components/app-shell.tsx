@@ -17,10 +17,11 @@ import {
   Menu,
   X,
 } from 'lucide-react'
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
 const NAV = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Hub', icon: LayoutDashboard },
   { href: '/exposure', label: 'Exposure', icon: Target, badge: 'Primary' },
   { href: '/training', label: 'Training', icon: Dumbbell },
   { href: '/academics', label: 'Academics', icon: BookOpen },
@@ -67,15 +68,9 @@ export function AppShell({ profile, athletes, children }: AppShellProps) {
   const Sidebar = () => (
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
       {/* Brand */}
-      <div className="px-6 py-5 border-b border-sidebar-border">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-            <Target className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <p className="font-display font-bold uppercase tracking-wide text-sm">Runway Elite</p>
-            <p className="text-xs text-white/60">Prep Platform</p>
-          </div>
+      <div className="px-6 py-4 border-b border-sidebar-border flex justify-center">
+        <div className="relative h-[80px] w-[80px]">
+          <Image src="/logo.png" alt="Runway Elite Prep" fill className="object-contain" priority />
         </div>
       </div>
 
@@ -168,9 +163,9 @@ export function AppShell({ profile, athletes, children }: AppShellProps) {
           <button onClick={() => setSidebarOpen(true)} className="p-1.5 rounded hover:bg-gray-100 transition">
             <Menu className="w-5 h-5" />
           </button>
-          <p className="font-display font-bold uppercase tracking-wide text-blue-900 text-sm">
-            Runway Elite Prep
-          </p>
+          <div className="relative h-8 w-8">
+            <Image src="/logo.png" alt="Runway Elite Prep" fill className="object-contain" />
+          </div>
           {sidebarOpen && (
             <button onClick={() => setSidebarOpen(false)} className="ml-auto p-1.5 rounded hover:bg-gray-100 transition">
               <X className="w-5 h-5" />
