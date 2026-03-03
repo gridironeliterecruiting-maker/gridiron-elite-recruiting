@@ -4,6 +4,11 @@ export const metadata = {
   title: 'Sign In — Runway Elite Prep',
 }
 
-export default function LoginPage() {
-  return <LoginUI />
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>
+}) {
+  const { error } = await searchParams
+  return <LoginUI authError={error} />
 }

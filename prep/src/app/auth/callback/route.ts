@@ -37,7 +37,12 @@ export async function GET(request: Request) {
       }
       return response
     }
+
+    return NextResponse.redirect(
+      new URL(`/login?error=${encodeURIComponent(error.message)}`, appUrl).toString()
+    )
   }
 
-  return NextResponse.redirect(new URL('/login?error=auth', appUrl).toString())
+  // No code param — Supabase didn't redirect here, or redirect URL not in allowlist
+  return NextResponse.redirect(new URL('/login?error=no_code', appUrl).toString())
 }

@@ -4,8 +4,8 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getAppUrl } from '@/lib/app-url'
 
-export function LoginUI() {
-  const [error, setError] = useState('')
+export function LoginUI({ authError }: { authError?: string }) {
+  const [error, setError] = useState(authError || '')
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
 
