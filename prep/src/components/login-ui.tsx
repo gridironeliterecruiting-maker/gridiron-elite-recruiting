@@ -50,7 +50,7 @@ export function LoginUI({ authError }: { authError?: string }) {
         </h2>
 
         <h1 className="text-2xl font-bold mb-1" style={{ color }}>Welcome</h1>
-        <p className="text-gray-500 mb-8">Sign in to your athlete development hub.</p>
+        <p className="text-gray-500 mb-8">Sign in to your athlete dashboard.</p>
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
@@ -77,7 +77,7 @@ export function LoginUI({ authError }: { authError?: string }) {
         </button>
 
         <p className="mt-6 text-sm text-gray-500 leading-relaxed">
-          Your Google account powers your athlete development hub. Sign in to get started.
+          Gmail powers your athletic progress. Sign in with your Google account to get started.
         </p>
 
         <p className="mt-4 text-xs text-gray-400">
