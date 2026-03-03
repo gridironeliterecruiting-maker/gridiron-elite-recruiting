@@ -4,9 +4,20 @@ import { cookies } from 'next/headers'
 import { getAppUrl } from '@/lib/app-url'
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
+  const requestUrl = new URL(request.url)
+  const { searchParams } = requestUrl
   const code = searchParams.get('code')
+  const supabaseError = searchParams.get('error')
+  const supabaseErrorDesc = searchParams.get('error_description')
   const appUrl = getAppUrl(request)
+
+  // Supabase sent an explicit error
+  if (supabaseError) {
+    const msg = supabaseErrorDesc || supabaseError
+    return NextResponse.redirect(
+      new URL(`/login?error=${encodeURIComponent(msg)}`, appUrl).toString()
+    )
+  }
 
   if (code) {
     const cookieStore = await cookies()
@@ -43,6 +54,9 @@ export async function GET(request: Request) {
     )
   }
 
-  // No code param — Supabase didn't redirect here, or redirect URL not in allowlist
-  return NextResponse.redirect(new URL('/login?error=no_code', appUrl).toString())
+  // No code, no error — dump all params so we can see what arrived
+  const allParams = searchParams.toString() || 'none'
+  return NextResponse.redirect(
+    new URL(`/login?error=${encodeURIComponent('no_code. params: ' + allParams)}`, appUrl).toString()
+  )
 }
