@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { formatGPA } from '@/lib/utils'
 import {
   refreshGmailToken,
   sendGmailEmail,
@@ -279,7 +280,7 @@ export async function GET(request: Request) {
             'Player_High_School': mergeProfile?.high_school || '',
             'Player_City':        mergeProfile?.city || '',
             'Player_State':       mergeProfile?.state || '',
-            'Player_GPA':         mergeProfile?.gpa?.toString() || '',
+            'Player_GPA':         formatGPA(mergeProfile?.gpa),
             'Player_Film_Link':   mergeProfile?.hudl_url || '',
             'Player_Phone':       mergeProfile?.phone || '',
             'Player_Email':       playerEmail,
@@ -298,13 +299,13 @@ export async function GET(request: Request) {
             'City':               mergeProfile?.city || '',
             'State':              mergeProfile?.state || '',
             'City_State':         cityState,
-            'GPA':                mergeProfile?.gpa?.toString() || '',
+            'GPA':                formatGPA(mergeProfile?.gpa),
             'Film_Link':          mergeProfile?.hudl_url || '',
             'Hudl_URL':           mergeProfile?.hudl_url || '',
             'Phone':              mergeProfile?.phone || '',
             'Email':              playerEmail,
             'Stats':              mergeProfile?.position
-              ? `• Class of ${mergeProfile?.grad_year || ''} ${mergeProfile.position}\n• GPA: ${mergeProfile?.gpa || 'N/A'}`
+              ? `• Class of ${mergeProfile?.grad_year || ''} ${mergeProfile.position}\n• GPA: ${formatGPA(mergeProfile?.gpa) || 'N/A'}`
               : '',
             'Recent_Achievement': '',
             'Improvement_Area':   '',

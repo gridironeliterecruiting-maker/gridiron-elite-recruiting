@@ -15,6 +15,7 @@ import {
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { resolveMergeTags } from "@/lib/merge-tags"
+import { formatGPA } from "@/lib/utils"
 import { programPath } from "@/lib/program-utils"
 
 interface Recipient {
@@ -92,7 +93,7 @@ export function DmQueueClient({
       highSchool: profile?.high_school || "",
       city: profile?.city || "",
       state: profile?.state || "",
-      gpa: profile?.gpa?.toString() || "",
+      gpa: formatGPA(profile?.gpa),
       phone: profile?.phone || "",
       email: profile?.email || "",
     })

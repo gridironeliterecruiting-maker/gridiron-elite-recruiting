@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { formatGPA } from "@/lib/utils"
 import { ProfileForm } from "./profile-form"
 import { RecruitingDrive } from "@/components/profile/recruiting-drive"
 import { getActivePlayerId } from "@/lib/active-player"
@@ -109,7 +110,7 @@ export default async function ProfilePage() {
                     { label: "Class", value: activePlayerProfile.grad_year ? `${activePlayerProfile.grad_year}` : null },
                     { label: "High School", value: activePlayerProfile.high_school },
                     { label: "Location", value: [activePlayerProfile.city, activePlayerProfile.state].filter(Boolean).join(", ") },
-                    { label: "GPA", value: activePlayerProfile.gpa },
+                    { label: "GPA", value: formatGPA(activePlayerProfile.gpa) },
                     { label: "Height", value: activePlayerProfile.height },
                     { label: "Weight", value: activePlayerProfile.weight ? `${activePlayerProfile.weight} lbs` : null },
                     { label: "Hudl", value: activePlayerProfile.hudl_url ? "Connected" : null },

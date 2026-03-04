@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Target, Dumbbell, BookOpen, TrendingUp, Users, Calendar } from 'lucide-react'
 import Link from 'next/link'
+import { formatGPA } from '@/lib/utils'
 
 export const metadata = { title: 'Dashboard — Runway Elite Prep' }
 
@@ -77,7 +78,7 @@ export default async function DashboardPage() {
           icon={<BookOpen className="w-6 h-6" />}
           label="Academic Foundation"
           description="GPA tracking, study habits"
-          stat={athlete?.gpa ? `${athlete.gpa} GPA` : 'Add GPA'}
+          stat={athlete?.gpa ? `${formatGPA(athlete.gpa)} GPA` : 'Add GPA'}
           color="purple"
         />
       </div>

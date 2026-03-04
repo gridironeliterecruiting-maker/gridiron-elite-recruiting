@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { formatGPA } from '@/lib/utils'
 import {
   sendTwitterDm,
   getTwitterUserByUsername,
@@ -125,7 +126,7 @@ export async function POST(
       highSchool: profile?.high_school || '',
       city: profile?.city || '',
       state: profile?.state || '',
-      gpa: profile?.gpa?.toString() || '',
+      gpa: formatGPA(profile?.gpa),
       phone: profile?.phone || '',
       email: profile?.email || '',
     })

@@ -20,6 +20,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase/client"
 import { resolveMergeTags } from "@/lib/merge-tags"
+import { formatGPA } from "@/lib/utils"
 import { CoachDetail } from "@/components/programs/coach-detail"
 
 interface DmCampaignOverlayProps {
@@ -218,7 +219,7 @@ export function DmCampaignOverlay({ campaignId, onClose, embedded = false, onAll
       highSchool: profile?.high_school || "",
       city: profile?.city || "",
       state: profile?.state || "",
-      gpa: profile?.gpa?.toString() || "",
+      gpa: formatGPA(profile?.gpa),
       phone: profile?.phone || "",
       email: profile?.email || "",
     })

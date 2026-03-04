@@ -1,6 +1,7 @@
 import Image from "next/image"
 import { notFound } from "next/navigation"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { formatGPA } from "@/lib/utils"
 import { RecruitDocuments } from "./recruit-documents"
 
 export const dynamic = "force-dynamic"
@@ -77,7 +78,7 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
               {(profile.gpa || profile.height || profile.weight) && (
                 <p className="mt-1 text-sm text-white/50">
                   {[
-                    profile.gpa ? `${profile.gpa} GPA` : null,
+                    profile.gpa ? `${formatGPA(profile.gpa)} GPA` : null,
                     profile.height,
                     profile.weight ? `${profile.weight} lbs` : null,
                   ].filter(Boolean).join(" \u00B7 ")}

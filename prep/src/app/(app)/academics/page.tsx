@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { formatGPA } from '@/lib/utils'
 
 export const metadata = { title: 'Academics — Runway Elite Prep' }
 
@@ -21,7 +22,7 @@ export default async function AcademicsPage() {
       {athlete?.gpa && (
         <div className="mb-6 rounded-xl bg-purple-50 border border-purple-200 p-5 inline-block">
           <p className="text-sm text-purple-700 font-medium">Current GPA</p>
-          <p className="text-4xl font-bold text-purple-900 mt-1">{athlete.gpa.toFixed(2)}</p>
+          <p className="text-4xl font-bold text-purple-900 mt-1">{formatGPA(athlete.gpa)}</p>
         </div>
       )}
 

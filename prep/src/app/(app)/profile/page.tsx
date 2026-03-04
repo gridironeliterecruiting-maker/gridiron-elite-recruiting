@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { formatGPA } from '@/lib/utils'
 
 export const metadata = { title: 'Athlete Profile — Runway Elite Prep' }
 
@@ -25,7 +26,7 @@ export default async function ProfilePage() {
             <Stat label="Sport" value={athlete.sport} />
             <Stat label="Grad Year" value={String(athlete.grad_year)} />
             {athlete.position && <Stat label="Position" value={athlete.position} />}
-            {athlete.gpa && <Stat label="GPA" value={String(athlete.gpa)} />}
+            {athlete.gpa && <Stat label="GPA" value={formatGPA(athlete.gpa)} />}
           </div>
         </div>
       )}
