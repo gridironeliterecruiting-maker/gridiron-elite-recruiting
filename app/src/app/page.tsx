@@ -175,7 +175,7 @@ export default async function HomePage() {
             <FeatureCard
               icon="🎯"
               title="Coach Database"
-              description="Search 3,000+ coaches across every level — FBS, FCS, D2, D3, NAIA, and JUCO. Filter by division, conference, and school. Find the right coaches for your profile."
+              description="Search 11,000+ coaches across every level — FBS, FCS, D2, D3, NAIA, and JUCO. Filter by division, conference, and school. Find the right coaches for your profile."
             />
             <FeatureCard
               icon="✉️"
@@ -434,7 +434,7 @@ function FeatureCard({
 
 function PricingFeatures() {
   const features = [
-    'Full coach database — 3,000+ coaches',
+    'Full coach database — 11,000+ coaches',
     'Email campaigns with merge tags',
     'X (Twitter) DM campaigns',
     'Recruiting pipeline — 5 stages',
