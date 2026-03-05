@@ -137,7 +137,7 @@ export default async function HomePage() {
             <PillarCard
               number="03"
               title="Exposure"
-              description="This is where we live. Reaching coaches, running your outreach, and building your recruiting presence — this is Runway Recruit's entire job."
+              description="This is where we live. Reaching coaches, running your outreach, and building your recruiting presence — all powered by Runway Recruit."
               ours={true}
             />
           </div>
