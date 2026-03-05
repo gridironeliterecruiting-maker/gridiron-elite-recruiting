@@ -67,11 +67,10 @@ export default async function HomePage() {
           </h1>
 
           {/* Subhead */}
-          <p className="mx-auto mb-10 max-w-2xl text-xl leading-relaxed text-white/75 md:text-2xl">
-            A scholarship takes <strong className="text-white">athletic ability</strong>,{' '}
-            <strong className="text-white">academic accomplishments</strong>, and{' '}
-            <strong className="text-white">exposure</strong>. We give you everything you need
-            to win the third one — and tie all three together.
+          <p className="mx-auto mb-10 max-w-2xl text-xl leading-relaxed text-white/80 md:text-2xl">
+            You compete on the field and in the classroom.{' '}
+            <strong className="text-white">It&apos;s time to compete for exposure.</strong>{' '}
+            Runway Recruit gives you every tool you need to reach coaches, find the right programs, and get offers.
           </p>
 
           {/* CTAs */}
