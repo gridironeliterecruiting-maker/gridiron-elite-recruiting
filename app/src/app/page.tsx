@@ -145,8 +145,16 @@ export default async function HomePage() {
       </section>
 
       {/* ── FEATURES ─────────────────────────────────────────────────── */}
-      <section className="bg-[#04080f] px-6 py-24">
-        <div className="mx-auto max-w-5xl">
+      <section
+        className="relative px-6 py-24"
+        style={{
+          backgroundImage: 'url(/hero-bg-2.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        <div className="absolute inset-0" style={{ background: 'rgba(4,8,15,0.82)' }} aria-hidden />
+        <div className="relative z-10 mx-auto max-w-5xl">
           <p
             className="mb-3 text-center font-display text-sm font-bold uppercase tracking-widest"
             style={{ color: '#d93025' }}
@@ -283,15 +291,14 @@ export default async function HomePage() {
       <section
         className="relative overflow-hidden px-6 py-28 text-center"
         style={{
-          background: 'linear-gradient(160deg, #04080f 0%, #0a1525 50%, #04080f 100%)',
+          backgroundImage: 'url(/hero-bg-3.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
         }}
       >
         <div
           className="absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(ellipse at 50% 0%, rgba(200,32,47,0.15) 0%, transparent 60%)',
-          }}
+          style={{ background: 'rgba(4,8,15,0.78)' }}
           aria-hidden
         />
         <div className="relative z-10 mx-auto max-w-2xl">
