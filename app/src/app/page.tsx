@@ -47,7 +47,7 @@ export default async function HomePage() {
         <div className="relative z-10 mx-auto max-w-4xl">
           {/* Logo */}
           <div className="mb-8 flex justify-center">
-            <div className="relative w-36 drop-shadow-2xl" style={{ height: '154px' }}>
+            <div className="relative w-36 drop-shadow-2xl" style={{ height: '164px', marginTop: '10px' }}>
               <Image src="/logo.png" alt="Runway Recruit" fill className="object-contain" priority />
             </div>
           </div>
