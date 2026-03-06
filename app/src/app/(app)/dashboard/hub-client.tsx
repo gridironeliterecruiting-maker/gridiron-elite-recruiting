@@ -97,6 +97,7 @@ export function HubClient({
 }: HubClientProps) {
   const [twitterProfile, setTwitterProfile] = useState<TwitterProfile | null>(null)
   const [twitterLoading, setTwitterLoading] = useState(hasTwitterToken)
+  const [effectiveHandle, setEffectiveHandle] = useState<string | null>(twitterHandle)
 
   // Fetch full Twitter profile data client-side (enrichment from Twitter API)
   useEffect(() => {
@@ -111,7 +112,16 @@ export function HubClient({
           if (!res.ok) throw new Error(`HTTP ${res.status}`)
           const data = await res.json()
 
-          if (!cancelled && data.profile) {
+          if (cancelled) return
+
+          // Token was removed — clear handle so "Connect" prompt shows
+          if (data.connected === false) {
+            setEffectiveHandle(null)
+            setTwitterLoading(false)
+            return
+          }
+
+          if (data.profile) {
             setTwitterProfile(data.profile)
             setTwitterLoading(false)
             return
@@ -172,7 +182,7 @@ export function HubClient({
               ) : (
                 <TwitterProfileCard
                   profile={twitterProfile}
-                  handle={twitterHandle}
+                  handle={effectiveHandle}
                   onConnect={handleConnectTwitter}
                 />
               )}
