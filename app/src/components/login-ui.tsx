@@ -61,8 +61,16 @@ export function LoginUI({
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md p-8 text-center">
+    <div
+      className="relative min-h-screen flex items-center justify-center"
+      style={{
+        backgroundImage: 'url(/locker-room-bg.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.72)' }} aria-hidden />
+      <div className="relative z-10 w-full max-w-md p-8 text-center">
         <div className="flex justify-center mb-3">
           <div className="relative h-[220px] w-[220px]">
             <Image src={logoSrc} alt={logoAlt} fill className="object-contain" priority />
