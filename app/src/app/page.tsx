@@ -202,7 +202,11 @@ export default async function HomePage() {
               icon="🚀"
               title="Recruiting Drive"
               description="A shareable page with everything a coach needs: your measurables, Hudl film, stats, GPA, and contact info. Not a profile page — a recruiting weapon you put in front of coaches."
-              wide
+            />
+            <FeatureCard
+              icon="📱"
+              title="Social Integration"
+              description="Integration and optimization of your brand across all of your social media platforms — engage coaches wherever they are to maximize results."
             />
           </div>
         </div>
