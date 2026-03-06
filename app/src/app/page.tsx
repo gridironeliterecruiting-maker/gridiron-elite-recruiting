@@ -125,7 +125,7 @@ export default async function HomePage() {
             The Formula
           </p>
           <h2 className="mb-4 text-center font-display text-4xl font-black uppercase tracking-tight md:text-5xl">
-            Three Things Get You a Scholarship
+            Three Things Get You an Offer
           </h2>
           <p className="mx-auto mb-16 max-w-xl text-center text-lg text-gray-500">
             Most families are on their own for the first two. We own the third — and help you connect all three.
@@ -147,7 +147,7 @@ export default async function HomePage() {
             <PillarCard
               number="03"
               title="Exposure"
-              description="This is where we live. Reaching coaches, running your outreach, and building your recruiting presence — all powered by Runway Recruit."
+              description="This is where we live. Reaching coaches, managing your outreach, and building your recruiting presence — all powered by Runway Recruit."
               ours={true}
             />
           </div>
