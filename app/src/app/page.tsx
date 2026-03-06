@@ -44,9 +44,9 @@ export default async function HomePage() {
       <section className="relative flex min-h-screen items-center justify-center px-6 text-center">
         <HeroBackground />
 
-        <div className="relative z-10 mx-auto max-w-4xl">
-          {/* Logo */}
-          <div className="flex justify-center" style={{ marginBottom: '12px' }}>
+        <div className="relative z-10 mx-auto max-w-4xl -mt-16 sm:mt-0">
+          {/* Logo — hidden on mobile to avoid overlapping nav */}
+          <div className="hidden sm:flex justify-center" style={{ marginBottom: '12px' }}>
             <div className="drop-shadow-2xl" style={{ position: 'relative', width: '144px', height: '164px' }}>
               <Image src="/logo.png" alt="Runway Recruit" fill className="object-contain" priority />
             </div>
