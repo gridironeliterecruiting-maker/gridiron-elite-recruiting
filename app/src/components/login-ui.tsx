@@ -70,7 +70,7 @@ export function LoginUI({
       }}
     >
       <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.72)' }} aria-hidden />
-      <div className="text-readable relative z-10 w-full max-w-md p-8 text-center">
+      <div className="relative z-10 w-full max-w-md p-8 text-center">
         <div className="flex justify-center mb-3">
           <div className="relative h-[220px] w-[220px]">
             <Image src={logoSrc} alt={logoAlt} fill className="object-contain" priority />

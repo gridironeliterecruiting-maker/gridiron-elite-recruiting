@@ -99,7 +99,7 @@ export default async function HomePage() {
         </div>
 
         {/* Scroll hint */}
-        <div className="absolute bottom-8 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 text-white/25">
+        <div className="absolute bottom-8 left-1/2 hidden sm:flex -translate-x-1/2 flex-col items-center gap-2 text-white/25">
           <span className="text-[10px] uppercase tracking-widest">Scroll</span>
           <div className="h-8 w-px bg-white/20" />
         </div>
@@ -116,7 +116,7 @@ export default async function HomePage() {
         }}
       >
         <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.70)' }} aria-hidden />
-        <div className="text-readable relative z-10 mx-auto max-w-5xl">
+        <div className="relative z-10 mx-auto max-w-5xl">
           <p
             className="mb-3 text-center font-display text-sm font-bold uppercase tracking-widest"
             style={{ color: '#d93025' }}
@@ -223,7 +223,7 @@ export default async function HomePage() {
         }}
       >
         <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.70)' }} aria-hidden />
-        <div className="text-readable relative z-10 mx-auto max-w-3xl text-center">
+        <div className="relative z-10 mx-auto max-w-3xl text-center">
           <h2
             className="mb-8 font-display text-3xl font-black uppercase leading-tight tracking-tight md:text-5xl"
             style={{ color: '#0a1525' }}
@@ -328,7 +328,7 @@ export default async function HomePage() {
         }}
       >
         <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.70)' }} aria-hidden />
-        <div className="text-readable relative z-10 mx-auto max-w-2xl">
+        <div className="relative z-10 mx-auto max-w-2xl">
           <div className="mb-6 flex justify-center">
             <div className="relative h-20 w-20">
               <Image src="/logo.png" alt="Runway Recruit" fill className="object-contain" />
