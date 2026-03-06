@@ -115,7 +115,8 @@ export default async function HomePage() {
           backgroundColor: '#ffffff',
         }}
       >
-        <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.70)' }} aria-hidden />
+        <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.60)' }} aria-hidden />
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 70% 80% at 50% 50%, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 100%)' }} aria-hidden />
         <div className="relative z-10 mx-auto max-w-5xl">
           <p
             className="mb-3 text-center font-display text-sm font-bold uppercase tracking-widest"
@@ -222,7 +223,8 @@ export default async function HomePage() {
           backgroundColor: '#ffffff',
         }}
       >
-        <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.70)' }} aria-hidden />
+        <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.60)' }} aria-hidden />
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 70% 80% at 50% 50%, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 100%)' }} aria-hidden />
         <div className="relative z-10 mx-auto max-w-3xl text-center">
           <h2
             className="mb-8 font-display text-3xl font-black uppercase leading-tight tracking-tight md:text-5xl"
@@ -327,7 +329,8 @@ export default async function HomePage() {
           backgroundColor: '#ffffff',
         }}
       >
-        <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.70)' }} aria-hidden />
+        <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.60)' }} aria-hidden />
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 70% 80% at 50% 50%, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 100%)' }} aria-hidden />
         <div className="relative z-10 mx-auto max-w-2xl">
           <div className="mb-6 flex justify-center">
             <div className="relative h-20 w-20">
