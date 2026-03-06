@@ -106,8 +106,17 @@ export default async function HomePage() {
       </section>
 
       {/* ── THREE PILLARS ────────────────────────────────────────────── */}
-      <section className="bg-white px-6 py-24 text-[#0a1525]">
-        <div className="mx-auto max-w-5xl">
+      <section
+        className="relative px-6 py-24 text-[#0a1525]"
+        style={{
+          backgroundImage: 'url(/hero-bg-day-1.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundColor: '#ffffff',
+        }}
+      >
+        <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.88)' }} aria-hidden />
+        <div className="relative z-10 mx-auto max-w-5xl">
           <p
             className="mb-3 text-center font-display text-sm font-bold uppercase tracking-widest"
             style={{ color: '#d93025' }}
@@ -200,8 +209,17 @@ export default async function HomePage() {
       </section>
 
       {/* ── PITCH ────────────────────────────────────────────────────── */}
-      <section className="bg-white px-6 py-24">
-        <div className="mx-auto max-w-3xl text-center">
+      <section
+        className="relative px-6 py-24"
+        style={{
+          backgroundImage: 'url(/hero-bg-day-2.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundColor: '#ffffff',
+        }}
+      >
+        <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.88)' }} aria-hidden />
+        <div className="relative z-10 mx-auto max-w-3xl text-center">
           <h2
             className="mb-8 font-display text-3xl font-black uppercase leading-tight tracking-tight md:text-5xl"
             style={{ color: '#0a1525' }}
@@ -219,8 +237,16 @@ export default async function HomePage() {
       </section>
 
       {/* ── PRICING ──────────────────────────────────────────────────── */}
-      <section className="bg-[#04080f] px-6 py-24">
-        <div className="mx-auto max-w-4xl">
+      <section
+        className="relative px-6 py-24"
+        style={{
+          backgroundImage: 'url(/hero-bg-3.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        <div className="absolute inset-0" style={{ background: 'rgba(4,8,15,0.88)' }} aria-hidden />
+        <div className="relative z-10 mx-auto max-w-4xl">
           <p
             className="mb-3 text-center font-display text-sm font-bold uppercase tracking-widest"
             style={{ color: '#d93025' }}
@@ -291,26 +317,23 @@ export default async function HomePage() {
       <section
         className="relative overflow-hidden px-6 py-28 text-center"
         style={{
-          backgroundImage: 'url(/hero-bg-3.png)',
+          backgroundImage: 'url(/hero-bg-day-3.png)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
+          backgroundColor: '#ffffff',
         }}
       >
-        <div
-          className="absolute inset-0"
-          style={{ background: 'rgba(4,8,15,0.78)' }}
-          aria-hidden
-        />
+        <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.88)' }} aria-hidden />
         <div className="relative z-10 mx-auto max-w-2xl">
           <div className="mb-6 flex justify-center">
-            <div className="relative h-20 w-20 opacity-90">
+            <div className="relative h-20 w-20">
               <Image src="/logo.png" alt="Runway Recruit" fill className="object-contain" />
             </div>
           </div>
-          <h2 className="mb-4 font-display text-4xl font-black uppercase tracking-tight text-white md:text-6xl">
+          <h2 className="mb-4 font-display text-4xl font-black uppercase tracking-tight text-[#0a1525] md:text-6xl">
             Ready to <span style={{ color: '#d93025' }}>Take Off?</span>
           </h2>
-          <p className="mx-auto mb-10 max-w-md text-lg text-white/55">
+          <p className="mx-auto mb-10 max-w-md text-lg text-gray-500">
             Join athletes who are getting ahead of the recruiting process — before their competition even starts.
           </p>
           <Link
@@ -318,12 +341,12 @@ export default async function HomePage() {
             className="inline-block rounded-lg px-12 py-5 font-display text-xl font-black uppercase tracking-wider text-white transition-all hover:-translate-y-1"
             style={{
               background: 'linear-gradient(135deg, #d93025 0%, #9a1010 100%)',
-              boxShadow: '0 4px 32px rgba(200,32,47,0.5)',
+              boxShadow: '0 4px 32px rgba(200,32,47,0.35)',
             }}
           >
             Get Started
           </Link>
-          <p className="mt-4 text-sm text-white/30">$50/month · $450/year · Cancel anytime</p>
+          <p className="mt-4 text-sm text-gray-400">$50/month · $450/year · Cancel anytime</p>
         </div>
       </section>
 
