@@ -60,17 +60,21 @@ export function LoginUI({
     }
   }
 
+  const hasBackground = !slug
+
   return (
     <div
       className="relative min-h-screen flex items-center justify-center"
-      style={{
+      style={hasBackground ? {
         backgroundImage: 'url(/locker-room-bg.png)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-      }}
+      } : { backgroundColor: '#f9fafb' }}
     >
-      <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.60)' }} aria-hidden />
-      <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 60% 70% at 50% 50%, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 100%)' }} aria-hidden />
+      {hasBackground && <>
+        <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.60)' }} aria-hidden />
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 60% 70% at 50% 50%, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 100%)' }} aria-hidden />
+      </>}
       <div className="relative z-10 w-full max-w-md p-8 text-center">
         <div className="flex justify-center mb-3">
           <div className="relative h-[220px] w-[220px]">
