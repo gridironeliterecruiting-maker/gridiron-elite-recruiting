@@ -16,6 +16,14 @@ export default async function ProfilePage() {
     .eq("id", user?.id)
     .single()
 
+  const { createAdminClient } = await import('@/lib/supabase/admin')
+  const admin = createAdminClient()
+  const { data: twitterToken } = await admin
+    .from('twitter_tokens')
+    .select('twitter_handle')
+    .eq('user_id', user?.id)
+    .single()
+
   // Coach status is scoped to the current program only (not global)
   const { isCoach, isLegacyCoach, playerIds: managedPlayerIds, programName: managedProgramName } = await getCoachContext(user!.id)
 
@@ -137,7 +145,7 @@ export default async function ProfilePage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           {/* Left: Profile form */}
           <div className="lg:col-span-5">
-            <ProfileForm profile={profile} />
+            <ProfileForm profile={profile} twitterConnectedHandle={twitterToken?.twitter_handle || null} />
           </div>
 
           {/* Right: Recruiting Drive */}

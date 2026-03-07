@@ -4,7 +4,7 @@ import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Save, Check } from "lucide-react"
+import { Save, Check, Link2, Unlink } from "lucide-react"
 
 interface Profile {
   id: string
@@ -38,7 +38,7 @@ function Field({ label, value, onChange, placeholder, type = "text" }: {
   )
 }
 
-export function ProfileForm({ profile }: { profile: Profile | null }) {
+export function ProfileForm({ profile, twitterConnectedHandle }: { profile: Profile | null; twitterConnectedHandle: string | null }) {
   const [form, setForm] = useState({
     first_name: profile?.first_name || "",
     last_name: profile?.last_name || "",
@@ -53,10 +53,11 @@ export function ProfileForm({ profile }: { profile: Profile | null }) {
     weight: profile?.weight || "",
     gpa: profile?.gpa || "",
     hudl_url: profile?.hudl_url || "",
-    twitter_handle: profile?.twitter_handle || "",
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [xHandle, setXHandle] = useState<string | null>(twitterConnectedHandle)
+  const [disconnecting, setDisconnecting] = useState(false)
 
   const update = (key: string, val: string) => {
     setForm((f) => ({ ...f, [key]: val }))
@@ -82,11 +83,21 @@ export function ProfileForm({ profile }: { profile: Profile | null }) {
         weight: form.weight,
         gpa: form.gpa,
         hudl_url: form.hudl_url,
-        twitter_handle: form.twitter_handle,
       })
       .eq("id", profile.id)
     setSaving(false)
     setSaved(true)
+  }
+
+  const handleDisconnectX = async () => {
+    setDisconnecting(true)
+    await fetch('/api/twitter/disconnect', { method: 'DELETE' })
+    setXHandle(null)
+    setDisconnecting(false)
+  }
+
+  const handleConnectX = () => {
+    window.location.href = `/api/twitter/authorize?returnTo=/profile`
   }
 
   return (
@@ -133,7 +144,34 @@ export function ProfileForm({ profile }: { profile: Profile | null }) {
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <Field label="Hudl Profile URL" value={form.hudl_url} onChange={(v) => update("hudl_url", v)} placeholder="https://www.hudl.com/profile/..." />
-          <Field label="X Handle" value={form.twitter_handle} onChange={(v) => update("twitter_handle", v)} placeholder="@yourhandle" />
+
+          {/* X / Twitter — OAuth managed, not free-text */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">X (Twitter) Account</label>
+            {xHandle ? (
+              <div className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2">
+                <span className="text-sm font-semibold text-foreground">@{xHandle}</span>
+                <button
+                  type="button"
+                  onClick={handleDisconnectX}
+                  disabled={disconnecting}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-destructive hover:text-destructive/80 disabled:opacity-50"
+                >
+                  <Unlink className="h-3.5 w-3.5" />
+                  {disconnecting ? 'Disconnecting...' : 'Disconnect'}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleConnectX}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/5"
+              >
+                <Link2 className="h-4 w-4" />
+                Connect X Account
+              </button>
+            )}
+          </div>
         </CardContent>
       </Card>
 

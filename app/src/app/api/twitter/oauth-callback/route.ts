@@ -139,6 +139,9 @@ export async function GET(request: NextRequest) {
         console.error('[Twitter Callback] Upsert failed:', JSON.stringify(upsertError))
         return NextResponse.redirect(`${redirectBase}${redirectBase.includes('?') ? '&' : '?'}twitter=error&reason=store_failed`)
       }
+
+      // Keep profiles.twitter_handle in sync with the OAuth-connected handle
+      await admin.from('profiles').update({ twitter_handle: twitterUser.username }).eq('id', user.id)
     }
 
     console.log(`[Twitter Callback] ===== SUCCESS ===== user=${user.id} handle=@${twitterUser.username}`)

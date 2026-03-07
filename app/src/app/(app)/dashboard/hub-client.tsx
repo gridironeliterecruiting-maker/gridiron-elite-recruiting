@@ -97,6 +97,7 @@ export function HubClient({
 }: HubClientProps) {
   const [twitterProfile, setTwitterProfile] = useState<TwitterProfile | null>(null)
   const [twitterLoading, setTwitterLoading] = useState(hasTwitterToken)
+  const [twitterLoadFailed, setTwitterLoadFailed] = useState(false)
   const [effectiveHandle, setEffectiveHandle] = useState<string | null>(twitterHandle)
 
   // Fetch full Twitter profile data client-side (enrichment from Twitter API)
@@ -106,11 +107,13 @@ export function HubClient({
     let cancelled = false
 
     async function fetchWithRetry() {
+      let lastData: any = null
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           const res = await fetch("/api/twitter/profile")
           if (!res.ok) throw new Error(`HTTP ${res.status}`)
           const data = await res.json()
+          lastData = data
 
           if (cancelled) return
 
@@ -127,14 +130,15 @@ export function HubClient({
             return
           }
         } catch {
-          // Retry after a short delay
-          if (attempt === 0) {
-            await new Promise(r => setTimeout(r, 2000))
-          }
+          if (attempt === 0) await new Promise(r => setTimeout(r, 2000))
         }
       }
-      // Both attempts failed — stop loading, fallback to DB data
-      if (!cancelled) setTwitterLoading(false)
+      // Both attempts done, no profile loaded
+      if (!cancelled) {
+        setTwitterLoading(false)
+        // If we got a response but no profile (expired/broken token), mark as failed
+        if (!lastData?.profile) setTwitterLoadFailed(true)
+      }
     }
 
     fetchWithRetry()
@@ -183,6 +187,7 @@ export function HubClient({
                 <TwitterProfileCard
                   profile={twitterProfile}
                   handle={effectiveHandle}
+                  loadFailed={twitterLoadFailed}
                   onConnect={handleConnectTwitter}
                 />
               )}

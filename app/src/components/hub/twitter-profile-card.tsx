@@ -34,10 +34,11 @@ interface TwitterProfile {
 interface TwitterProfileCardProps {
   profile: TwitterProfile | null
   handle: string | null
+  loadFailed?: boolean
   onConnect: () => void
 }
 
-export function TwitterProfileCard({ profile, handle, onConnect }: TwitterProfileCardProps) {
+export function TwitterProfileCard({ profile, handle, loadFailed, onConnect }: TwitterProfileCardProps) {
   if (!profile && !handle) {
     // Not connected state
     return (
@@ -69,25 +70,14 @@ export function TwitterProfileCard({ profile, handle, onConnect }: TwitterProfil
     )
   }
 
-  // Connected but full profile hasn't loaded yet — show basic info from DB
-  if (!profile) {
+  // Connected but profile couldn't load (expired/broken token)
+  if (!profile && handle) {
     return (
       <Card className="overflow-hidden">
         <div className="bg-gradient-to-r from-primary to-primary/80 px-5 py-3 sm:px-6">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary-foreground/60">
-              My X Profile
-            </p>
-            <a
-              href={`https://x.com/${handle}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[11px] font-semibold text-primary-foreground/70 transition-colors hover:text-primary-foreground"
-            >
-              Open in X
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary-foreground/60">
+            My X Profile
+          </p>
         </div>
         <div className="p-5 sm:p-6">
           <div className="flex items-center gap-4">
@@ -96,9 +86,20 @@ export function TwitterProfileCard({ profile, handle, onConnect }: TwitterProfil
             </div>
             <div>
               <p className="text-base font-bold text-foreground">@{handle}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                X account connected. Full profile details loading...
-              </p>
+              {loadFailed ? (
+                <div className="mt-1">
+                  <p className="text-sm text-muted-foreground">Couldn&apos;t load X profile — token may have expired.</p>
+                  <button
+                    type="button"
+                    onClick={onConnect}
+                    className="mt-2 text-xs font-semibold text-primary underline-offset-2 hover:underline"
+                  >
+                    Reconnect X Account
+                  </button>
+                </div>
+              ) : (
+                <p className="mt-1 text-sm text-muted-foreground">Connected · loading profile details...</p>
+              )}
             </div>
           </div>
         </div>
