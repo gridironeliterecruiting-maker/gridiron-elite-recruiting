@@ -107,6 +107,8 @@ export function TwitterProfileCard({ profile, handle, loadFailed, onConnect }: T
     )
   }
 
+  if (!profile) return null
+
   return (
     <Card className="overflow-hidden">
       {/* Header band */}
