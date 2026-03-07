@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Privacy Policy | Runway Elite Recruiting",
+  title: "Privacy Policy | Runway Recruit",
 }
 
 export default function PrivacyPage() {
@@ -10,8 +10,8 @@ export default function PrivacyPage() {
         <p className="text-sm text-gray-500 mb-8">Effective Date: March 1, 2026 &nbsp;|&nbsp; Last Updated: March 1, 2026</p>
 
         <p className="text-gray-700 mb-6">
-          Runway Sports Technologies ("we," "us," or "our") operates Runway Elite Recruiting, accessible at{" "}
-          <strong>runwayeliterecruiting.com</strong>. This Privacy Policy explains how we collect, use, disclose, and
+          Runway Sports Technologies ("we," "us," or "our") operates Runway Recruit, accessible at{" "}
+          <strong>runwayrecruit.com</strong>. This Privacy Policy explains how we collect, use, disclose, and
           protect your information when you use our platform. By using our service, you agree to the practices described
           in this policy.
         </p>
@@ -62,7 +62,7 @@ export default function PrivacyPage() {
         <section className="mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-3">2. How We Use Your Information</h2>
           <ul className="list-disc list-inside text-gray-700 space-y-2">
-            <li>To provide, operate, and improve the Runway Elite Recruiting platform</li>
+            <li>To provide, operate, and improve the Runway Recruit platform</li>
             <li>To send recruiting emails and direct messages on your behalf at your direction</li>
             <li>To track coach engagement (opens, replies) for your campaigns</li>
             <li>To personalize outreach templates with your athletic profile information</li>

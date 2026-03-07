@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Terms of Service | Runway Elite Recruiting",
+  title: "Terms of Service | Runway Recruit",
 }
 
 export default function TermsPage() {
@@ -10,9 +10,9 @@ export default function TermsPage() {
         <p className="text-sm text-gray-500 mb-8">Effective Date: March 1, 2026 &nbsp;|&nbsp; Last Updated: March 1, 2026</p>
 
         <p className="text-gray-700 mb-6">
-          These Terms of Service ("Terms") govern your access to and use of Runway Elite Recruiting, operated by{" "}
+          These Terms of Service ("Terms") govern your access to and use of Runway Recruit, operated by{" "}
           <strong>Runway Sports Technologies</strong> ("we," "us," or "our"), accessible at{" "}
-          <strong>runwayeliterecruiting.com</strong>. By accessing or using our platform, you agree to be bound by
+          <strong>runwayrecruit.com</strong>. By accessing or using our platform, you agree to be bound by
           these Terms. If you do not agree, do not use the service.
         </p>
 
@@ -44,7 +44,7 @@ export default function TermsPage() {
         <section className="mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-3">3. Description of Service</h2>
           <p className="text-gray-700">
-            Runway Elite Recruiting is a platform designed to help high school student-athletes manage their college
+            Runway Recruit is a platform designed to help high school student-athletes manage their college
             recruiting outreach. Features include coach and program discovery, email campaign management via the Gmail
             API, direct message campaigns via the Twitter/X API, a recruiting pipeline tracker, and profile management.
           </p>
@@ -53,7 +53,7 @@ export default function TermsPage() {
         <section className="mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-3">4. Gmail and Twitter/X Integration</h2>
           <p className="text-gray-700 mb-3">
-            By connecting your Gmail or Twitter/X account, you authorize Runway Elite Recruiting to:
+            By connecting your Gmail or Twitter/X account, you authorize Runway Recruit to:
           </p>
           <ul className="list-disc list-inside text-gray-700 space-y-2">
             <li>Send emails from your Gmail account to college coaches at your direction</li>

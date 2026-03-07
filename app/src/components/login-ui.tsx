@@ -16,7 +16,7 @@ interface LoginUIProps {
 
 export function LoginUI({
   logoSrc = '/logo.png',
-  logoAlt = 'Runway Elite Recruiting',
+  logoAlt = 'Runway Recruit',
   programName,
   primaryColor,
   slug,
@@ -127,11 +127,11 @@ export function LoginUI({
         </p>
 
         <p className="mt-6 text-xs text-gray-400">
-          <a href="https://runwayeliterecruiting.com/privacy" target="_blank" rel="noopener noreferrer" className="hover:underline">
+          <a href="https://runwayrecruit.com/privacy" target="_blank" rel="noopener noreferrer" className="hover:underline">
             Privacy Policy
           </a>
           {' · '}
-          <a href="https://runwayeliterecruiting.com/terms" target="_blank" rel="noopener noreferrer" className="hover:underline">
+          <a href="https://runwayrecruit.com/terms" target="_blank" rel="noopener noreferrer" className="hover:underline">
             Terms of Service
           </a>
         </p>
