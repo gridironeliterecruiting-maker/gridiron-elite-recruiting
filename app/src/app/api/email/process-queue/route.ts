@@ -359,10 +359,14 @@ export async function GET(request: Request) {
             continue
           }
 
-          // Convert plain text body to HTML
+          // Convert plain text body to HTML, auto-linking bare URLs
           let htmlBody = body
             .split('\n')
-            .map((line: string) => (line.trim() === '' ? '<br>' : `<p style="margin:0 0 8px 0;">${line}</p>`))
+            .map((line: string) => {
+              if (line.trim() === '') return '<br>'
+              const linked = line.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1">$1</a>')
+              return `<p style="margin:0 0 8px 0;">${linked}</p>`
+            })
             .join('\n')
 
           // Add tracking
