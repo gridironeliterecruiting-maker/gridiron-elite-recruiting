@@ -178,13 +178,13 @@ async function sendNotificationEmail(
     const htmlBody = `
       <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <h2 style="color: #333; margin-bottom: 4px;">New Access Request</h2>
-        <p style="color: #666; margin-top: 0;">Someone wants to join ${programName} on Runway Elite Recruiting.</p>
+        <p style="color: #666; margin-top: 0;">Someone wants to join ${programName} on Runway Recruit.</p>
         <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 20px 0;">
           <p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${requesterName}</p>
           <p style="margin: 0;"><strong>Email:</strong> ${requesterEmail}</p>
         </div>
         <p style="color: #666; font-size: 14px;">
-          Log in to your Runway Elite Recruiting dashboard to approve or deny this request.
+          Log in to your Runway Recruit dashboard to approve or deny this request.
         </p>
       </div>
     `
@@ -194,7 +194,7 @@ async function sendNotificationEmail(
       toEmail,
       `Access Request: ${requesterName} wants to join ${programName}`,
       htmlBody,
-      'Runway Elite Recruiting',
+      'Runway Recruit',
       toEmail
     )
   } catch (emailError) {

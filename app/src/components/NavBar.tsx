@@ -117,7 +117,7 @@ export default function NavBar({
                   <div className="relative h-[72px] w-[72px] lg:h-[80px] lg:w-[80px]">
                     <Image
                       src={coachBranding?.logo_url || "/logo.png"}
-                      alt={coachBranding?.program_name ? `${coachBranding.program_name} logo` : "Runway Elite Recruiting logo"}
+                      alt={coachBranding?.program_name ? `${coachBranding.program_name} logo` : "Runway Recruit logo"}
                       fill
                       className="object-contain"
                       priority

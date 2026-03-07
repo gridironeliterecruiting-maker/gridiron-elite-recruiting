@@ -16,7 +16,7 @@ interface UnauthorizedPageProps {
 
 export function UnauthorizedPage({
   logoSrc = '/logo.png',
-  logoAlt = 'Runway Elite Recruiting',
+  logoAlt = 'Runway Recruit',
   programName,
   primaryColor,
   coachProfileId,

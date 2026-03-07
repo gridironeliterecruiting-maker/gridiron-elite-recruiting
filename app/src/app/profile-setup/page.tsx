@@ -90,7 +90,7 @@ export default function ProfileSetupPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-8">
       <div className="w-full max-w-lg p-8">
         <div className="flex justify-center mb-6">
-          <Image src="/logo.png" alt="Runway Elite Recruiting" width={220} height={220} className="object-contain" />
+          <Image src="/logo.png" alt="Runway Recruit" width={220} height={220} className="object-contain" />
         </div>
         <h1 className="text-2xl font-bold text-center text-[#0047AB] mb-1">Complete Your Profile</h1>
         <p className="text-center text-gray-500 mb-6 text-sm">Tell us about yourself so coaches know who you are</p>

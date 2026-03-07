@@ -51,7 +51,7 @@ export function Navbar({ activePage = "Dashboard" }: NavbarProps) {
                 <div className="relative h-28 w-28 drop-shadow-[0_6px_16px_rgba(0,0,0,0.5)] lg:h-32 lg:w-32">
                   <Image
                     src="/logo.png"
-                    alt="Runway Elite Recruiting logo"
+                    alt="Runway Recruit logo"
                     fill
                     className="object-contain"
                     priority

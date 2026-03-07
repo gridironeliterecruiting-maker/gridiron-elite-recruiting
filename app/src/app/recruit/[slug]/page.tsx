@@ -51,7 +51,7 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
             <div className="relative h-[160px] w-[160px] shrink-0 drop-shadow-lg sm:h-[200px] sm:w-[200px]">
               <Image
                 src="/logo.png"
-                alt="Runway Elite Recruiting"
+                alt="Runway Recruit"
                 fill
                 className="object-contain"
                 priority
@@ -124,13 +124,13 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
           <div className="relative h-10 w-10 opacity-40">
             <Image
               src="/logo.png"
-              alt="Runway Elite Recruiting"
+              alt="Runway Recruit"
               fill
               className="object-contain"
             />
           </div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[hsl(222,47%,11%)]/30">
-            Powered by Runway Elite Recruiting
+            Powered by Runway Recruit
           </p>
         </div>
       </main>
