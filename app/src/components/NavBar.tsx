@@ -126,10 +126,10 @@ export default function NavBar({
                 </div>
                 <div className="hidden sm:block">
                   <h1 className="font-display text-lg font-bold uppercase leading-tight tracking-wide text-primary-foreground">
-                    {coachBranding?.program_name || "Runway Elite"}
+                    {coachBranding?.program_name || "Runway Recruit"}
                   </h1>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary-foreground/50">
-                    Recruiting
+                    Football
                   </p>
                 </div>
               </Link>
