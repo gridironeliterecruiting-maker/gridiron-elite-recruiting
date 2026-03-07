@@ -76,7 +76,7 @@ export default async function HomePage() {
           {/* CTAs */}
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="/login?mode=register"
+              href="/checkout?plan=monthly"
               className="rounded-lg px-10 py-4 font-display text-lg font-bold uppercase tracking-wider text-white transition-all hover:-translate-y-0.5"
               style={{
                 background: 'linear-gradient(135deg, #d93025 0%, #9a1010 100%)',
@@ -276,7 +276,7 @@ export default async function HomePage() {
               </div>
               <PricingFeatures />
               <Link
-                href="/login?mode=register"
+                href="/checkout?plan=monthly"
                 className="mt-8 block rounded-lg border border-white/20 px-6 py-3 text-center font-display font-bold uppercase tracking-wider text-white transition hover:border-white/50 hover:bg-white/5"
               >
                 Get Started Monthly
@@ -305,7 +305,7 @@ export default async function HomePage() {
               <p className="mb-6 text-sm text-white/50">$37.50/month, billed annually</p>
               <PricingFeatures />
               <Link
-                href="/login?mode=register"
+                href="/checkout?plan=annual"
                 className="mt-8 block rounded-lg px-6 py-3 text-center font-display font-bold uppercase tracking-wider text-white transition hover:-translate-y-0.5"
                 style={{
                   background: 'linear-gradient(135deg, #d93025 0%, #9a1010 100%)',
@@ -344,7 +344,7 @@ export default async function HomePage() {
             Join athletes who are getting ahead of the recruiting process — before their competition even starts.
           </p>
           <Link
-            href="/login?mode=register"
+            href="/checkout?plan=monthly"
             className="inline-block rounded-lg px-12 py-5 font-display text-xl font-black uppercase tracking-wider text-white transition-all hover:-translate-y-1"
             style={{
               background: 'linear-gradient(135deg, #d93025 0%, #9a1010 100%)',

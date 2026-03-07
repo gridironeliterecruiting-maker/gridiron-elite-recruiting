@@ -9,6 +9,7 @@ import {
   wrapLinksForTracking,
   addUnsubscribeFooter,
 } from '@/lib/gmail'
+import { getWorkspaceGmailAccessToken } from '@/lib/workspace'
 
 /**
  * Process the email send queue.
@@ -104,7 +105,7 @@ export async function GET(request: Request) {
       // ============================================================
       const { data: userProfile } = await admin
         .from('profiles')
-        .select('can_send_emails, email')
+        .select('can_send_emails, email, workspace_email, first_name, last_name')
         .eq('id', userId)
         .single()
 
@@ -123,42 +124,64 @@ export async function GET(request: Request) {
         continue
       }
 
-      // Get user's Gmail token
-      const { data: gmailToken } = await admin
-        .from('gmail_tokens')
-        .select('*')
-        .eq('user_id', userId)
-        .single()
+      // Determine sending mechanism:
+      // - Workspace users: service account impersonation (no per-user token needed)
+      // - Grandfathered users: personal Gmail OAuth token (legacy)
+      let accessToken: string
+      let fromEmail: string
 
-      if (!gmailToken) {
-        console.error(`No Gmail token for user ${userId}`)
-        // Mark recipients as error
-        for (const r of recipients) {
-          await admin.from('campaign_recipients').update({ status: 'error' }).eq('id', r.id)
-        }
-        totalErrors += recipients.length
-        continue
-      }
-
-      // Refresh token if expired
-      let accessToken = gmailToken.access_token
-      const tokenExpiry = new Date(gmailToken.token_expiry)
-      if (tokenExpiry <= new Date()) {
+      if (userProfile.workspace_email) {
+        // Workspace user — impersonate their @flightschoolmail.com address
         try {
-          const refreshed = await refreshGmailToken(gmailToken.refresh_token)
-          accessToken = refreshed.access_token
-          const newExpiry = new Date(Date.now() + refreshed.expires_in * 1000)
-          await admin
-            .from('gmail_tokens')
-            .update({
-              access_token: accessToken,
-              token_expiry: newExpiry.toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', gmailToken.id)
+          accessToken = await getWorkspaceGmailAccessToken(userProfile.workspace_email)
+          fromEmail = userProfile.workspace_email
         } catch (error) {
-          console.error(`Failed to refresh token for user ${userId}:`, error)
+          console.error(`Failed to get workspace token for ${userProfile.workspace_email}:`, error)
+          for (const r of recipients) {
+            await admin.from('campaign_recipients').update({ status: 'error' }).eq('id', r.id)
+          }
+          totalErrors += recipients.length
           continue
+        }
+      } else {
+        // Grandfathered user — use their personal Gmail OAuth token
+        const { data: gmailToken } = await admin
+          .from('gmail_tokens')
+          .select('*')
+          .eq('user_id', userId)
+          .single()
+
+        if (!gmailToken) {
+          console.error(`No Gmail token for user ${userId}`)
+          for (const r of recipients) {
+            await admin.from('campaign_recipients').update({ status: 'error' }).eq('id', r.id)
+          }
+          totalErrors += recipients.length
+          continue
+        }
+
+        accessToken = gmailToken.access_token
+        fromEmail = gmailToken.email
+        const tokenExpiry = new Date(gmailToken.token_expiry)
+
+        if (tokenExpiry <= new Date()) {
+          try {
+            const refreshed = await refreshGmailToken(gmailToken.refresh_token)
+            accessToken = refreshed.access_token
+            fromEmail = gmailToken.email
+            const newExpiry = new Date(Date.now() + refreshed.expires_in * 1000)
+            await admin
+              .from('gmail_tokens')
+              .update({
+                access_token: accessToken,
+                token_expiry: newExpiry.toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', gmailToken.id)
+          } catch (error) {
+            console.error(`Failed to refresh token for user ${userId}:`, error)
+            continue
+          }
         }
       }
 
@@ -388,7 +411,7 @@ export async function GET(request: Request) {
             subject,
             htmlBody,
             senderDisplayName,
-            gmailToken.email
+            fromEmail
           )
 
           // Log the send
