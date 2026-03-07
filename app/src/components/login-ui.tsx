@@ -49,7 +49,7 @@ export function LoginUI({
       options: {
         redirectTo: `${getAppUrl()}/auth/callback`,
         queryParams: {
-          prompt: 'consent',
+          prompt: 'select_account',
         },
       },
     })
