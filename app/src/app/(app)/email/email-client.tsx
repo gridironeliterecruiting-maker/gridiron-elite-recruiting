@@ -25,34 +25,27 @@ import { cn } from "@/lib/utils"
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface InboxItem {
-  id: string
-  campaign_id: string
-  coach_id: string | null
-  coach_name: string
-  coach_email: string | null
-  program_name: string
-  replied_at: string | null
-  is_read: boolean
+  id: string          // gmail_message_id
+  thread_id: string
+  from_name: string
+  from_email: string
   subject: string
   snippet: string
-  program: {
-    id: string
-    school_name: string
-    division: string
-    conference: string
-  } | null
+  received_at: string
+  is_read: boolean
 }
 
 interface FolderEmail {
-  id: string
-  campaign_id: string
-  coach_name: string
-  coach_email: string | null
-  program_name: string
-  replied_at: string | null
-  filed_at: string
+  id: string          // gmail_message_id
+  thread_id: string | null
+  from_name: string | null
+  from_email: string | null
+  coach_name: string | null
+  program_name: string | null
   subject: string
   snippet: string
+  received_at: string | null
+  filed_at: string
 }
 
 interface CoachFolder {
@@ -62,10 +55,8 @@ interface CoachFolder {
 }
 
 interface SchoolFolder {
-  program_id: string
+  program_id: string | null
   school_name: string
-  division: string
-  conference: string
   coaches: CoachFolder[]
 }
 
@@ -88,12 +79,8 @@ function formatDate(ts: string | null): string {
   const d = new Date(ts)
   const now = new Date()
   const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000)
-  if (diffDays === 0) {
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-  }
-  if (diffDays < 7) {
-    return d.toLocaleDateString([], { weekday: "short" })
-  }
+  if (diffDays === 0) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  if (diffDays < 7) return d.toLocaleDateString([], { weekday: "short" })
   return d.toLocaleDateString([], { month: "short", day: "numeric" })
 }
 
@@ -126,14 +113,25 @@ function ReadingPane({ item, onClose, onFiled, showFileButton = true }: ReadingP
   const [filing, setFiling] = useState(false)
   const [sent, setSent] = useState(false)
 
+  const fromName = "from_name" in item ? item.from_name : (item as FolderEmail).coach_name
+  const fromEmail = "from_email" in item ? item.from_email : null
+  const receivedAt = "received_at" in item ? item.received_at : (item as FolderEmail).received_at
+  const threadId = "thread_id" in item ? item.thread_id : null
+
   const handleReply = async () => {
-    if (!replyBody.trim()) return
+    if (!replyBody.trim() || !fromEmail) return
     setSending(true)
     try {
       const res = await fetch("/api/email/reply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recipientId: item.id, replyBody }),
+        body: JSON.stringify({
+          gmailMessageId: item.id,
+          threadId,
+          toEmail: fromEmail,
+          toName: fromName || undefined,
+          replyBody,
+        }),
       })
       if (res.ok) {
         setSent(true)
@@ -153,10 +151,20 @@ function ReadingPane({ item, onClose, onFiled, showFileButton = true }: ReadingP
   const handleFile = async () => {
     setFiling(true)
     try {
+      const folderItem = item as FolderEmail
       const res = await fetch("/api/email/file", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recipientId: item.id }),
+        body: JSON.stringify({
+          gmailMessageId: item.id,
+          threadId,
+          fromEmail,
+          fromName: fromName || undefined,
+          subject: item.subject,
+          snippet: item.snippet,
+          receivedAt: receivedAt || undefined,
+          programName: folderItem.program_name || undefined,
+        }),
       })
       if (res.ok) {
         onFiled?.(item.id)
@@ -186,12 +194,12 @@ function ReadingPane({ item, onClose, onFiled, showFileButton = true }: ReadingP
           )}
           <h2 className="text-base font-semibold text-foreground truncate">{item.subject}</h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            From <span className="font-medium text-foreground">{item.coach_name}</span>
-            {item.program_name && <> · {item.program_name}</>}
+            From <span className="font-medium text-foreground">{fromName || fromEmail}</span>
+            {fromEmail && fromName && <> · <span className="text-xs">{fromEmail}</span></>}
           </p>
-          {item.replied_at && (
+          {receivedAt && (
             <p className="text-xs text-muted-foreground mt-0.5">
-              {new Date(item.replied_at).toLocaleString()}
+              {new Date(receivedAt).toLocaleString()}
             </p>
           )}
         </div>
@@ -208,14 +216,16 @@ function ReadingPane({ item, onClose, onFiled, showFileButton = true }: ReadingP
               FILE
             </Button>
           )}
-          <Button
-            size="sm"
-            onClick={() => setShowReply(!showReply)}
-            className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
-          >
-            <Reply className="h-3 w-3" />
-            Reply
-          </Button>
+          {fromEmail && (
+            <Button
+              size="sm"
+              onClick={() => setShowReply(!showReply)}
+              className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
+            >
+              <Reply className="h-3 w-3" />
+              Reply
+            </Button>
+          )}
         </div>
       </div>
 
@@ -226,9 +236,7 @@ function ReadingPane({ item, onClose, onFiled, showFileButton = true }: ReadingP
             <p className="whitespace-pre-wrap text-sm leading-relaxed">{item.snippet}</p>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground italic">
-            No message preview available. Check your Gmail for the full reply.
-          </p>
+          <p className="text-sm text-muted-foreground italic">No preview available.</p>
         )}
 
         {sent && (
@@ -242,7 +250,7 @@ function ReadingPane({ item, onClose, onFiled, showFileButton = true }: ReadingP
       {showReply && (
         <div className="border-t border-border p-4">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Reply to {item.coach_name}
+            Reply to {fromName || fromEmail}
           </p>
           <textarea
             className="w-full rounded-md border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
@@ -295,23 +303,14 @@ function InboxView() {
     }
   }, [])
 
-  useEffect(() => {
-    loadInbox()
-  }, [loadInbox])
+  useEffect(() => { loadInbox() }, [loadInbox])
 
   const handleSelect = async (item: InboxItem) => {
     setSelected(item)
     setMobileViewEmail(true)
     if (!item.is_read) {
-      // Mark as read optimistically
-      setItems((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, is_read: true } : i))
-      )
-      await fetch(`/api/email/inbox/${item.id}/read`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_read: true }),
-      })
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, is_read: true } : i)))
+      await fetch(`/api/email/inbox/${item.id}/read`, { method: "PATCH" })
     }
   }
 
@@ -338,21 +337,17 @@ function InboxView() {
   }
 
   if (items.length === 0) {
-    return (
-      <EmptyState message="Your inbox is empty — coaches will reply here when they respond to your campaigns." />
-    )
+    return <EmptyState message="Your inbox is empty. Send your email address to a coach and their reply will appear here." />
   }
 
   return (
     <div className="flex h-full min-h-0">
       {/* Email list */}
-      <div
-        className={cn(
-          "flex-col border-r border-border overflow-y-auto",
-          "w-full md:flex md:w-80 lg:w-96 shrink-0",
-          mobileViewEmail ? "hidden md:flex" : "flex"
-        )}
-      >
+      <div className={cn(
+        "flex-col border-r border-border overflow-y-auto",
+        "w-full md:flex md:w-80 lg:w-96 shrink-0",
+        mobileViewEmail ? "hidden md:flex" : "flex"
+      )}>
         {items.map((item) => (
           <button
             key={item.id}
@@ -368,29 +363,22 @@ function InboxView() {
                 {!item.is_read && (
                   <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-blue-500" aria-label="Unread" />
                 )}
-                <span
-                  className={cn(
-                    "truncate text-sm",
-                    !item.is_read ? "font-bold text-foreground" : "font-medium text-foreground"
-                  )}
-                >
-                  {item.coach_name}
+                <span className={cn(
+                  "truncate text-sm",
+                  !item.is_read ? "font-bold text-foreground" : "font-medium text-foreground"
+                )}>
+                  {item.from_name || item.from_email}
                 </span>
               </div>
               <span className="shrink-0 text-xs text-muted-foreground">
-                {formatDate(item.replied_at)}
+                {formatDate(item.received_at)}
               </span>
             </div>
-            <p
-              className={cn(
-                "mt-0.5 truncate text-xs",
-                !item.is_read ? "font-semibold text-foreground" : "text-muted-foreground"
-              )}
-            >
+            <p className={cn(
+              "mt-0.5 truncate text-xs",
+              !item.is_read ? "font-semibold text-foreground" : "text-muted-foreground"
+            )}>
               {item.subject}
-            </p>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {item.program_name} {item.program?.division ? `· ${item.program.division}` : ""}
             </p>
             {item.snippet && (
               <p className="mt-1 line-clamp-1 text-xs text-muted-foreground/80">{item.snippet}</p>
@@ -400,12 +388,10 @@ function InboxView() {
       </div>
 
       {/* Reading pane */}
-      <div
-        className={cn(
-          "flex-1 overflow-hidden",
-          mobileViewEmail ? "flex flex-col" : "hidden md:flex md:flex-col"
-        )}
-      >
+      <div className={cn(
+        "flex-1 overflow-hidden",
+        mobileViewEmail ? "flex flex-col" : "hidden md:flex md:flex-col"
+      )}>
         {selected ? (
           <ReadingPane
             item={selected}
@@ -454,10 +440,7 @@ function FoldersView() {
     load()
   }, [])
 
-  const toggle = (
-    setter: React.Dispatch<React.SetStateAction<Record<string, boolean>>>,
-    key: string
-  ) => {
+  const toggle = (setter: React.Dispatch<React.SetStateAction<Record<string, boolean>>>, key: string) => {
     setter((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
@@ -474,25 +457,21 @@ function FoldersView() {
   }
 
   if (divisions.length === 0) {
-    return (
-      <EmptyState message="No filed emails yet. Use the FILE button in your inbox to organize coach replies." />
-    )
+    return <EmptyState message="No filed emails yet. Use the FILE button in your inbox to organize emails." />
   }
 
   return (
     <div className="flex h-full min-h-0">
       {/* Folder tree */}
-      <div
-        className={cn(
-          "flex-col border-r border-border overflow-y-auto",
-          "w-full md:flex md:w-64 lg:w-72 shrink-0",
-          mobileViewEmail ? "hidden md:flex" : "flex"
-        )}
-      >
+      <div className={cn(
+        "flex-col border-r border-border overflow-y-auto",
+        "w-full md:flex md:w-64 lg:w-72 shrink-0",
+        mobileViewEmail ? "hidden md:flex" : "flex"
+      )}>
         <div className="p-3">
           {divisions.map((div) => {
             const divKey = div.division
-            const divOpen = expandedDivisions[divKey] !== false // default open
+            const divOpen = expandedDivisions[divKey] !== false
 
             return (
               <div key={divKey} className="mb-1">
@@ -500,11 +479,7 @@ function FoldersView() {
                   onClick={() => toggle(setExpandedDivisions, divKey)}
                   className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs font-bold uppercase tracking-wider text-primary hover:bg-primary/5"
                 >
-                  {divOpen ? (
-                    <ChevronDown className="h-3.5 w-3.5 shrink-0" />
-                  ) : (
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-                  )}
+                  {divOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
                   <Folder className="h-3.5 w-3.5 shrink-0" />
                   {div.division}
                 </button>
@@ -519,17 +494,13 @@ function FoldersView() {
                         onClick={() => toggle(setExpandedConferences, confKey)}
                         className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs font-semibold text-foreground hover:bg-muted/50"
                       >
-                        {confOpen ? (
-                          <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
-                        ) : (
-                          <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
-                        )}
+                        {confOpen ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
                         <FolderOpen className="h-3 w-3 shrink-0 text-muted-foreground" />
                         <span className="truncate">{conf.conference}</span>
                       </button>
 
                       {confOpen && conf.schools.map((school) => {
-                        const schoolKey = `${confKey}-${school.program_id}`
+                        const schoolKey = `${confKey}-${school.program_id || school.school_name}`
                         const schoolOpen = expandedSchools[schoolKey]
 
                         return (
@@ -538,11 +509,7 @@ function FoldersView() {
                               onClick={() => toggle(setExpandedSchools, schoolKey)}
                               className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs text-foreground hover:bg-muted/50"
                             >
-                              {schoolOpen ? (
-                                <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
-                              ) : (
-                                <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
-                              )}
+                              {schoolOpen ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
                               <Building2 className="h-3 w-3 shrink-0 text-muted-foreground" />
                               <span className="truncate">{school.school_name}</span>
                             </button>
@@ -550,7 +517,6 @@ function FoldersView() {
                             {schoolOpen && school.coaches.map((coach) => {
                               const coachKey = `${schoolKey}-${coach.coach_id || coach.coach_name}`
                               const coachOpen = expandedCoaches[coachKey]
-                              const emailCount = coach.emails.length
 
                               return (
                                 <div key={coachKey} className="ml-4">
@@ -558,25 +524,18 @@ function FoldersView() {
                                     onClick={() => toggle(setExpandedCoaches, coachKey)}
                                     className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-muted/50"
                                   >
-                                    {coachOpen ? (
-                                      <ChevronDown className="h-3 w-3 shrink-0" />
-                                    ) : (
-                                      <ChevronRight className="h-3 w-3 shrink-0" />
-                                    )}
+                                    {coachOpen ? <ChevronDown className="h-3 w-3 shrink-0" /> : <ChevronRight className="h-3 w-3 shrink-0" />}
                                     <User className="h-3 w-3 shrink-0" />
                                     <span className="truncate flex-1">{coach.coach_name}</span>
                                     <span className="ml-auto shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">
-                                      {emailCount}
+                                      {coach.emails.length}
                                     </span>
                                   </button>
 
                                   {coachOpen && coach.emails.map((email) => (
                                     <button
                                       key={email.id}
-                                      onClick={() => {
-                                        setSelected(email)
-                                        setMobileViewEmail(true)
-                                      }}
+                                      onClick={() => { setSelected(email); setMobileViewEmail(true) }}
                                       className={cn(
                                         "ml-4 flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-muted/50",
                                         selected?.id === email.id && "bg-primary/5 text-primary font-medium"
@@ -603,12 +562,10 @@ function FoldersView() {
       </div>
 
       {/* Reading pane */}
-      <div
-        className={cn(
-          "flex-1 overflow-hidden",
-          mobileViewEmail ? "flex flex-col" : "hidden md:flex md:flex-col"
-        )}
-      >
+      <div className={cn(
+        "flex-1 overflow-hidden",
+        mobileViewEmail ? "flex flex-col" : "hidden md:flex md:flex-col"
+      )}>
         {selected ? (
           <ReadingPane
             item={selected}
@@ -634,7 +591,6 @@ export function EmailClient() {
   const [tab, setTab] = useState<Tab>("inbox")
   const [unreadCount, setUnreadCount] = useState(0)
 
-  // Load unread count for badge
   useEffect(() => {
     const load = async () => {
       try {
@@ -643,9 +599,7 @@ export function EmailClient() {
           const data = await res.json()
           setUnreadCount(data.unreadCount || 0)
         }
-      } catch {
-        // Ignore
-      }
+      } catch { /* non-critical */ }
     }
     load()
   }, [])
@@ -659,29 +613,27 @@ export function EmailClient() {
     <div className="flex flex-col gap-0 -mx-4 -my-6 lg:-mx-8 lg:-my-8 h-[calc(100vh-5rem)]">
       {/* Page header */}
       <div className="border-b border-border bg-card px-4 py-4 lg:px-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground">
-              Email
-            </h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Coach replies and sent campaigns
-            </p>
-          </div>
+        <div>
+          <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
+            Email
+          </h1>
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Mail className="h-3.5 w-3.5 text-accent" />
+            FOLLOW UP. BUILD RELATIONSHIPS.
+          </p>
         </div>
       </div>
 
       {/* Layout: sidebar tabs + content */}
       <div className="flex flex-1 min-h-0">
-        {/* Left sidebar — vertical tabs */}
+        {/* Left sidebar */}
         <nav className="flex w-[72px] flex-col border-r border-border bg-card py-2 md:w-44 shrink-0">
           {tabs.map(({ id, label, icon: Icon, badge }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
               className={cn(
-                "relative flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors",
-                "md:px-4",
+                "relative flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors md:px-4",
                 tab === id
                   ? "bg-primary/10 text-primary font-semibold border-l-2 border-primary"
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -690,13 +642,10 @@ export function EmailClient() {
               <Icon className="h-4 w-4 shrink-0" />
               <span className="hidden md:inline">{label}</span>
               {badge !== undefined && badge > 0 && (
-                <Badge
-                  className="ml-auto hidden h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-accent p-0 text-[10px] font-bold text-white md:flex"
-                >
+                <Badge className="ml-auto hidden h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-accent p-0 text-[10px] font-bold text-white md:flex">
                   {badge > 99 ? "99+" : badge}
                 </Badge>
               )}
-              {/* Mobile badge dot */}
               {badge !== undefined && badge > 0 && (
                 <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-accent md:hidden" />
               )}

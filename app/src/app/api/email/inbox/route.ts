@@ -1,8 +1,19 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getWorkspaceGmailModifyToken } from '@/lib/workspace'
 
 export const dynamic = 'force-dynamic'
+
+function parseHeader(headers: { name: string; value: string }[], name: string): string {
+  return headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value || ''
+}
+
+function parseFromHeader(from: string): { name: string; email: string } {
+  const match = from.match(/^(.*?)\s*<(.+?)>$/)
+  if (match) return { name: match[1].trim().replace(/^"|"$/g, ''), email: match[2] }
+  return { name: from, email: from }
+}
 
 export async function GET() {
   const supabase = await createClient()
@@ -10,108 +21,81 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const admin = createAdminClient()
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('workspace_email')
+    .eq('id', user.id)
+    .single()
 
-  // Get all campaigns belonging to this user
-  const { data: campaigns } = await admin
-    .from('campaigns')
-    .select('id')
-    .eq('user_id', user.id)
+  const workspaceEmail = (profile as any)?.workspace_email as string | null
 
-  if (!campaigns || campaigns.length === 0) {
+  if (!workspaceEmail) {
     return NextResponse.json({ items: [], unreadCount: 0 })
   }
 
-  const campaignIds = campaigns.map((c: { id: string }) => c.id)
+  try {
+    const token = await getWorkspaceGmailModifyToken(workspaceEmail)
 
-  // Fetch replied recipients that haven't been filed
-  const { data: recipients, error } = await admin
-    .from('campaign_recipients')
-    .select(`
-      id,
-      campaign_id,
-      coach_id,
-      coach_name,
-      coach_email,
-      program_name,
-      status,
-      replied_at,
-      is_read,
-      filed_at
-    `)
-    .in('campaign_id', campaignIds)
-    .eq('status', 'replied')
-    .is('filed_at', null)
-    .order('replied_at', { ascending: false })
+    // List messages in INBOX
+    const listRes = await fetch(
+      'https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=INBOX&maxResults=25',
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
 
-  if (error) {
-    console.error('[email/inbox] DB error:', error)
-    return NextResponse.json({ error: 'Database error' }, { status: 500 })
-  }
-
-  // Fetch email_events for snippets and subjects
-  const recipientIds = (recipients || []).map((r: { id: string }) => r.id)
-
-  let eventsByRecipient: Record<string, { subject?: string; snippet?: string }> = {}
-  if (recipientIds.length > 0) {
-    const { data: events } = await admin
-      .from('email_events')
-      .select('recipient_id, event_type, metadata, created_at')
-      .in('recipient_id', recipientIds)
-      .eq('event_type', 'replied')
-      .order('created_at', { ascending: false })
-
-    if (events) {
-      for (const ev of events) {
-        if (!eventsByRecipient[ev.recipient_id]) {
-          eventsByRecipient[ev.recipient_id] = {
-            subject: ev.metadata?.subject,
-            snippet: ev.metadata?.snippet,
-          }
-        }
-      }
+    if (!listRes.ok) {
+      const err = await listRes.text()
+      console.error('[email/inbox] Gmail list error:', err)
+      return NextResponse.json({ items: [], unreadCount: 0 })
     }
-  }
 
-  // Fetch program data for division/conference
-  const coachIds = [...new Set((recipients || []).map((r: { coach_id: string }) => r.coach_id).filter(Boolean))]
-  let programByCoach: Record<string, { division: string; conference: string; school_name: string; id: string }> = {}
+    const listData = await listRes.json()
+    const messages: { id: string; threadId: string }[] = listData.messages || []
 
-  if (coachIds.length > 0) {
-    const { data: coaches } = await admin
-      .from('coaches')
-      .select('id, program_id, programs(id, school_name, division, conference)')
-      .in('id', coachIds)
-
-    if (coaches) {
-      for (const coach of coaches) {
-        const prog = (coach as any).programs
-        if (prog) {
-          programByCoach[coach.id] = {
-            id: prog.id,
-            school_name: prog.school_name,
-            division: prog.division,
-            conference: prog.conference,
-          }
-        }
-      }
+    if (messages.length === 0) {
+      return NextResponse.json({ items: [], unreadCount: 0 })
     }
+
+    // Fetch metadata for each message in parallel
+    const metaResults = await Promise.all(
+      messages.map(async ({ id, threadId }) => {
+        const res = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=From,Subject,Date`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        if (!res.ok) return null
+        const data = await res.json()
+        return { id, threadId, data }
+      })
+    )
+
+    const items = metaResults
+      .filter(Boolean)
+      .map((m) => {
+        const headers: { name: string; value: string }[] = m!.data.payload?.headers || []
+        const fromRaw = parseHeader(headers, 'From')
+        const { name: fromName, email: fromEmail } = parseFromHeader(fromRaw)
+        const subject = parseHeader(headers, 'Subject') || '(No subject)'
+        const dateStr = parseHeader(headers, 'Date')
+        const receivedAt = dateStr ? new Date(dateStr).toISOString() : new Date().toISOString()
+        const isRead = !(m!.data.labelIds || []).includes('UNREAD')
+
+        return {
+          id: m!.id,
+          thread_id: m!.threadId,
+          from_name: fromName || fromEmail,
+          from_email: fromEmail,
+          subject,
+          snippet: m!.data.snippet || '',
+          received_at: receivedAt,
+          is_read: isRead,
+        }
+      })
+
+    const unreadCount = items.filter((i) => !i.is_read).length
+
+    return NextResponse.json({ items, unreadCount })
+  } catch (err: any) {
+    console.error('[email/inbox] Error:', err)
+    return NextResponse.json({ items: [], unreadCount: 0 })
   }
-
-  const items = (recipients || []).map((r: any) => ({
-    id: r.id,
-    campaign_id: r.campaign_id,
-    coach_id: r.coach_id,
-    coach_name: r.coach_name,
-    coach_email: r.coach_email,
-    program_name: r.program_name,
-    replied_at: r.replied_at,
-    is_read: r.is_read,
-    subject: eventsByRecipient[r.id]?.subject || '(No subject)',
-    snippet: eventsByRecipient[r.id]?.snippet || '',
-    program: programByCoach[r.coach_id] || null,
-  }))
-
-  const unreadCount = items.filter((i: any) => !i.is_read).length
-
-  return NextResponse.json({ items, unreadCount })
 }

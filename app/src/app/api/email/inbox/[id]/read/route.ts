@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getWorkspaceGmailModifyToken } from '@/lib/workspace'
 
 export async function PATCH(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = await createClient()
@@ -11,30 +12,30 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const body = await req.json()
-  const { is_read } = body as { is_read: boolean }
 
   const admin = createAdminClient()
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('workspace_email')
+    .eq('id', user.id)
+    .single()
 
-  // Verify ownership: the recipient must belong to one of this user's campaigns
-  const { data: recipient } = await admin
-    .from('campaign_recipients')
-    .select('id, campaign_id, campaigns!inner(user_id)')
-    .eq('id', id)
-    .maybeSingle()
+  const workspaceEmail = (profile as any)?.workspace_email as string | null
+  if (!workspaceEmail) return NextResponse.json({ ok: true })
 
-  if (!recipient || (recipient as any).campaigns?.user_id !== user.id) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  try {
+    const token = await getWorkspaceGmailModifyToken(workspaceEmail)
+    await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}/modify`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ removeLabelIds: ['UNREAD'] }),
+      }
+    )
+    return NextResponse.json({ ok: true })
+  } catch (err: any) {
+    console.error('[email/read] Error:', err)
+    return NextResponse.json({ ok: true })
   }
-
-  const { error } = await admin
-    .from('campaign_recipients')
-    .update({ is_read })
-    .eq('id', id)
-
-  if (error) {
-    return NextResponse.json({ error: 'Database error' }, { status: 500 })
-  }
-
-  return NextResponse.json({ ok: true })
 }

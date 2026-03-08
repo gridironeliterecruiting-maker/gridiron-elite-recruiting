@@ -75,6 +75,10 @@ export async function getWorkspaceGmailAccessToken(workspaceEmail: string): Prom
   return getAccessToken(['https://www.googleapis.com/auth/gmail.send'], workspaceEmail)
 }
 
+export async function getWorkspaceGmailModifyToken(workspaceEmail: string): Promise<string> {
+  return getAccessToken(['https://www.googleapis.com/auth/gmail.modify'], workspaceEmail)
+}
+
 /**
  * Check whether a username (without domain) is available in Workspace.
  */

@@ -4,43 +4,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
 
-export interface FolderEmail {
-  id: string
-  campaign_id: string
-  coach_id: string | null
-  coach_name: string
-  coach_email: string | null
-  program_name: string
-  replied_at: string | null
-  filed_at: string
-  subject: string
-  snippet: string
-}
-
-export interface CoachFolder {
-  coach_id: string | null
-  coach_name: string
-  emails: FolderEmail[]
-}
-
-export interface SchoolFolder {
-  program_id: string
-  school_name: string
-  division: string
-  conference: string
-  coaches: CoachFolder[]
-}
-
-export interface ConferenceFolder {
-  conference: string
-  schools: SchoolFolder[]
-}
-
-export interface DivisionFolder {
-  division: string
-  conferences: ConferenceFolder[]
-}
-
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -48,169 +11,84 @@ export async function GET() {
 
   const admin = createAdminClient()
 
-  // Get user's campaigns
-  const { data: campaigns } = await admin
-    .from('campaigns')
-    .select('id')
+  const { data: filed } = await admin
+    .from('filed_emails')
+    .select('*')
     .eq('user_id', user.id)
-
-  if (!campaigns || campaigns.length === 0) {
-    return NextResponse.json({ divisions: [] })
-  }
-
-  const campaignIds = campaigns.map((c: { id: string }) => c.id)
-
-  // Get all filed emails
-  const { data: filed, error } = await admin
-    .from('campaign_recipients')
-    .select(`
-      id,
-      campaign_id,
-      coach_id,
-      coach_name,
-      coach_email,
-      program_name,
-      replied_at,
-      filed_at,
-      filed_program_id,
-      filed_coach_id
-    `)
-    .in('campaign_id', campaignIds)
-    .not('filed_at', 'is', null)
     .order('filed_at', { ascending: false })
-
-  if (error) {
-    return NextResponse.json({ error: 'Database error' }, { status: 500 })
-  }
 
   if (!filed || filed.length === 0) {
     return NextResponse.json({ divisions: [] })
   }
 
-  // Collect program IDs
-  const programIds = [...new Set(filed.map((f: any) => f.filed_program_id).filter(Boolean))]
+  const divisionOrder = ['FBS', 'FCS', 'DII', 'DIII', 'NAIA', 'JUCO', 'Other']
 
-  // Fetch program details
-  let programMap: Record<string, { id: string; school_name: string; division: string; conference: string }> = {}
-  if (programIds.length > 0) {
-    const { data: programs } = await admin
-      .from('programs')
-      .select('id, school_name, division, conference')
-      .in('id', programIds)
+  type EmailEntry = {
+    id: string; thread_id: string | null; from_name: string | null
+    from_email: string | null; coach_name: string | null; program_name: string | null
+    subject: string; snippet: string; received_at: string | null; filed_at: string
+  }
+  type CoachBucket = { coach_id: string | null; coach_name: string; emails: EmailEntry[] }
+  type SchoolBucket = { program_id: string | null; school_name: string; coaches: Record<string, CoachBucket> }
+  type ConfBucket = Record<string, SchoolBucket>
+  type DivBucket = Record<string, ConfBucket>
 
-    if (programs) {
-      for (const p of programs) {
-        programMap[p.id] = p
-      }
+  const divMap: Record<string, DivBucket> = {}
+
+  for (const e of filed) {
+    const div = e.division || 'Other'
+    const conf = e.conference || 'Other'
+    const school = e.program_name || e.from_email || 'Unknown'
+    const schoolKey = e.program_id || school
+    const coachKey = e.coach_id || e.coach_name || e.from_email || 'unknown'
+    const coachName = e.coach_name || e.from_name || e.from_email || 'Unknown'
+
+    if (!divMap[div]) divMap[div] = {}
+    if (!divMap[div][conf]) divMap[div][conf] = {}
+    if (!divMap[div][conf][schoolKey]) {
+      divMap[div][conf][schoolKey] = { program_id: e.program_id || null, school_name: school, coaches: {} }
     }
+    if (!divMap[div][conf][schoolKey].coaches[coachKey]) {
+      divMap[div][conf][schoolKey].coaches[coachKey] = { coach_id: e.coach_id || null, coach_name: coachName, emails: [] }
+    }
+
+    divMap[div][conf][schoolKey].coaches[coachKey].emails.push({
+      id: e.gmail_message_id,
+      thread_id: e.thread_id,
+      from_name: e.from_name,
+      from_email: e.from_email,
+      coach_name: e.coach_name || e.from_name,
+      program_name: e.program_name,
+      subject: e.subject || '(No subject)',
+      snippet: e.snippet || '',
+      received_at: e.received_at,
+      filed_at: e.filed_at,
+    })
   }
 
-  // Fetch email events for subjects/snippets
-  const recipientIds = filed.map((f: any) => f.id)
-  let eventsByRecipient: Record<string, { subject?: string; snippet?: string }> = {}
-
-  if (recipientIds.length > 0) {
-    const { data: events } = await admin
-      .from('email_events')
-      .select('recipient_id, event_type, metadata, created_at')
-      .in('recipient_id', recipientIds)
-      .eq('event_type', 'replied')
-      .order('created_at', { ascending: false })
-
-    if (events) {
-      for (const ev of events) {
-        if (!eventsByRecipient[ev.recipient_id]) {
-          eventsByRecipient[ev.recipient_id] = {
-            subject: ev.metadata?.subject,
-            snippet: ev.metadata?.snippet,
-          }
-        }
-      }
-    }
-  }
-
-  // Build folder tree: Division > Conference > School > Coach
-  // Group by division → conference → program → coach
-  const divisionMap: Record<string, Record<string, Record<string, {
-    programInfo: typeof programMap[string];
-    coaches: Record<string, FolderEmail[]>
-  }>>> = {}
-
-  for (const f of filed) {
-    const prog = f.filed_program_id ? programMap[f.filed_program_id] : null
-    const division = prog?.division || 'Unknown'
-    const conference = prog?.conference || 'Unknown'
-    const programId = f.filed_program_id || 'unknown'
-    const coachKey = f.filed_coach_id || f.coach_id || 'unknown'
-
-    if (!divisionMap[division]) divisionMap[division] = {}
-    if (!divisionMap[division][conference]) divisionMap[division][conference] = {}
-    if (!divisionMap[division][conference][programId]) {
-      divisionMap[division][conference][programId] = {
-        programInfo: prog || { id: programId, school_name: f.program_name || 'Unknown', division, conference },
-        coaches: {},
-      }
-    }
-    if (!divisionMap[division][conference][programId].coaches[coachKey]) {
-      divisionMap[division][conference][programId].coaches[coachKey] = []
-    }
-
-    const emailItem: FolderEmail = {
-      id: f.id,
-      campaign_id: f.campaign_id,
-      coach_id: f.coach_id,
-      coach_name: f.coach_name,
-      coach_email: f.coach_email,
-      program_name: f.program_name || prog?.school_name || 'Unknown',
-      replied_at: f.replied_at,
-      filed_at: f.filed_at,
-      subject: eventsByRecipient[f.id]?.subject || '(No subject)',
-      snippet: eventsByRecipient[f.id]?.snippet || '',
-    }
-
-    divisionMap[division][conference][programId].coaches[coachKey].push(emailItem)
-  }
-
-  // Serialize to array structure
-  const divisionOrder = ['FBS', 'FCS', 'DII', 'DIII', 'NAIA', 'JUCO', 'Unknown']
-  const divisions: DivisionFolder[] = Object.keys(divisionMap)
+  const divisions = Object.keys(divMap)
     .sort((a, b) => {
       const ai = divisionOrder.indexOf(a)
       const bi = divisionOrder.indexOf(b)
       return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
     })
-    .map((division) => {
-      const conferences: ConferenceFolder[] = Object.keys(divisionMap[division])
-        .sort()
-        .map((conference) => {
-          const schools: SchoolFolder[] = Object.values(divisionMap[division][conference])
-            .sort((a, b) => a.programInfo.school_name.localeCompare(b.programInfo.school_name))
-            .map(({ programInfo, coaches }) => {
-              const coachFolders: CoachFolder[] = Object.entries(coaches)
-                .map(([coachKey, emails]) => {
-                  const first = emails[0]
-                  return {
-                    coach_id: first.coach_id,
-                    coach_name: first.coach_name,
-                    emails,
-                  }
-                })
+    .map((division) => ({
+      division,
+      conferences: Object.entries(divMap[division])
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([conference, schools]) => ({
+          conference,
+          schools: Object.values(schools)
+            .sort((a, b) => a.school_name.localeCompare(b.school_name))
+            .map((school) => ({
+              program_id: school.program_id,
+              school_name: school.school_name,
+              coaches: Object.values(school.coaches)
                 .sort((a, b) => a.coach_name.localeCompare(b.coach_name))
-
-              return {
-                program_id: programInfo.id,
-                school_name: programInfo.school_name,
-                division: programInfo.division,
-                conference: programInfo.conference,
-                coaches: coachFolders,
-              }
-            })
-
-          return { conference, schools }
-        })
-
-      return { division, conferences }
-    })
+                .map((c) => ({ coach_id: c.coach_id, coach_name: c.coach_name, emails: c.emails })),
+            })),
+        })),
+    }))
 
   return NextResponse.json({ divisions })
 }
