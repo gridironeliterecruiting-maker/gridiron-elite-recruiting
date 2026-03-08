@@ -16,7 +16,7 @@ export default async function HomePage() {
   const siteSession = cookieStore.get('site_session')?.value
 
   if (siteSession === 'main') {
-    redirect('/hub')
+    redirect('/dashboard')
   }
 
   return (
@@ -76,7 +76,7 @@ export default async function HomePage() {
           {/* CTAs */}
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="/checkout?plan=monthly"
+              href="/login?mode=register"
               className="rounded-lg px-10 py-4 font-display text-lg font-bold uppercase tracking-wider text-white transition-all hover:-translate-y-0.5"
               style={{
                 background: 'linear-gradient(135deg, #d93025 0%, #9a1010 100%)',
@@ -141,13 +141,13 @@ export default async function HomePage() {
             <PillarCard
               number="02"
               title="Academic Accomplishments"
-              description="Good grades expand your options and are a core part of what coaches evaluate. The classroom matters as much as the field."
+              description="GPA and eligibility expand your options and are a core part of what coaches evaluate. The classroom matters as much as the field."
               ours={false}
             />
             <PillarCard
               number="03"
               title="Exposure"
-              description="This is where we live. Connect with coaches, manage your outreach, build your recruiting presence - all powered by Runway Recruit."
+              description="This is where we live. Reaching coaches, managing your outreach, and building your recruiting presence — all powered by Runway Recruit."
               ours={true}
             />
           </div>
@@ -175,19 +175,19 @@ export default async function HomePage() {
             Your Complete Recruiting System
           </h2>
           <p className="mx-auto mb-16 max-w-xl text-center text-lg text-white/50">
-            Everything you need to manage all aspects of your recruiting journey from one place.
+            Everything you need to reach coaches, track programs, and manage your recruiting from one place.
           </p>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             <FeatureCard
               icon="🎯"
               title="Coach Database"
-              description="Search 10,000+ coaches across every level — FBS, FCS, D2, D3, NAIA, and JUCO. Filter by division, conference, and school. Reach the right coaches and programs — find your fit."
+              description="Search 11,000+ coaches across every level — FBS, FCS, D2, D3, NAIA, and JUCO. Filter by division, conference, and school. Find the right coaches for your profile."
             />
             <FeatureCard
               icon="✉️"
               title="Email Campaigns"
-              description="Send personalized outreach at scale. Track everything, automate follow-up, say the right thing to the right coach at the right time — and move up their board."
+              description="Send personalized outreach to coaches at scale. Your name, position, GPA, and Hudl link automatically merge into every message. Coaches get emails that feel personal — because they are."
             />
             <FeatureCard
               icon="𝕏"
@@ -276,7 +276,7 @@ export default async function HomePage() {
               </div>
               <PricingFeatures />
               <Link
-                href="/checkout?plan=monthly"
+                href="/login?mode=register"
                 className="mt-8 block rounded-lg border border-white/20 px-6 py-3 text-center font-display font-bold uppercase tracking-wider text-white transition hover:border-white/50 hover:bg-white/5"
               >
                 Get Started Monthly
@@ -302,10 +302,10 @@ export default async function HomePage() {
                 <span className="font-display text-6xl font-black text-white">$450</span>
                 <span className="mb-2 text-white/60">/year</span>
               </div>
-              <div className="mb-6" />
+              <p className="mb-6 text-sm text-white/50">$37.50/month, billed annually</p>
               <PricingFeatures />
               <Link
-                href="/checkout?plan=annual"
+                href="/login?mode=register"
                 className="mt-8 block rounded-lg px-6 py-3 text-center font-display font-bold uppercase tracking-wider text-white transition hover:-translate-y-0.5"
                 style={{
                   background: 'linear-gradient(135deg, #d93025 0%, #9a1010 100%)',
@@ -344,7 +344,7 @@ export default async function HomePage() {
             Join athletes who are getting ahead of the recruiting process — before their competition even starts.
           </p>
           <Link
-            href="/checkout?plan=monthly"
+            href="/login?mode=register"
             className="inline-block rounded-lg px-12 py-5 font-display text-xl font-black uppercase tracking-wider text-white transition-all hover:-translate-y-1"
             style={{
               background: 'linear-gradient(135deg, #d93025 0%, #9a1010 100%)',
@@ -461,7 +461,7 @@ function FeatureCard({
 
 function PricingFeatures() {
   const features = [
-    'Full coach database — 10,000+ coaches',
+    'Full coach database — 11,000+ coaches',
     'Email campaigns with merge tags',
     'X (Twitter) DM campaigns',
     'Recruiting pipeline — 5 stages',

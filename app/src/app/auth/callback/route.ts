@@ -12,12 +12,12 @@ export async function GET(request: Request) {
   // site_session tells us which site the user logged in from
   const siteSession = cookieStore.get('site_session')?.value
 
-  let next = '/hub'
+  let next = '/dashboard'
   if (siteSession && siteSession !== 'main') {
     if (siteSession === 'admin') {
       next = '/admin'
     } else {
-      next = `/${siteSession}/hub`
+      next = `/${siteSession}/dashboard`
     }
   }
 
