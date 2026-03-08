@@ -245,13 +245,6 @@ function NewUserSetup({
             <input type="url" value={form.hudl_url} onChange={e => update('hudl_url', e.target.value)} placeholder="https://www.hudl.com/profile/..." className={inputClass} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">X Handle</label>
-              <input type="text" value={form.twitter_handle} onChange={e => update('twitter_handle', e.target.value)} placeholder="@handle" className={inputClass} />
-            </div>
-          </div>
-
           {/* Workspace Email Preview */}
           <div className="border-t border-gray-200 pt-4 mt-2">
             <div className="bg-blue-50 rounded-xl p-4 mb-3">
