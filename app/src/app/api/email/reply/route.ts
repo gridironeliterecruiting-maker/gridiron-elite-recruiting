@@ -75,11 +75,13 @@ export async function POST(req: NextRequest) {
     </div>
   `
 
+  const senderName = `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim()
+
   // Encode as MIME message (RFC 2822)
   function buildMimeMessage(to: string, from: string, subj: string, plain: string, html: string) {
     const boundary = `boundary_${Date.now()}`
     const lines = [
-      `From: ${profile.first_name} ${profile.last_name} <${from}>`,
+      `From: ${senderName} <${from}>`,
       `To: ${to}`,
       `Subject: ${subj}`,
       `MIME-Version: 1.0`,

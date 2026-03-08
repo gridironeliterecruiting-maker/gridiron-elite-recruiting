@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Inbox,
+  Send,
   FolderOpen,
   ChevronDown,
   ChevronRight,
