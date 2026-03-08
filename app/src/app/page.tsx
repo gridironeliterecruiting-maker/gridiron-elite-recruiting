@@ -302,7 +302,7 @@ export default async function HomePage() {
                 <span className="font-display text-6xl font-black text-white">$450</span>
                 <span className="mb-2 text-white/60">/year</span>
               </div>
-              <p className="mb-6 text-sm text-white/50">$37.50/month, billed annually</p>
+              <div className="mb-6" />
               <PricingFeatures />
               <Link
                 href="/checkout?plan=annual"
