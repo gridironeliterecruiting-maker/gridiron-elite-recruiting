@@ -14,6 +14,7 @@ import { TargetSchoolsX, type PipelineProgram } from "@/components/hub/target-sc
 import { AccessRequestBanner, type PendingRequest } from "@/components/hub/access-request-banner"
 import { TeamTwitterConnect } from "@/components/hub/team-twitter-connect"
 import { XPartnerProfiles } from "@/components/hub/x-partner-profiles"
+import { WelcomeOverlay } from "@/components/welcome-overlay"
 
 interface AthleteProfile {
   first_name: string | null
@@ -147,13 +148,16 @@ export function HubClient({
 
   const handleConnectTwitter = () => {
     const basePath = window.location.pathname.split('/').slice(0, -1).join('/') || ''
-    window.location.href = `/api/twitter/authorize?returnTo=${basePath}/dashboard`
+    window.location.href = `/api/twitter/authorize?returnTo=${basePath}/hub`
   }
 
   const firstName = isCoach && coachFirstName ? coachFirstName : (profile.first_name || "Athlete")
 
   return (
     <div className="flex flex-col gap-6">
+      {/* First-time welcome overlay */}
+      <WelcomeOverlay />
+
       {/* Gmail token capture after OAuth redirect */}
       <Suspense fallback={null}>
         <GmailTokenCaptureWrapper />

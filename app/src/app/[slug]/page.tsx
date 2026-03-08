@@ -129,7 +129,7 @@ export default async function LandingPage({ params }: LandingPageProps) {
         }
       }
 
-      redirect(`/${slug}/dashboard`)
+      redirect(`/${slug}/hub`)
     }
 
     // Also check by user_id (for return visits after initial link)
@@ -141,7 +141,7 @@ export default async function LandingPage({ params }: LandingPageProps) {
       .maybeSingle()
 
     if (memberByUserId) {
-      redirect(`/${slug}/dashboard`)
+      redirect(`/${slug}/hub`)
     }
 
     // Check for existing access request

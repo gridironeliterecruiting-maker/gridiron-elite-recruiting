@@ -1,0 +1,8 @@
+ERROR | Tim Duran @ San Jose City College | duplicate key value violates unique constraint "coaches_program_name_key"
+ERROR | Jerry Dominguez @ Ottawa University-Surprise | duplicate key value violates unique constraint "coaches_program_name_key"
+ERROR | Willie McCloud @ Reinhardt University | duplicate key value violates unique constraint "coaches_program_name_key"
+ERROR | Phil Staback @ Graceland University | duplicate key value violates unique constraint "coaches_program_name_key"
+ERROR | Tyler Martin @ Grand View University | duplicate key value violates unique constraint "coaches_program_name_key"
+ERROR | Dayne Keller @ Georgetown College | duplicate key value violates unique constraint "coaches_program_name_key"
+ERROR | Gray Davis @ University of Pikeville | duplicate key value violates unique constraint "coaches_program_name_key"
+ERROR | Ra-mon Watkins @ Lawrence Technological University | duplicate key value violates unique constraint "coaches_program_name_key"

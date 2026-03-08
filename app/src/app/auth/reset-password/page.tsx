@@ -53,7 +53,7 @@ function ResetPasswordInner() {
 
     // Set session cookie and redirect
     document.cookie = `site_session=main;path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
-    router.push('/dashboard')
+    router.push('/hub')
   }
 
   const inputClass = "w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0047AB] focus:border-transparent outline-none text-sm"

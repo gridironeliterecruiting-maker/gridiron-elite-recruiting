@@ -76,7 +76,7 @@ function MainSiteLogin({
     }
 
     document.cookie = `site_session=main;path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
-    router.push('/dashboard')
+    router.push('/hub')
   }
 
   return (
@@ -104,7 +104,7 @@ function MainSiteLogin({
         <p className="text-gray-500 mb-8">
           {registerMode
             ? 'Create your account to start recruiting.'
-            : 'Sign in to your recruiting dashboard.'}
+            : 'Sign in to your recruiting hub.'}
         </p>
 
         {registerMode ? (
@@ -269,7 +269,7 @@ function SlugSiteLogin({
           {registerMode ? 'Register' : 'Welcome'}
         </h1>
         <p className="text-gray-500 mb-8">
-          {registerMode ? 'Your recruiting takes off today.' : 'Sign in to your recruiting dashboard.'}
+          {registerMode ? 'Your recruiting takes off today.' : 'Sign in to your recruiting hub.'}
         </p>
 
         {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>}

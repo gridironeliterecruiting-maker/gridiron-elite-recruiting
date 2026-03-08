@@ -16,7 +16,7 @@ export default async function PipelinePage() {
   if (user) {
     const { isCoach } = await getCoachContext(user.id)
     if (isCoach) {
-      redirect(`${basePath}/dashboard`)
+      redirect(`${basePath}/hub`)
     }
   }
 

@@ -1,12 +1,12 @@
 /**
  * Get the program base path from the current browser URL.
- * If the URL is /cityhigh-ia/dashboard, returns "/cityhigh-ia".
- * If the URL is /dashboard (no slug), returns "".
+ * If the URL is /cityhigh-ia/hub, returns "/cityhigh-ia".
+ * If the URL is /hub (no slug), returns "".
  */
 export function getBasePath(): string {
   if (typeof window === 'undefined') return ''
   const segments = window.location.pathname.split('/').filter(Boolean)
-  const appRoutes = ['dashboard', 'coaches', 'pipeline', 'outreach', 'profile']
+  const appRoutes = ['hub', 'coaches', 'pipeline', 'outreach', 'profile']
   // If second segment is a known route, first segment is the slug
   if (segments.length >= 2 && appRoutes.includes(segments[1])) {
     return `/${segments[0]}`

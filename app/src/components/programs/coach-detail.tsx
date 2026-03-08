@@ -77,7 +77,7 @@ export function CoachDetail({ coach, program, onClose }: CoachDetailProps) {
       quickEmail: 'true'
     })
     const segs = window.location.pathname.split('/').filter(Boolean)
-    const appRoutes = ['dashboard','coaches','pipeline','outreach','profile']
+    const appRoutes = ['hub','coaches','pipeline','outreach','profile']
     const base = segs.length >= 2 && appRoutes.includes(segs[1]) ? `/${segs[0]}` : ''
     router.push(`${base}/outreach?${params.toString()}`)
   }
@@ -90,7 +90,7 @@ export function CoachDetail({ coach, program, onClose }: CoachDetailProps) {
       quickDm: 'true'
     })
     const segs = window.location.pathname.split('/').filter(Boolean)
-    const appRoutes = ['dashboard','coaches','pipeline','outreach','profile']
+    const appRoutes = ['hub','coaches','pipeline','outreach','profile']
     const base = segs.length >= 2 && appRoutes.includes(segs[1]) ? `/${segs[0]}` : ''
     router.push(`${base}/outreach?${params.toString()}`)
   }

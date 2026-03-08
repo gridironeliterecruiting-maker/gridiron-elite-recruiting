@@ -168,7 +168,8 @@ function NewUserSetup({
     }
 
     document.cookie = `site_session=main;path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
-    router.push('/welcome')
+    localStorage.setItem('runway_welcome', JSON.stringify({ workspaceEmail: data.workspaceEmail }))
+    router.push('/hub')
   }
 
   const inputClass = "w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0047AB] focus:border-transparent outline-none text-sm"
@@ -414,9 +415,9 @@ function ExistingUserSetup() {
 
     const siteSession = getCookie('site_session')
     if (siteSession && siteSession !== 'main') {
-      router.push(`/${siteSession}/dashboard`)
+      router.push(`/${siteSession}/hub`)
     } else {
-      router.push('/dashboard')
+      router.push('/hub')
     }
   }
 

@@ -16,7 +16,7 @@ export default async function HomePage() {
   const siteSession = cookieStore.get('site_session')?.value
 
   if (siteSession === 'main') {
-    redirect('/dashboard')
+    redirect('/hub')
   }
 
   return (

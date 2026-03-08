@@ -97,7 +97,7 @@ export function CampaignLaunchedOverlay({
               <Button 
                 onClick={() => {
                   const segs = window.location.pathname.split('/').filter(Boolean)
-                  const appRoutes = ['dashboard','coaches','pipeline','outreach','profile']
+                  const appRoutes = ['hub','coaches','pipeline','outreach','profile']
                   const base = segs.length >= 2 && appRoutes.includes(segs[1]) ? `/${segs[0]}` : ''
                   window.location.href = `${base}/pipeline`
                 }}

@@ -50,7 +50,7 @@ export function useGmailTokenCapture() {
         }
 
         // Clean up URL params
-        router.replace('/dashboard', { scroll: false })
+        router.replace('/hub', { scroll: false })
       } catch (error) {
         console.error('Gmail token capture error:', error)
       }
