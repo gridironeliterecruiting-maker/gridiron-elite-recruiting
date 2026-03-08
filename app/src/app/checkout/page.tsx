@@ -67,7 +67,7 @@ function CheckoutForm({
           boxShadow: '0 4px 20px rgba(200,32,47,0.4)',
         }}
       >
-        {loading ? 'Processing...' : 'LAUNCH MY RECRUITING'}
+        {loading ? 'Processing...' : 'PLACE ORDER'}
       </button>
       <p className="text-center text-xs text-gray-400">
         Secured by Stripe · Cancel anytime

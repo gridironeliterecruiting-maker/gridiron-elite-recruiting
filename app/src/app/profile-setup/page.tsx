@@ -345,7 +345,7 @@ function NewUserSetup({
             disabled={loading || !username || usernameAvailable === false || form.password !== form.confirm_password || form.password.length < 8}
             className="w-full py-3 bg-[#E31937] text-white font-semibold rounded-lg hover:bg-[#c91530] transition disabled:opacity-50 mt-2"
           >
-            {loading ? 'Creating your account...' : 'Create Account & Start Recruiting'}
+            {loading ? 'Creating your account...' : 'LAUNCH MY RECRUITING'}
           </button>
         </form>
       </div>
@@ -518,7 +518,7 @@ function ExistingUserSetup() {
 
           <button type="submit" disabled={loading}
             className="w-full py-3 bg-[#E31937] text-white font-semibold rounded-lg hover:bg-[#c91530] transition disabled:opacity-50 mt-2">
-            {loading ? 'Saving...' : 'Complete Setup & Start Recruiting'}
+            {loading ? 'Saving...' : 'LAUNCH MY RECRUITING'}
           </button>
         </form>
       </div>
