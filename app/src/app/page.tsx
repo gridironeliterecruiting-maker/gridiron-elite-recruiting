@@ -182,12 +182,12 @@ export default async function HomePage() {
             <FeatureCard
               icon="🎯"
               title="Coach Database"
-              description="Search 11,000+ coaches across every level — FBS, FCS, D2, D3, NAIA, and JUCO. Filter by division, conference, and school. Reach the right coaches and programs - find your fit."
+              description="Search 10,000+ coaches across every level — FBS, FCS, D2, D3, NAIA, and JUCO. Filter by division, conference, and school. Reach the right coaches and programs — find your fit."
             />
             <FeatureCard
               icon="✉️"
               title="Email Campaigns"
-              description="Send personalized outreach to coaches at scale. Track everything so you know where you stand - and how to move up their board."
+              description="Send personalized outreach at scale. Track everything, automate follow-up, say the right thing to the right coach at the right time — and move up their board."
             />
             <FeatureCard
               icon="𝕏"
@@ -461,7 +461,7 @@ function FeatureCard({
 
 function PricingFeatures() {
   const features = [
-    'Full coach database — 11,000+ coaches',
+    'Full coach database — 10,000+ coaches',
     'Email campaigns with merge tags',
     'X (Twitter) DM campaigns',
     'Recruiting pipeline — 5 stages',
