@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import { CheckCircle2 } from 'lucide-react'
 
 export function WelcomeOverlay() {
   const [show, setShow] = useState(false)
@@ -22,20 +23,26 @@ export function WelcomeOverlay() {
   if (!show) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* White overlay — same as locker room pages */}
-      <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.82)' }} />
-      <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 60% 70% at 50% 50%, rgba(255,255,255,0.50) 0%, rgba(255,255,255,0) 100%)' }} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Dark backdrop */}
+      <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.65)' }} />
 
-      <div className="relative z-10 flex flex-col items-center text-center px-8 max-w-md">
-        <div className="relative h-[120px] w-[120px] mb-6 drop-shadow-2xl">
+      {/* White card */}
+      <div className="relative z-10 w-full max-w-md rounded-2xl bg-white shadow-2xl p-8 flex flex-col items-center text-center">
+        {/* Green checkmark */}
+        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+          <CheckCircle2 className="h-9 w-9 text-green-600" strokeWidth={2} />
+        </div>
+
+        {/* Logo */}
+        <div className="relative h-[90px] w-[90px] mb-5 drop-shadow-xl">
           <Image src="/logo.png" alt="Runway Recruit" fill className="object-contain" priority />
         </div>
 
-        <h1 className="font-display text-4xl font-black uppercase tracking-tight text-[#0047AB] mb-3">
+        <h1 className="font-display text-4xl font-black uppercase tracking-tight text-[#0047AB] mb-2">
           You&apos;re In.
         </h1>
-        <p className="text-xl font-semibold text-gray-700 mb-6">
+        <p className="text-lg font-semibold text-gray-700 mb-6">
           Welcome to Runway Recruit.
         </p>
 
