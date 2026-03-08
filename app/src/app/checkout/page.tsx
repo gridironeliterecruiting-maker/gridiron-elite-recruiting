@@ -152,7 +152,7 @@ function CheckoutInner() {
             Start Recruiting
           </h1>
           <p className="text-center text-gray-500 text-sm mb-6">
-            Full access — 10,000+ coaches, email campaigns, pipeline.
+            Full access to the complete Runway Recruit system.<br />Prepare for take off.
           </p>
 
           {/* Plan toggle */}
