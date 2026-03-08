@@ -172,15 +172,20 @@ function NewUserSetup({
   const inputClass = "w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0047AB] focus:border-transparent outline-none text-sm"
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-8 px-4">
-      <div className="w-full max-w-lg">
+    <div
+      className="relative min-h-screen flex items-center justify-center px-4 py-8"
+      style={{ backgroundImage: 'url(/locker-room-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}
+    >
+      <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.60)' }} aria-hidden />
+      <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 60% 70% at 50% 50%, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 100%)' }} aria-hidden />
+      <div className="relative z-10 w-full max-w-lg">
         <div className="flex justify-center mb-6">
           <Image src="/logo.png" alt="Runway Recruit" width={180} height={180} className="object-contain" />
         </div>
         <h1 className="text-2xl font-bold text-center text-[#0047AB] mb-1">Complete Your Profile</h1>
         <p className="text-center text-gray-500 mb-6 text-sm">Tell us about yourself so coaches know who you are</p>
 
-        <form onSubmit={handleSubmit} className="space-y-3 bg-white rounded-2xl shadow p-6">
+        <form onSubmit={handleSubmit} className="space-y-3 bg-white rounded-2xl shadow-xl p-6">
           {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
 
           <div className="grid grid-cols-2 gap-3">
@@ -347,6 +352,7 @@ function NewUserSetup({
 
 // ─── Existing User Profile Update (already logged in) ─────────────────────────
 
+
 function ExistingUserSetup() {
   const [form, setForm] = useState({
     first_name: '', last_name: '', position: '', grad_year: '',
@@ -415,15 +421,20 @@ function ExistingUserSetup() {
   const inputClass = "w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0047AB] focus:border-transparent outline-none text-sm"
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-8 px-4">
-      <div className="w-full max-w-lg p-8">
+    <div
+      className="relative min-h-screen flex items-center justify-center px-4 py-8"
+      style={{ backgroundImage: 'url(/locker-room-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}
+    >
+      <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.60)' }} aria-hidden />
+      <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 60% 70% at 50% 50%, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 100%)' }} aria-hidden />
+      <div className="relative z-10 w-full max-w-lg">
         <div className="flex justify-center mb-6">
-          <Image src="/logo.png" alt="Runway Recruit" width={220} height={220} className="object-contain" />
+          <Image src="/logo.png" alt="Runway Recruit" width={180} height={180} className="object-contain" />
         </div>
         <h1 className="text-2xl font-bold text-center text-[#0047AB] mb-1">Complete Your Profile</h1>
         <p className="text-center text-gray-500 mb-6 text-sm">Tell us about yourself so coaches know who you are</p>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-3 bg-white rounded-2xl shadow-xl p-6">
           {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
 
           <div className="grid grid-cols-2 gap-3">
