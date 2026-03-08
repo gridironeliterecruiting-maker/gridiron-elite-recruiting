@@ -67,24 +67,26 @@ function NewUserSetup({
       return
     }
 
-    const candidate = jersey ? `${base}${jersey}` : base
+    // Full collision chain matching server-side logic:
+    // base → base+jersey → base-jersey → base.jersey → base (no jersey)
+    const candidates = jersey
+      ? [base, `${base}${jersey}`, `${base}-${jersey}`, `${base}.${jersey}`]
+      : [base]
+
     setCheckingUsername(true)
-
     try {
-      const res = await fetch(`/api/auth/check-username?name=${encodeURIComponent(candidate)}`)
-      const data = await res.json()
-      setUsername(candidate)
-      setUsernameAvailable(data.available)
-
-      if (!data.available && jersey) {
-        // Try without jersey
-        const res2 = await fetch(`/api/auth/check-username?name=${encodeURIComponent(base)}`)
-        const data2 = await res2.json()
-        if (data2.available) {
-          setUsername(base)
+      for (const candidate of candidates) {
+        const res = await fetch(`/api/auth/check-username?name=${encodeURIComponent(candidate)}`)
+        const data = await res.json()
+        if (data.available) {
+          setUsername(candidate)
           setUsernameAvailable(true)
+          return
         }
       }
+      // All taken — show last candidate as unavailable
+      setUsername(candidates[candidates.length - 1])
+      setUsernameAvailable(false)
     } finally {
       setCheckingUsername(false)
     }
