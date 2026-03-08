@@ -89,33 +89,40 @@ function CheckoutInner() {
 
   const price = plan === 'annual' ? '$450/year' : '$50/month'
 
-  const handleContinue = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!email) return
-
+  const fetchPaymentIntent = async (selectedPlan: Plan) => {
     setLoading(true)
     setError('')
-
     try {
       const res = await fetch('/api/stripe/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, email }),
+        body: JSON.stringify({ plan: selectedPlan, email }),
       })
       const data = await res.json()
-
       if (!res.ok) {
         setError(data.error || 'Failed to initialize payment')
-        setLoading(false)
         return
       }
-
       setClientSecret(data.clientSecret)
       setSubscriptionId(data.subscriptionId)
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleContinue = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email) return
+    await fetchPaymentIntent(plan)
+  }
+
+  const handlePlanChange = async (newPlan: Plan) => {
+    setPlan(newPlan)
+    if (clientSecret) {
+      // Already on payment step — fetch new intent for the new plan, stay on step 2
+      await fetchPaymentIntent(newPlan)
     }
   }
 
@@ -145,21 +152,21 @@ function CheckoutInner() {
             Start Recruiting
           </h1>
           <p className="text-center text-gray-500 text-sm mb-6">
-            Full access — 11,000+ coaches, email campaigns, pipeline.
+            Full access — 10,000+ coaches, email campaigns, pipeline.
           </p>
 
           {/* Plan toggle */}
           <div className="flex rounded-xl border border-gray-200 p-1 mb-6 bg-gray-50">
             <button
               type="button"
-              onClick={() => { setPlan('monthly'); setClientSecret(null) }}
+              onClick={() => handlePlanChange('monthly')}
               className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition ${plan === 'monthly' ? 'bg-white shadow text-[#0047AB]' : 'text-gray-500 hover:text-gray-700'}`}
             >
               Monthly · $50
             </button>
             <button
               type="button"
-              onClick={() => { setPlan('annual'); setClientSecret(null) }}
+              onClick={() => handlePlanChange('annual')}
               className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition ${plan === 'annual' ? 'bg-white shadow text-[#0047AB]' : 'text-gray-500 hover:text-gray-700'}`}
             >
               Annual · $450
@@ -212,6 +219,7 @@ function CheckoutInner() {
           ) : (
             /* Step 2: Stripe payment */
             <Elements
+              key={clientSecret}
               stripe={stripePromise}
               options={{
                 clientSecret,
