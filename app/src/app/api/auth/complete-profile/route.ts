@@ -136,8 +136,8 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json({ success: true, workspaceEmail, username })
-  } catch (error) {
+  } catch (error: any) {
     console.error('[complete-profile] Unexpected error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: error?.message || 'Internal server error' }, { status: 500 })
   }
 }
