@@ -25,6 +25,7 @@ import {
   Loader2,
   MessageCircle,
   Rocket,
+  MousePointerClick,
 } from "lucide-react"
 import { CreateCampaignOverlay } from "@/components/campaigns/create-campaign-overlay"
 import { CampaignLaunchedOverlay } from "@/components/campaigns/campaign-launched-overlay"
@@ -312,6 +313,7 @@ export function OutreachClient({
   const dmCampaigns = campaigns.filter(c => c.type === 'dm')
   const totalSent = emailCampaigns.reduce((sum, c) => sum + c.stats.sent, 0)
   const totalOpened = emailCampaigns.reduce((sum, c) => sum + c.stats.opened, 0)
+  const totalClicked = emailCampaigns.reduce((sum, c) => sum + c.stats.clicked, 0)
   const totalReplied = emailCampaigns.reduce((sum, c) => sum + c.stats.replied, 0)
   const totalDmSent = dmCampaigns.reduce((sum, c) => sum + c.stats.sent, 0)
 
@@ -373,10 +375,10 @@ export function OutreachClient({
       {/* Quick Stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         {[
-          { label: "Templates", value: templates.length, icon: FileText, color: "primary" },
           { label: "Emails Sent", value: totalSent, icon: Send, color: "accent" },
           { label: "DMs Sent", value: totalDmSent, icon: MessageCircle, color: "primary" },
           { label: "Opened", value: totalOpened, icon: MailOpen, color: "primary" },
+          { label: "Clicked", value: totalClicked, icon: MousePointerClick, color: "primary" },
           { label: "Replied", value: totalReplied, icon: Reply, color: "primary" },
         ].map((stat) => (
           <Card key={stat.label} className="relative overflow-hidden">
@@ -446,124 +448,6 @@ export function OutreachClient({
           )}
         </CardContent>
       </Card>
-
-      {/* Email Templates */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-        <div className="lg:col-span-3">
-          <Card>
-            <CardHeader className="flex-row items-center gap-2.5 pb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                <FileText className="h-4 w-4 text-primary" />
-              </div>
-              <CardTitle className="text-base font-bold">Email Templates</CardTitle>
-              <Badge variant="secondary" className="ml-auto text-xs">
-                {templates.length} templates
-              </Badge>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {templates.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary">
-                    <FileText className="h-7 w-7 text-muted-foreground/40" />
-                  </div>
-                  <p className="mt-4 text-sm font-semibold text-foreground">No templates yet</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Create email templates to streamline your outreach.</p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {templates.map((template) => (
-                    <button
-                      key={template.id}
-                      type="button"
-                      onClick={() => setSelectedTemplate(selectedTemplate === template.id ? null : template.id)}
-                      className={`group flex flex-col rounded-lg border p-4 text-left transition-all ${
-                        selectedTemplate === template.id
-                          ? "border-primary/30 bg-primary/[0.03] shadow-sm"
-                          : "border-transparent bg-secondary/40 hover:border-primary/30 hover:shadow-sm hover:ring-1 hover:ring-primary/20"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-foreground">{template.name}</span>
-                            {template.category && (
-                              <Badge className={`${categoryColors[template.category] || "bg-secondary text-secondary-foreground"} border-0 text-[10px] font-semibold`}>
-                                {categoryLabels[template.category] || template.category}
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="mt-1.5 truncate text-xs text-muted-foreground">{template.subject}</p>
-                        </div>
-                        <ChevronRight className={`mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/30 transition-all ${
-                          selectedTemplate === template.id ? "rotate-90 text-primary" : "group-hover:text-muted-foreground"
-                        }`} />
-                      </div>
-
-                      {selectedTemplate === template.id && (
-                        <div className="mt-3 flex items-center gap-2 border-t border-border/50 pt-3">
-                          <button
-                            type="button"
-                            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Send className="h-3 w-3" />
-                            Use Template
-                          </button>
-                          <button
-                            type="button"
-                            className="flex items-center gap-1.5 rounded-md bg-secondary px-3 py-1.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-secondary/80 hover:text-foreground"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Eye className="h-3 w-3" />
-                            Preview
-                          </button>
-                          <button
-                            type="button"
-                            className="flex items-center gap-1.5 rounded-md bg-secondary px-3 py-1.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-secondary/80 hover:text-foreground"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Copy className="h-3 w-3" />
-                            Duplicate
-                          </button>
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="lg:col-span-2">
-          <Card className="flex flex-col">
-            <CardHeader className="flex-row items-center gap-2.5 pb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10">
-                <Send className="h-4 w-4 text-accent" />
-              </div>
-              <CardTitle className="text-base font-bold">Recent Sends</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 pt-0">
-              {totalSent > 0 ? (
-                <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-                  <p>{totalSent} emails sent across {campaigns.filter(c => c.stats.sent > 0).length} campaigns</p>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary">
-                    <Inbox className="h-7 w-7 text-muted-foreground/40" />
-                  </div>
-                  <p className="mt-4 text-sm font-semibold text-foreground">No outreach sent yet</p>
-                  <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">
-                    Create a campaign to start sending outreach.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
 
       {launchedCampaign && (
         <CampaignLaunchedOverlay

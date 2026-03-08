@@ -141,13 +141,13 @@ export default async function HomePage() {
             <PillarCard
               number="02"
               title="Academic Accomplishments"
-              description="GPA and eligibility expand your options and are a core part of what coaches evaluate. The classroom matters as much as the field."
+              description="Good grades expand your options and are a core part of what coaches evaluate. The classroom matters as much as the field."
               ours={false}
             />
             <PillarCard
               number="03"
               title="Exposure"
-              description="This is where we live. Reaching coaches, managing your outreach, and building your recruiting presence — all powered by Runway Recruit."
+              description="This is where we live. Connect with coaches, manage your outreach, build your recruiting presence - all powered by Runway Recruit."
               ours={true}
             />
           </div>
@@ -175,19 +175,19 @@ export default async function HomePage() {
             Your Complete Recruiting System
           </h2>
           <p className="mx-auto mb-16 max-w-xl text-center text-lg text-white/50">
-            Everything you need to reach coaches, track programs, and manage your recruiting from one place.
+            Everything you need to manage all aspects of your recruiting journey from one place.
           </p>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             <FeatureCard
               icon="🎯"
               title="Coach Database"
-              description="Search 11,000+ coaches across every level — FBS, FCS, D2, D3, NAIA, and JUCO. Filter by division, conference, and school. Find the right coaches for your profile."
+              description="Search 11,000+ coaches across every level — FBS, FCS, D2, D3, NAIA, and JUCO. Filter by division, conference, and school. Reach the right coaches and programs - find your fit."
             />
             <FeatureCard
               icon="✉️"
               title="Email Campaigns"
-              description="Send personalized outreach to coaches at scale. Your name, position, GPA, and Hudl link automatically merge into every message. Coaches get emails that feel personal — because they are."
+              description="Send personalized outreach to coaches at scale. Track everything so you know where you stand - and how to move up their board."
             />
             <FeatureCard
               icon="𝕏"

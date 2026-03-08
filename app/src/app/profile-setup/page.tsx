@@ -186,7 +186,7 @@ function NewUserSetup({
           <Image src="/logo.png" alt="Runway Recruit" width={180} height={180} className="object-contain" />
         </div>
         <h1 className="text-2xl font-bold text-center text-[#0047AB] mb-1">Complete Your Profile</h1>
-        <p className="text-center text-gray-500 mb-6 text-sm">Tell us about yourself so coaches know who you are</p>
+        <p className="text-center text-gray-500 mb-6 text-sm">Tell us about yourself so coaches know who you are.</p>
 
         <form onSubmit={handleSubmit} className="space-y-3 bg-white rounded-2xl shadow-xl p-6">
           {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
@@ -435,7 +435,7 @@ function ExistingUserSetup() {
           <Image src="/logo.png" alt="Runway Recruit" width={180} height={180} className="object-contain" />
         </div>
         <h1 className="text-2xl font-bold text-center text-[#0047AB] mb-1">Complete Your Profile</h1>
-        <p className="text-center text-gray-500 mb-6 text-sm">Tell us about yourself so coaches know who you are</p>
+        <p className="text-center text-gray-500 mb-6 text-sm">Tell us about yourself so coaches know who you are.</p>
 
         <form onSubmit={handleSubmit} className="space-y-3 bg-white rounded-2xl shadow-xl p-6">
           {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
