@@ -88,7 +88,6 @@ function CheckoutInner() {
   const [loading, setLoading] = useState(false)
 
   const price = plan === 'annual' ? '$450/year' : '$50/month'
-  const priceNote = plan === 'annual' ? '$37.50/month · billed annually' : 'billed monthly'
 
   const handleContinue = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -172,7 +171,6 @@ function CheckoutInner() {
 
           <div className="text-center mb-6">
             <span className="text-3xl font-black text-[#0047AB]">{price}</span>
-            <p className="text-xs text-gray-400 mt-1">{priceNote}</p>
           </div>
 
           {error && (
