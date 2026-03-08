@@ -127,6 +127,7 @@ function CheckoutInner() {
         backgroundImage: 'url(/locker-room-bg.png)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
       }}
     >
       <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.60)' }} aria-hidden />
