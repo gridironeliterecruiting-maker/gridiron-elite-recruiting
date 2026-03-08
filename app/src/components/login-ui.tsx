@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getAppUrl } from '@/lib/app-url'
 import Image from 'next/image'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 interface LoginUIProps {
   logoSrc?: string
@@ -22,13 +24,207 @@ export function LoginUI({
   slug,
   registerMode = false,
 }: LoginUIProps) {
+  const color = primaryColor || '#0047AB'
+  const supabase = createClient()
+  const router = useRouter()
+
+  // ─── Main site: username + password ──────────────────────────────────────
+  if (!slug) {
+    return <MainSiteLogin color={color} logoSrc={logoSrc} logoAlt={logoAlt} registerMode={registerMode} />
+  }
+
+  // ─── Program slug sites: Google OAuth (unchanged) ─────────────────────────
+  return <SlugSiteLogin color={color} logoSrc={logoSrc} logoAlt={logoAlt} programName={programName} slug={slug} registerMode={registerMode} />
+}
+
+// ── Main site login: username + password ──────────────────────────────────────
+
+function MainSiteLogin({
+  color,
+  logoSrc,
+  logoAlt,
+  registerMode,
+}: {
+  color: string
+  logoSrc: string
+  logoAlt: string
+  registerMode: boolean
+}) {
+  const supabase = createClient()
+  const router = useRouter()
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    const workspaceEmail = `${username.trim().toLowerCase()}@flightschoolmail.com`
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: workspaceEmail,
+      password,
+    })
+
+    if (signInError) {
+      setError('Incorrect username or password.')
+      setLoading(false)
+      return
+    }
+
+    document.cookie = `site_session=main;path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
+    router.push('/hub')
+  }
+
+  return (
+    <div
+      className="relative min-h-screen flex items-center justify-center"
+      style={{
+        backgroundImage: 'url(/locker-room-bg.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.60)' }} aria-hidden />
+      <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 60% 70% at 50% 50%, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 100%)' }} aria-hidden />
+
+      <div className="relative z-10 w-full max-w-md p-8 text-center">
+        <div className="flex justify-center mb-3">
+          <div className="relative h-[200px] w-[200px]">
+            <Image src={logoSrc} alt={logoAlt} fill className="object-contain" priority />
+          </div>
+        </div>
+
+        <h1 className="text-2xl font-bold mb-1" style={{ color }}>
+          {registerMode ? 'Get Started' : 'Welcome Back'}
+        </h1>
+        <p className="text-gray-500 mb-8">
+          {registerMode
+            ? 'Create your account to start recruiting.'
+            : 'Sign in to your recruiting hub.'}
+        </p>
+
+        {registerMode ? (
+          <div className="space-y-3">
+            <Link
+              href="/checkout?plan=monthly"
+              className="w-full flex items-center justify-center py-4 px-6 rounded-xl text-white font-semibold transition hover:-translate-y-0.5"
+              style={{ background: 'linear-gradient(135deg, #d93025 0%, #9a1010 100%)', boxShadow: '0 4px 20px rgba(200,32,47,0.4)' }}
+            >
+              Get Started — $50/month
+            </Link>
+            <Link
+              href="/checkout?plan=annual"
+              className="w-full flex items-center justify-center py-3 px-6 rounded-xl border-2 font-semibold transition hover:bg-blue-50"
+              style={{ borderColor: color, color }}
+            >
+              Annual Plan — $450/year (Save 25%)
+            </Link>
+            <p className="text-xs text-gray-400">Already have an account?{' '}
+              <Link href="/login" className="hover:underline" style={{ color }}>Sign in</Link>
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSignIn} className="space-y-4">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm text-left">
+                {error}
+              </div>
+            )}
+
+            <div className="text-left">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+              <input
+                type="text"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                placeholder="ryansmith"
+                required
+                autoComplete="username"
+                className="w-full px-4 py-3 border-2 rounded-xl bg-white focus:outline-none text-sm"
+                style={{ borderColor: '#e5e7eb' }}
+                onFocus={e => e.target.style.borderColor = color}
+                onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+              />
+            </div>
+
+            <div className="text-left">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Your password"
+                required
+                autoComplete="current-password"
+                className="w-full px-4 py-3 border-2 rounded-xl bg-white focus:outline-none text-sm"
+                style={{ borderColor: '#e5e7eb' }}
+                onFocus={e => e.target.style.borderColor = color}
+                onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+              />
+            </div>
+
+            <div className="text-right -mt-1">
+              <Link href="/forgot-password" className="text-xs hover:underline" style={{ color }}>
+                Forgot password?
+              </Link>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-4 px-6 rounded-xl text-white font-semibold transition disabled:opacity-50"
+              style={{ background: color }}
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
+
+            <p className="text-xs text-gray-400 mt-4">
+              Don&apos;t have an account?{' '}
+              <Link href="/checkout" className="hover:underline" style={{ color }}>
+                Get started
+              </Link>
+            </p>
+          </form>
+        )}
+
+        <p className="mt-6 text-xs text-gray-400">
+          <a href="https://runwayrecruit.com/privacy" target="_blank" rel="noopener noreferrer" className="hover:underline">
+            Privacy Policy
+          </a>
+          {' · '}
+          <a href="https://runwayrecruit.com/terms" target="_blank" rel="noopener noreferrer" className="hover:underline">
+            Terms of Service
+          </a>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ── Program slug sites: unchanged Google OAuth ────────────────────────────────
+
+function SlugSiteLogin({
+  color,
+  logoSrc,
+  logoAlt,
+  programName,
+  slug,
+  registerMode,
+}: {
+  color: string
+  logoSrc: string
+  logoAlt: string
+  programName?: string
+  slug: string
+  registerMode: boolean
+}) {
+  const supabase = createClient()
   const [error, setError] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
-  const supabase = createClient()
-
-  const color = primaryColor || '#0047AB'
-
-  // No auto-redirect — site_session cookie + middleware handle all routing.
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true)
@@ -39,20 +235,16 @@ export function LoginUI({
     overlay.innerHTML = `<div style="text-align:center"><div style="border:4px solid #f3f3f3;border-top:4px solid ${color};border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto 16px"></div><p style="font-family:system-ui;color:#333">Redirecting to Google...</p></div><style>@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style>`
     document.body.appendChild(overlay)
 
-    // Record which site the user is logging into.
-    // This survives the OAuth redirect chain and tells the auth callback where to send them.
-    const siteValue = slug || 'main'
-    document.cookie = `site_session=${siteValue};path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
+    document.cookie = `site_session=${slug};path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${getAppUrl()}/auth/callback`,
-        queryParams: {
-          prompt: 'select_account',
-        },
+        queryParams: { prompt: 'select_account' },
       },
     })
+
     if (error) {
       document.body.removeChild(overlay)
       setError(error.message)
@@ -60,21 +252,8 @@ export function LoginUI({
     }
   }
 
-  const hasBackground = !slug
-
   return (
-    <div
-      className="relative min-h-screen flex items-center justify-center"
-      style={hasBackground ? {
-        backgroundImage: 'url(/locker-room-bg.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      } : { backgroundColor: '#f9fafb' }}
-    >
-      {hasBackground && <>
-        <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.60)' }} aria-hidden />
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 60% 70% at 50% 50%, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 100%)' }} aria-hidden />
-      </>}
+    <div className="relative min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f9fafb' }}>
       <div className="relative z-10 w-full max-w-md p-8 text-center">
         <div className="flex justify-center mb-3">
           <div className="relative h-[220px] w-[220px]">
@@ -90,9 +269,7 @@ export function LoginUI({
           {registerMode ? 'Register' : 'Welcome'}
         </h1>
         <p className="text-gray-500 mb-8">
-          {registerMode
-            ? 'Your recruiting takes off today.'
-            : 'Sign in to your recruiting dashboard.'}
+          {registerMode ? 'Your recruiting takes off today.' : 'Sign in to your recruiting hub.'}
         </p>
 
         {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>}
@@ -115,25 +292,10 @@ export function LoginUI({
           </span>
         </button>
 
-        <p className="mt-6 text-sm text-gray-500 leading-relaxed">
-          Gmail powers your recruiting outreach. Sign in with your Google account to get started.
-        </p>
-
-        <p className="mt-4 text-xs text-gray-400">
-          Don&apos;t have a Gmail account?{' '}
-          <a href="https://accounts.google.com/signup" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color }}>
-            Create one here
-          </a>
-        </p>
-
         <p className="mt-6 text-xs text-gray-400">
-          <a href="https://runwayrecruit.com/privacy" target="_blank" rel="noopener noreferrer" className="hover:underline">
-            Privacy Policy
-          </a>
+          <a href="https://runwayrecruit.com/privacy" target="_blank" rel="noopener noreferrer" className="hover:underline">Privacy Policy</a>
           {' · '}
-          <a href="https://runwayrecruit.com/terms" target="_blank" rel="noopener noreferrer" className="hover:underline">
-            Terms of Service
-          </a>
+          <a href="https://runwayrecruit.com/terms" target="_blank" rel="noopener noreferrer" className="hover:underline">Terms of Service</a>
         </p>
       </div>
     </div>

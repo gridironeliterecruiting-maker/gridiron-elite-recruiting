@@ -2,13 +2,13 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Routes that exist under (app) — these can be prefixed with a program slug
-const programRoutes = ['dashboard', 'coaches', 'pipeline', 'outreach', 'profile']
+const programRoutes = ['hub', 'coaches', 'pipeline', 'outreach', 'profile']
 
 // All known top-level routes (not program slugs)
-const knownTopLevel = ['dashboard', 'coaches', 'pipeline', 'outreach', 'profile', 'profile-setup', 'login', 'signup', 'auth', 'api', 'recruit', 'admin']
+const knownTopLevel = ['hub', 'coaches', 'pipeline', 'outreach', 'profile', 'profile-setup', 'login', 'signup', 'auth', 'api', 'recruit', 'admin', 'checkout', 'welcome', 'forgot-password']
 
 // Routes the middleware never blocks (no auth or site_session check)
-const alwaysPublic = ['/auth/callback', '/api/track', '/api/unsubscribe', '/api/email/process-queue', '/api/email/check-replies', '/api/gmail/oauth-callback', '/api/gmail/authorize', '/api/twitter/oauth-callback', '/api/access-request', '/recruit']
+const alwaysPublic = ['/auth/callback', '/auth/reset-password', '/api/track', '/api/unsubscribe', '/api/email/process-queue', '/api/email/check-replies', '/api/gmail/oauth-callback', '/api/gmail/authorize', '/api/twitter/oauth-callback', '/api/access-request', '/recruit', '/checkout', '/api/stripe', '/api/auth/check-username', '/api/auth/complete-profile', '/api/auth/forgot-password', '/forgot-password']
 
 export async function updateSession(request: NextRequest) {
   // Serve static public files without auth
@@ -152,7 +152,7 @@ export async function updateSession(request: NextRequest) {
   if (isProgramLogin) {
     // If already logged into THIS site, redirect to dashboard
     if (user && siteSession === firstSegment) {
-      return redirectTo(`/${firstSegment}/dashboard`)
+      return redirectTo(`/${firstSegment}/hub`)
     }
     // Otherwise show the login page (regardless of Supabase session)
     return passThrough()
@@ -178,14 +178,14 @@ export async function updateSession(request: NextRequest) {
 
   // ─── GENERIC LOGIN: /login, /signup ────────────────────────
   if (isGenericLoginRoute) {
-    // Already logged into main site → dashboard
+    // Already logged into main site → hub
     if (user && siteSession === 'main') {
-      return redirectTo('/dashboard')
+      return redirectTo('/hub')
     }
     return passThrough()
   }
 
-  // ─── GENERIC APP ROUTES: /dashboard etc. ───────────────────
+  // ─── GENERIC APP ROUTES: /hub etc. ─────────────────────────
   if (isGenericAppRoute) {
     // Must be logged into main site
     if (!user || siteSession !== 'main') {
@@ -196,13 +196,27 @@ export async function updateSession(request: NextRequest) {
     if (!request.nextUrl.pathname.startsWith('/profile-setup')) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, first_name, position, role')
+        .select('id, first_name, position, role, is_grandfathered')
         .eq('id', user.id)
         .single()
 
       const needsSetup = !profile || !profile.first_name || (profile.role !== 'coach' && profile.role !== 'admin' && !profile.position)
       if (needsSetup) {
         return redirectTo('/profile-setup')
+      }
+
+      // Subscription gate — skip for grandfathered users and admins/coaches
+      if (profile && !profile.is_grandfathered && profile.role !== 'admin' && profile.role !== 'coach') {
+        const { data: sub } = await supabase
+          .from('subscriptions')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .single()
+
+        if (!sub) {
+          return redirectTo('/checkout')
+        }
       }
     }
 
@@ -211,7 +225,14 @@ export async function updateSession(request: NextRequest) {
 
   // ─── PROFILE SETUP ─────────────────────────────────────────
   if (request.nextUrl.pathname.startsWith('/profile-setup')) {
-    if (!user) return redirectTo('/login')
+    // Allow through when coming from checkout (has sub_id param = new user, not yet in auth)
+    const subId = request.nextUrl.searchParams.get('sub_id')
+    if (!user && !subId) return redirectTo('/login')
+    return passThrough()
+  }
+
+  // ─── WELCOME ────────────────────────────────────────────────
+  if (request.nextUrl.pathname.startsWith('/welcome')) {
     return passThrough()
   }
 
