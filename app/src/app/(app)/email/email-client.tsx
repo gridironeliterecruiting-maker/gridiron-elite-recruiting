@@ -19,6 +19,7 @@ import {
   MailOpen,
   ArrowLeft,
   Building2,
+  Trash2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -114,14 +115,16 @@ interface ReadingPaneProps {
   item: InboxItem | FolderEmail
   onClose?: () => void
   onFiled?: (id: string) => void
+  onDeleted?: (id: string) => void
   showFileButton?: boolean
 }
 
-function ReadingPane({ item, onClose, onFiled, showFileButton = true }: ReadingPaneProps) {
+function ReadingPane({ item, onClose, onFiled, onDeleted, showFileButton = true }: ReadingPaneProps) {
   const [showReply, setShowReply] = useState(false)
   const [replyBody, setReplyBody] = useState("")
   const [sending, setSending] = useState(false)
   const [filing, setFiling] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [sent, setSent] = useState(false)
 
   const fromName = "from_name" in item ? item.from_name : (item as FolderEmail).coach_name
@@ -189,6 +192,27 @@ function ReadingPane({ item, onClose, onFiled, showFileButton = true }: ReadingP
     }
   }
 
+  const handleDelete = async () => {
+    if (!confirm("Move this email to trash?")) return
+    setDeleting(true)
+    try {
+      const res = await fetch("/api/email/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gmailMessageId: item.id }),
+      })
+      if (res.ok) {
+        onDeleted?.(item.id)
+      } else {
+        alert("Failed to delete email")
+      }
+    } catch {
+      alert("Network error. Please try again.")
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
@@ -227,6 +251,16 @@ function ReadingPane({ item, onClose, onFiled, showFileButton = true }: ReadingP
               FILE
             </Button>
           )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="gap-1.5 text-xs text-destructive hover:text-destructive"
+          >
+            {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+            DELETE
+          </Button>
           {fromEmail && (
             <Button
               size="sm"
@@ -335,6 +369,12 @@ function InboxView() {
     setMobileViewEmail(false)
   }
 
+  const handleDeleted = (id: string) => {
+    setItems((prev) => prev.filter((i) => i.id !== id))
+    setSelected(null)
+    setMobileViewEmail(false)
+  }
+
   if (loading) {
     return (
       <div className="flex h-full gap-0">
@@ -412,6 +452,7 @@ function InboxView() {
             item={selected}
             onClose={() => setMobileViewEmail(false)}
             onFiled={handleFiled}
+            onDeleted={handleDeleted}
             showFileButton
           />
         ) : (
@@ -585,6 +626,23 @@ function FoldersView() {
           <ReadingPane
             item={selected}
             onClose={() => setMobileViewEmail(false)}
+            onDeleted={(id) => {
+              setDivisions((prev) => prev.map((div) => ({
+                ...div,
+                conferences: div.conferences.map((conf) => ({
+                  ...conf,
+                  schools: conf.schools.map((school) => ({
+                    ...school,
+                    coaches: school.coaches.map((coach) => ({
+                      ...coach,
+                      emails: coach.emails.filter((e) => e.id !== id),
+                    })),
+                  })),
+                })),
+              })))
+              setSelected(null)
+              setMobileViewEmail(false)
+            }}
             showFileButton={false}
           />
         ) : (
