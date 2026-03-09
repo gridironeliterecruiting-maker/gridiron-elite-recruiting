@@ -34,7 +34,15 @@ export async function GET() {
   }
 
   try {
-    const token = await getWorkspaceGmailModifyToken(workspaceEmail)
+    console.log('[email/inbox] Getting token for:', workspaceEmail)
+    let token: string
+    try {
+      token = await getWorkspaceGmailModifyToken(workspaceEmail)
+      console.log('[email/inbox] Token obtained successfully')
+    } catch (tokenErr: any) {
+      console.error('[email/inbox] Token error:', tokenErr?.message || tokenErr)
+      return NextResponse.json({ items: [], unreadCount: 0, debug: `Token error: ${tokenErr?.message}` })
+    }
 
     // List messages in INBOX
     const listRes = await fetch(
@@ -45,14 +53,15 @@ export async function GET() {
     if (!listRes.ok) {
       const err = await listRes.text()
       console.error('[email/inbox] Gmail list error:', err)
-      return NextResponse.json({ items: [], unreadCount: 0 })
+      return NextResponse.json({ items: [], unreadCount: 0, debug: `Gmail list error: ${err}` })
     }
 
     const listData = await listRes.json()
+    console.log('[email/inbox] Gmail list response:', JSON.stringify(listData).slice(0, 200))
     const messages: { id: string; threadId: string }[] = listData.messages || []
 
     if (messages.length === 0) {
-      return NextResponse.json({ items: [], unreadCount: 0 })
+      return NextResponse.json({ items: [], unreadCount: 0, debug: 'Gmail returned 0 messages' })
     }
 
     // Fetch metadata for each message in parallel
@@ -95,7 +104,7 @@ export async function GET() {
 
     return NextResponse.json({ items, unreadCount })
   } catch (err: any) {
-    console.error('[email/inbox] Error:', err)
-    return NextResponse.json({ items: [], unreadCount: 0 })
+    console.error('[email/inbox] Unexpected error:', err?.message || err)
+    return NextResponse.json({ items: [], unreadCount: 0, debug: `Unexpected error: ${err?.message}` })
   }
 }
