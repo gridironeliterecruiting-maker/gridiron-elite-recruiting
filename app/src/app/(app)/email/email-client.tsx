@@ -314,7 +314,11 @@ function InboxView() {
     }
   }, [])
 
-  useEffect(() => { loadInbox() }, [loadInbox])
+  useEffect(() => {
+    loadInbox()
+    const interval = setInterval(loadInbox, 30000)
+    return () => clearInterval(interval)
+  }, [loadInbox])
 
   const handleSelect = async (item: InboxItem) => {
     setSelected(item)
@@ -613,6 +617,8 @@ export function EmailClient() {
       } catch { /* non-critical */ }
     }
     load()
+    const interval = setInterval(load, 30000)
+    return () => clearInterval(interval)
   }, [])
 
   const tabs: { id: Tab; label: string; icon: React.ElementType; badge?: number }[] = [
