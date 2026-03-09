@@ -612,7 +612,7 @@ export function EmailClient() {
   return (
     <div className="flex flex-col gap-0 -mx-4 -my-6 lg:-mx-8 lg:-my-8 h-[calc(100vh-5rem)]">
       {/* Page header */}
-      <div className="border-b border-border bg-card px-4 py-4 lg:px-8">
+      <div className="border-b border-border bg-card px-4 pb-4 pt-6 lg:px-8 lg:pt-8">
         <div>
           <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
             Email
