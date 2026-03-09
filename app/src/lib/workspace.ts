@@ -171,19 +171,34 @@ export async function provisionWorkspaceAccount(
   }
 
   // Google auto-suspends API-created accounts on new Workspace tenants as abuse prevention.
-  // Immediately un-suspend the account so it's active and can receive email.
+  // Retry unsuspend several times with delays — Google suspends asynchronously after creation.
   const primaryEmail = `${username}@${DOMAIN()}`
-  await fetch(
-    `https://admin.googleapis.com/admin/directory/v1/users/${encodeURIComponent(primaryEmail)}`,
-    {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ suspended: false }),
+  const unsuspend = () =>
+    fetch(
+      `https://admin.googleapis.com/admin/directory/v1/users/${encodeURIComponent(primaryEmail)}`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ suspended: false }),
+      }
+    )
+
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+  // Attempt immediately, then retry at 3s, 6s, 10s
+  for (const delay of [0, 3000, 6000, 10000]) {
+    if (delay > 0) await sleep(delay)
+    const r = await unsuspend()
+    if (r.ok) {
+      console.log(`[workspace] Unsuspended ${primaryEmail} after ${delay}ms delay`)
+      break
     }
-  )
+    const errText = await r.text()
+    console.warn(`[workspace] Unsuspend attempt failed (delay=${delay}ms):`, errText)
+  }
 }
 
 /**
