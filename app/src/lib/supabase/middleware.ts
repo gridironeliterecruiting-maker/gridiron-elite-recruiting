@@ -2,10 +2,10 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Routes that exist under (app) — these can be prefixed with a program slug
-const programRoutes = ['hub', 'coaches', 'pipeline', 'outreach', 'profile']
+const programRoutes = ['hub', 'coaches', 'pipeline', 'outreach', 'profile', 'email']
 
 // All known top-level routes (not program slugs)
-const knownTopLevel = ['hub', 'coaches', 'pipeline', 'outreach', 'profile', 'profile-setup', 'login', 'signup', 'auth', 'api', 'recruit', 'admin', 'checkout', 'welcome', 'forgot-password']
+const knownTopLevel = ['hub', 'coaches', 'pipeline', 'outreach', 'profile', 'email', 'profile-setup', 'login', 'signup', 'auth', 'api', 'recruit', 'admin', 'checkout', 'welcome', 'forgot-password']
 
 // Routes the middleware never blocks (no auth or site_session check)
 const alwaysPublic = ['/auth/callback', '/auth/reset-password', '/api/track', '/api/unsubscribe', '/api/email/process-queue', '/api/email/check-replies', '/api/gmail/oauth-callback', '/api/gmail/authorize', '/api/twitter/oauth-callback', '/api/access-request', '/recruit', '/checkout', '/api/stripe', '/api/auth/check-username', '/api/auth/complete-profile', '/api/auth/forgot-password', '/forgot-password']
