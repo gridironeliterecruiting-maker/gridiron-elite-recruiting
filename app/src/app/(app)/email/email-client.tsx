@@ -74,6 +74,17 @@ type Tab = "inbox" | "folders"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code)))
+}
+
 function formatDate(ts: string | null): string {
   if (!ts) return ""
   const d = new Date(ts)
@@ -233,7 +244,7 @@ function ReadingPane({ item, onClose, onFiled, showFileButton = true }: ReadingP
       <div className="flex-1 overflow-y-auto p-4">
         {item.snippet ? (
           <div className="prose prose-sm max-w-none text-foreground">
-            <p className="whitespace-pre-wrap text-sm leading-relaxed">{item.snippet}</p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed">{decodeHtmlEntities(item.snippet)}</p>
           </div>
         ) : (
           <p className="text-sm text-muted-foreground italic">No preview available.</p>
@@ -381,7 +392,7 @@ function InboxView() {
               {item.subject}
             </p>
             {item.snippet && (
-              <p className="mt-1 line-clamp-1 text-xs text-muted-foreground/80">{item.snippet}</p>
+              <p className="mt-1 line-clamp-1 text-xs text-muted-foreground/80">{decodeHtmlEntities(item.snippet)}</p>
             )}
           </button>
         ))}

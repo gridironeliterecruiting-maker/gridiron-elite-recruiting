@@ -73,6 +73,10 @@ export async function GET() {
         )
         if (!res.ok) return null
         const data = await res.json()
+        if (id === messages[0].id) {
+          console.log('[email/inbox] First message headers:', JSON.stringify(data.payload?.headers || []))
+          console.log('[email/inbox] First message snippet:', data.snippet?.slice(0, 100))
+        }
         return { id, threadId, data }
       })
     )
