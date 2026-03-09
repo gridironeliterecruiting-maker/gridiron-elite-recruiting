@@ -169,6 +169,21 @@ export async function provisionWorkspaceAccount(
     const err = await res.text()
     throw new Error(`Failed to provision workspace account: ${err}`)
   }
+
+  // Google auto-suspends API-created accounts on new Workspace tenants as abuse prevention.
+  // Immediately un-suspend the account so it's active and can receive email.
+  const primaryEmail = `${username}@${DOMAIN()}`
+  await fetch(
+    `https://admin.googleapis.com/admin/directory/v1/users/${encodeURIComponent(primaryEmail)}`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ suspended: false }),
+    }
+  )
 }
 
 /**
