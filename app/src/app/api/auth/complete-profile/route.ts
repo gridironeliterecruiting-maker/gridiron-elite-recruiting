@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     const workspaceEmail = `${username}@${process.env.GOOGLE_WORKSPACE_DOMAIN || 'flightschoolmail.com'}`
 
     // Provision Google Workspace account
-    await provisionWorkspaceAccount(username, password, firstName, lastName)
+    await provisionWorkspaceAccount(username, password, firstName, lastName, recoveryEmail || email)
 
     // Create Supabase auth user with the workspace email
     const { data: authData, error: authError } = await admin.auth.admin.createUser({

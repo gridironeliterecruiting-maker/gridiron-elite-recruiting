@@ -137,12 +137,24 @@ export async function provisionWorkspaceAccount(
   username: string,
   password: string,
   firstName: string,
-  lastName: string
+  lastName: string,
+  recoveryEmail?: string
 ): Promise<void> {
   const token = await getAccessToken(
     ['https://www.googleapis.com/auth/admin.directory.user'],
     ADMIN_EMAIL()
   )
+
+  const body: Record<string, unknown> = {
+    primaryEmail: `${username}@${DOMAIN()}`,
+    name: { givenName: firstName, familyName: lastName },
+    password,
+    changePasswordAtNextLogin: false,
+  }
+
+  if (recoveryEmail) {
+    body.recoveryEmail = recoveryEmail
+  }
 
   const res = await fetch('https://admin.googleapis.com/admin/directory/v1/users', {
     method: 'POST',
@@ -150,12 +162,7 @@ export async function provisionWorkspaceAccount(
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      primaryEmail: `${username}@${DOMAIN()}`,
-      name: { givenName: firstName, familyName: lastName },
-      password,
-      changePasswordAtNextLogin: false,
-    }),
+    body: JSON.stringify(body),
   })
 
   if (!res.ok) {
