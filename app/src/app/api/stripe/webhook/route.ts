@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { suspendWorkspaceAccount } from '@/lib/workspace'
+import { deleteZohoAccount } from '@/lib/workspace'
 import type Stripe from 'stripe'
 
 export async function POST(request: Request) {
@@ -46,16 +46,16 @@ export async function POST(request: Request) {
           .update({ status: 'canceled', updated_at: new Date().toISOString() })
           .eq('stripe_subscription_id', sub.id)
 
-        // Suspend the workspace account
+        // Delete the Zoho account on subscription cancellation
         const { data: profile } = await admin
           .from('profiles')
-          .select('username')
+          .select('zoho_account_key')
           .eq('stripe_customer_id', typeof sub.customer === 'string' ? sub.customer : sub.customer.id)
           .single()
 
-        if (profile?.username) {
-          await suspendWorkspaceAccount(profile.username).catch(err =>
-            console.error('[webhook] Failed to suspend workspace account:', err)
+        if ((profile as any)?.zoho_account_key) {
+          await deleteZohoAccount((profile as any).zoho_account_key).catch(err =>
+            console.error('[webhook] Failed to delete Zoho account:', err)
           )
         }
 
