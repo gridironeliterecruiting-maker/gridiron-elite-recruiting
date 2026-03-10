@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { provisionWorkspaceAccount } from '@/lib/workspace'
+import { provisionZohoAccount } from '@/lib/workspace'
 import { getStripe } from '@/lib/stripe'
 
 export async function POST(request: Request) {
@@ -65,10 +65,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'This subscription has already been used to create an account' }, { status: 409 })
     }
 
-    const workspaceEmail = `${username}@${process.env.GOOGLE_WORKSPACE_DOMAIN || 'flightschoolmail.com'}`
+    const workspaceEmail = `${username}@${process.env.ZOHO_DOMAIN || 'jetstreammail.com'}`
 
-    // Provision Google Workspace account
-    await provisionWorkspaceAccount(username, password, firstName, lastName, recoveryEmail || email)
+    // Provision Zoho Mail360 account — returns account_key for per-mailbox API calls
+    const zohoAccountKey = await provisionZohoAccount(username, firstName, lastName)
 
     // Create Supabase auth user with the workspace email
     const { data: authData, error: authError } = await admin.auth.admin.createUser({
@@ -97,6 +97,7 @@ export async function POST(request: Request) {
       id: userId,
       username,
       workspace_email: workspaceEmail,
+      zoho_account_key: zohoAccountKey,
       recovery_email: recoveryEmail || email,
       email: workspaceEmail,
       first_name: firstName,

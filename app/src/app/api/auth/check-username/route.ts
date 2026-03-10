@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { checkUsernameAvailable, generateUsername } from '@/lib/workspace'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -11,7 +10,6 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Check DB first (faster than Workspace API for most cases)
     const admin = createAdminClient()
     const { data: existing } = await admin
       .from('profiles')
@@ -19,16 +17,9 @@ export async function GET(request: Request) {
       .eq('username', name)
       .single()
 
-    if (existing) {
-      return NextResponse.json({ available: false, suggested: name })
-    }
-
-    // Check Workspace
-    const available = await checkUsernameAvailable(name)
-    return NextResponse.json({ available, suggested: name })
+    return NextResponse.json({ available: !existing, suggested: name })
   } catch (error) {
     console.error('[check-username]', error)
-    // On Workspace API error, fall through to available=true so UX doesn't break
     return NextResponse.json({ available: true, suggested: name })
   }
 }

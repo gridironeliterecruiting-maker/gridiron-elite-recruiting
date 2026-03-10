@@ -1,239 +1,146 @@
 /**
- * Google Workspace Admin SDK helpers
- * Uses a service account with domain-wide delegation to provision/manage
- * @flightschoolmail.com accounts without any per-user OAuth.
+ * Zoho Mail360 helpers
+ * Single app-level access token, per-mailbox account_key routing.
+ * No per-user OAuth, no DWD, no suspension issues.
  */
 
-interface ServiceAccountKey {
-  client_email: string
-  private_key: string
-}
+const ZOHO_API_BASE = 'https://mail360.zoho.com/api'
+const DOMAIN = () => process.env.ZOHO_DOMAIN || 'jetstreammail.com'
 
-function getServiceAccountKey(): ServiceAccountKey {
-  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
-  if (!raw) throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY env var is not set')
-  return JSON.parse(raw)
-}
-
-const DOMAIN = () => process.env.GOOGLE_WORKSPACE_DOMAIN || 'flightschoolmail.com'
-const ADMIN_EMAIL = () => process.env.GOOGLE_WORKSPACE_ADMIN_EMAIL!
-
-/**
- * Create a signed JWT and exchange it for a Google access token.
- * Used for service account + domain-wide delegation (impersonation).
- */
-async function getAccessToken(scopes: string[], impersonate: string): Promise<string> {
-  const key = getServiceAccountKey()
-
-  const now = Math.floor(Date.now() / 1000)
-  const header = { alg: 'RS256', typ: 'JWT' }
-  const payload = {
-    iss: key.client_email,
-    sub: impersonate,
-    scope: scopes.join(' '),
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now,
-    exp: now + 3600,
+function getZohoCredentials() {
+  const clientId = process.env.ZOHO_CLIENT_ID
+  const clientSecret = process.env.ZOHO_CLIENT_SECRET
+  const refreshToken = process.env.ZOHO_REFRESH_TOKEN
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error('Zoho Mail360 credentials not configured (ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN)')
   }
+  return { clientId, clientSecret, refreshToken }
+}
 
-  const encode = (obj: object) =>
-    Buffer.from(JSON.stringify(obj)).toString('base64url')
+// Process-level token cache (~1 hour validity, resets on cold start)
+let _cachedToken: { token: string; expiresAt: number } | null = null
 
-  const signingInput = `${encode(header)}.${encode(payload)}`
-
-  // Sign with RS256 using the service account private key
-  const crypto = await import('node:crypto')
-  const sign = crypto.createSign('RSA-SHA256')
-  sign.update(signingInput)
-  const signature = sign.sign(key.private_key, 'base64url')
-
-  const jwt = `${signingInput}.${signature}`
-
-  const res = await fetch('https://oauth2.googleapis.com/token', {
+export async function getZohoAccessToken(): Promise<string> {
+  if (_cachedToken && Date.now() < _cachedToken.expiresAt - 60_000) {
+    return _cachedToken.token
+  }
+  const { clientId, clientSecret, refreshToken } = getZohoCredentials()
+  const res = await fetch(`${ZOHO_API_BASE}/access-token`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion: jwt,
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken }),
   })
-
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`Failed to get access token: ${err}`)
+    throw new Error(`Failed to get Zoho access token: ${err}`)
   }
-
   const data = await res.json()
-  return data.access_token as string
+  const token = data.data?.access_token as string
+  const expiresIn = (data.data?.expires_in as number) || 3600
+  _cachedToken = { token, expiresAt: Date.now() + expiresIn * 1000 }
+  return token
 }
 
 /**
- * Get an access token that can send Gmail as the given workspace email.
- * Used by the email queue processor to send from athlete workspace inboxes.
+ * Create a native Zoho Mail360 mailbox.
+ * Returns the account_key used for all subsequent per-mailbox API calls.
  */
-export async function getWorkspaceGmailAccessToken(workspaceEmail: string): Promise<string> {
-  return getAccessToken(['https://www.googleapis.com/auth/gmail.send'], workspaceEmail)
-}
-
-export async function getWorkspaceGmailModifyToken(workspaceEmail: string): Promise<string> {
-  return getAccessToken(['https://www.googleapis.com/auth/gmail.modify'], workspaceEmail)
-}
-
-/**
- * Check whether a username (without domain) is available in Workspace.
- */
-export async function checkUsernameAvailable(username: string): Promise<boolean> {
-  const email = `${username}@${DOMAIN()}`
-  const token = await getAccessToken(
-    ['https://www.googleapis.com/auth/admin.directory.user.readonly'],
-    ADMIN_EMAIL()
-  )
-
-  const res = await fetch(
-    `https://admin.googleapis.com/admin/directory/v1/users/${encodeURIComponent(email)}`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  )
-
-  if (res.status === 404) return true   // user does not exist → available
-  if (res.ok) return false              // user exists → taken
-  const err = await res.text()
-  throw new Error(`Workspace user lookup failed: ${err}`)
-}
-
-/**
- * Generate a unique username using the collision chain:
- * ryansmith → ryansmith33 → ryansmith-33 → ryansmith.33 → ryansmith.33x
- */
-export async function generateUsername(
+export async function provisionZohoAccount(
+  username: string,
   firstName: string,
   lastName: string,
-  jerseyNumber?: string
 ): Promise<string> {
-  const base = `${firstName}${lastName}`.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const token = await getZohoAccessToken()
+  const emailid = `${username}@${DOMAIN()}`
+  const res = await fetch(`${ZOHO_API_BASE}/accounts`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Zoho-oauthtoken ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      accountType: '1',
+      emailid,
+      displayName: `${firstName} ${lastName}`,
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`Failed to provision Zoho account: ${err}`)
+  }
+  const data = await res.json()
+  if (data.status?.code !== 200) {
+    throw new Error(`Zoho account creation failed: ${JSON.stringify(data.status)}`)
+  }
+  return data.data.account_key as string
+}
 
+/**
+ * Delete a Zoho Mail360 account.
+ */
+export async function deleteZohoAccount(accountKey: string): Promise<void> {
+  const token = await getZohoAccessToken()
+  const res = await fetch(`${ZOHO_API_BASE}/accounts/${accountKey}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Zoho-oauthtoken ${token}` },
+  })
+  if (!res.ok && res.status !== 404) {
+    const err = await res.text()
+    throw new Error(`Failed to delete Zoho account: ${err}`)
+  }
+}
+
+/**
+ * Send an email from a Zoho Mail360 mailbox.
+ */
+export async function sendZohoEmail(
+  accountKey: string,
+  fromAddress: string,
+  toAddress: string,
+  subject: string,
+  htmlContent: string,
+  senderDisplayName?: string,
+): Promise<{ messageId: string }> {
+  const token = await getZohoAccessToken()
+  const from = senderDisplayName ? `${senderDisplayName} <${fromAddress}>` : fromAddress
+  const res = await fetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Zoho-oauthtoken ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      fromAddress: from,
+      toAddress,
+      subject,
+      content: htmlContent,
+      mailFormat: 'html',
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`Failed to send Zoho email: ${err}`)
+  }
+  const data = await res.json()
+  return { messageId: data.data?.messageId || data.data?.message_id || '' }
+}
+
+/**
+ * Generate a unique username using collision chain:
+ * ryansmith → ryansmith33 → ryansmith-33 → ryansmith.33 → ryansmith.33x
+ * Caller is responsible for checking availability against the DB.
+ */
+export function generateUsernameOptions(
+  firstName: string,
+  lastName: string,
+  jerseyNumber?: string,
+): string[] {
+  const base = `${firstName}${lastName}`.toLowerCase().replace(/[^a-z0-9]/g, '')
   const candidates: string[] = [base]
   if (jerseyNumber) {
     candidates.push(`${base}${jerseyNumber}`)
     candidates.push(`${base}-${jerseyNumber}`)
     candidates.push(`${base}.${jerseyNumber}`)
   }
-
-  for (const username of candidates) {
-    const available = await checkUsernameAvailable(username)
-    if (available) return username
-  }
-
-  // All candidates taken — add a random letter suffix
-  const suffix = jerseyNumber ? `${jerseyNumber}` : ''
-  const fallback = `${base}.${suffix}${String.fromCharCode(97 + Math.floor(Math.random() * 26))}`
-  console.error(`[workspace] Username collision for ${base}, falling back to ${fallback}`)
-  return fallback
-}
-
-/**
- * Create a new Google Workspace account for an athlete.
- */
-export async function provisionWorkspaceAccount(
-  username: string,
-  password: string,
-  firstName: string,
-  lastName: string,
-  recoveryEmail?: string
-): Promise<void> {
-  const token = await getAccessToken(
-    ['https://www.googleapis.com/auth/admin.directory.user'],
-    ADMIN_EMAIL()
-  )
-
-  const body: Record<string, unknown> = {
-    primaryEmail: `${username}@${DOMAIN()}`,
-    name: { givenName: firstName, familyName: lastName },
-    password,
-    changePasswordAtNextLogin: false,
-  }
-
-  if (recoveryEmail) {
-    body.recoveryEmail = recoveryEmail
-  }
-
-  const res = await fetch('https://admin.googleapis.com/admin/directory/v1/users', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  })
-
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Failed to provision workspace account: ${err}`)
-  }
-
-  // Attempt to unsuspend immediately after creation.
-  // Google may auto-suspend new accounts on new tenants — single unsuspend attempt.
-  const primaryEmail = `${username}@${DOMAIN()}`
-  await fetch(
-    `https://admin.googleapis.com/admin/directory/v1/users/${encodeURIComponent(primaryEmail)}`,
-    {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ suspended: false }),
-    }
-  )
-}
-
-/**
- * Suspend a workspace account (called when subscription lapses).
- */
-export async function suspendWorkspaceAccount(username: string): Promise<void> {
-  const email = `${username}@${DOMAIN()}`
-  const token = await getAccessToken(
-    ['https://www.googleapis.com/auth/admin.directory.user'],
-    ADMIN_EMAIL()
-  )
-
-  const res = await fetch(
-    `https://admin.googleapis.com/admin/directory/v1/users/${encodeURIComponent(email)}`,
-    {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ suspended: true }),
-    }
-  )
-
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Failed to suspend workspace account: ${err}`)
-  }
-}
-
-/**
- * Permanently delete a workspace account (admin use only).
- */
-export async function deleteWorkspaceAccount(username: string): Promise<void> {
-  const email = `${username}@${DOMAIN()}`
-  const token = await getAccessToken(
-    ['https://www.googleapis.com/auth/admin.directory.user'],
-    ADMIN_EMAIL()
-  )
-
-  const res = await fetch(
-    `https://admin.googleapis.com/admin/directory/v1/users/${encodeURIComponent(email)}`,
-    {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    }
-  )
-
-  if (!res.ok && res.status !== 404) {
-    const err = await res.text()
-    throw new Error(`Failed to delete workspace account: ${err}`)
-  }
+  return candidates
 }

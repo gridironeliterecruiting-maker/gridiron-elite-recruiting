@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getWorkspaceGmailModifyToken } from '@/lib/workspace'
+import { getZohoAccessToken } from '@/lib/workspace'
 
 export async function PATCH(
   _req: NextRequest,
@@ -16,21 +16,21 @@ export async function PATCH(
   const admin = createAdminClient()
   const { data: profile } = await admin
     .from('profiles')
-    .select('workspace_email')
+    .select('zoho_account_key')
     .eq('id', user.id)
     .single()
 
-  const workspaceEmail = (profile as any)?.workspace_email as string | null
-  if (!workspaceEmail) return NextResponse.json({ ok: true })
+  const accountKey = (profile as any)?.zoho_account_key as string | null
+  if (!accountKey) return NextResponse.json({ ok: true })
 
   try {
-    const token = await getWorkspaceGmailModifyToken(workspaceEmail)
+    const token = await getZohoAccessToken()
     await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}/modify`,
+      `https://mail360.zoho.com/api/accounts/${accountKey}/messages/${id}`,
       {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ removeLabelIds: ['UNREAD'] }),
+        method: 'PUT',
+        headers: { Authorization: `Zoho-oauthtoken ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isRead: true }),
       }
     )
     return NextResponse.json({ ok: true })

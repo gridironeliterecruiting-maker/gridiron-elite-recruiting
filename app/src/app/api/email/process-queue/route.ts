@@ -9,7 +9,7 @@ import {
   wrapLinksForTracking,
   addUnsubscribeFooter,
 } from '@/lib/gmail'
-import { getWorkspaceGmailAccessToken } from '@/lib/workspace'
+import { sendZohoEmail } from '@/lib/workspace'
 
 /**
  * Process the email send queue.
@@ -105,7 +105,7 @@ export async function GET(request: Request) {
       // ============================================================
       const { data: userProfile } = await admin
         .from('profiles')
-        .select('can_send_emails, email, workspace_email, first_name, last_name')
+        .select('can_send_emails, email, workspace_email, zoho_account_key, first_name, last_name')
         .eq('id', userId)
         .single()
 
@@ -125,25 +125,13 @@ export async function GET(request: Request) {
       }
 
       // Determine sending mechanism:
-      // - Workspace users: service account impersonation (no per-user token needed)
+      // - Zoho users: sendZohoEmail with per-mailbox account_key
       // - Grandfathered users: personal Gmail OAuth token (legacy)
-      let accessToken: string
-      let fromEmail: string
+      let accessToken: string = ''
+      let fromEmail: string = ''
+      const isZohoUser = !!(userProfile as any).zoho_account_key && userProfile.workspace_email
 
-      if (userProfile.workspace_email) {
-        // Workspace user — impersonate their @flightschoolmail.com address
-        try {
-          accessToken = await getWorkspaceGmailAccessToken(userProfile.workspace_email)
-          fromEmail = userProfile.workspace_email
-        } catch (error) {
-          console.error(`Failed to get workspace token for ${userProfile.workspace_email}:`, error)
-          for (const r of recipients) {
-            await admin.from('campaign_recipients').update({ status: 'error' }).eq('id', r.id)
-          }
-          totalErrors += recipients.length
-          continue
-        }
-      } else {
+      if (!isZohoUser) {
         // Grandfathered user — use their personal Gmail OAuth token
         const { data: gmailToken } = await admin
           .from('gmail_tokens')
@@ -400,26 +388,39 @@ export async function GET(request: Request) {
           // Wrap in basic HTML email template
           htmlBody = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#333;">${htmlBody}</body></html>`
 
-          // Send via Gmail — for coach campaigns, use player name as sender display name
           const senderDisplayName = mergeProfile
             ? `${mergeProfile.first_name} ${mergeProfile.last_name}`
             : (senderProfile ? `${senderProfile.first_name} ${senderProfile.last_name}` : undefined)
 
-          const result = await sendGmailEmail(
-            accessToken,
-            recipient.coach_email,
-            subject,
-            htmlBody,
-            senderDisplayName,
-            fromEmail
-          )
+          let sentMessageId: string
+          if (isZohoUser) {
+            const zohoResult = await sendZohoEmail(
+              (userProfile as any).zoho_account_key,
+              userProfile.workspace_email!,
+              recipient.coach_email,
+              subject,
+              htmlBody,
+              senderDisplayName,
+            )
+            sentMessageId = zohoResult.messageId
+          } else {
+            const gmailResult = await sendGmailEmail(
+              accessToken,
+              recipient.coach_email,
+              subject,
+              htmlBody,
+              senderDisplayName,
+              fromEmail
+            )
+            sentMessageId = gmailResult.id
+          }
 
           // Log the send
           await admin.from('email_send_log').insert({
             user_id: userId,
             campaign_id: recipient.campaign_id,
             recipient_email: recipient.coach_email,
-            gmail_message_id: result.id,
+            gmail_message_id: sentMessageId,
           })
 
           // Log sent event

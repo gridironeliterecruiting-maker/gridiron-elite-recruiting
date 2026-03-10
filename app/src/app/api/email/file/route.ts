@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getWorkspaceGmailModifyToken } from '@/lib/workspace'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -10,7 +9,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   const {
-    gmailMessageId,
+    messageId,
     threadId,
     fromEmail,
     fromName,
@@ -24,7 +23,7 @@ export async function POST(req: NextRequest) {
     division,
     conference,
   } = body as {
-    gmailMessageId: string
+    messageId: string
     threadId?: string
     fromEmail?: string
     fromName?: string
@@ -39,40 +38,16 @@ export async function POST(req: NextRequest) {
     conference?: string
   }
 
-  if (!gmailMessageId) {
-    return NextResponse.json({ error: 'gmailMessageId is required' }, { status: 400 })
+  if (!messageId) {
+    return NextResponse.json({ error: 'messageId is required' }, { status: 400 })
   }
 
   const admin = createAdminClient()
-  const { data: profile } = await admin
-    .from('profiles')
-    .select('workspace_email')
-    .eq('id', user.id)
-    .single()
 
-  const workspaceEmail = (profile as any)?.workspace_email as string | null
-
-  // Archive in Gmail (remove from INBOX)
-  if (workspaceEmail) {
-    try {
-      const token = await getWorkspaceGmailModifyToken(workspaceEmail)
-      await fetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${gmailMessageId}/modify`,
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ removeLabelIds: ['INBOX', 'UNREAD'] }),
-        }
-      )
-    } catch (err) {
-      console.error('[email/file] Gmail archive error:', err)
-    }
-  }
-
-  // Store in filed_emails table
+  // Store in filed_emails table — this removes it from the inbox view in our app
   await admin.from('filed_emails').upsert({
     user_id: user.id,
-    gmail_message_id: gmailMessageId,
+    gmail_message_id: messageId,
     thread_id: threadId || null,
     from_email: fromEmail || null,
     from_name: fromName || null,
