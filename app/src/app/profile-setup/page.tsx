@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 
-const WORKSPACE_DOMAIN = 'flightschoolmail.com'
+const WORKSPACE_DOMAIN = 'jetstreammail.com'
 
 function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null

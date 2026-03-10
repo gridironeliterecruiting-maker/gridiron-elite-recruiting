@@ -62,7 +62,7 @@ function MainSiteLogin({
     setLoading(true)
     setError('')
 
-    const workspaceEmail = `${username.trim().toLowerCase()}@flightschoolmail.com`
+    const workspaceEmail = `${username.trim().toLowerCase()}@jetstreammail.com`
 
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: workspaceEmail,
