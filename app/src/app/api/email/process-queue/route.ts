@@ -428,7 +428,7 @@ export async function GET(request: Request) {
             campaign_id: recipient.campaign_id,
             recipient_id: recipient.id,
             event_type: 'sent',
-            metadata: { gmail_message_id: result.id, step: recipient.current_step },
+            metadata: { gmail_message_id: sentMessageId, step: recipient.current_step },
           })
 
           // Check if there's a next step
