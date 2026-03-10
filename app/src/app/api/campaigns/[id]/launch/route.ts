@@ -8,11 +8,6 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Block campaign launches on non-production environments (staging/preview)
-    if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production') {
-      return NextResponse.json({ error: 'Campaign launching is disabled in preview/staging environments' }, { status: 403 })
-    }
-
     const { id } = await params
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -44,30 +39,29 @@ export async function POST(
     // ============================================================
     const { data: profile } = await supabase
       .from('profiles')
-      .select('can_send_emails')
+      .select('can_send_emails, zoho_account_key')
       .eq('id', user.id)
       .single()
 
     if (!profile?.can_send_emails) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Email sending is not enabled for your account. Contact support to get approved.',
         safety: 'user_not_approved'
       }, { status: 403 })
     }
 
-    // Check if user has Gmail connected
-    const { data: gmailToken } = await supabase
-      .from('gmail_tokens')
-      .select('token_expiry')
-      .eq('user_id', user.id)
-      .single()
+    // Zoho users don't need Gmail — skip Gmail check if zoho_account_key is set
+    if (!(profile as any).zoho_account_key) {
+      const { data: gmailToken } = await supabase
+        .from('gmail_tokens')
+        .select('token_expiry')
+        .eq('user_id', user.id)
+        .single()
 
-    if (!gmailToken) {
-      return NextResponse.json({ error: 'Gmail not connected. Please connect your Gmail account first.' }, { status: 400 })
+      if (!gmailToken) {
+        return NextResponse.json({ error: 'Gmail not connected. Please connect your Gmail account first.' }, { status: 400 })
+      }
     }
-    
-    // Don't check token expiry - just let it work
-    console.log('[Launch] Gmail token found, proceeding with launch')
 
     // Get recipients
     const { data: recipients } = await supabase

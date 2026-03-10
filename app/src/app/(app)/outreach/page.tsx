@@ -55,13 +55,21 @@ export default async function OutreachPage({
     { data: gmailToken },
     { data: twitterToken },
     { data: allCampaigns },
+    { data: zohoProfile },
   ] = await Promise.all([
     supabase.from("email_templates").select("*").eq("for_role", templateRole).order("name"),
     supabase.from("programs").select("id, school_name, division, conference, logo_url").order("school_name"),
     admin.from("gmail_tokens").select("email, connected_at, token_expiry").eq("user_id", user!.id).single(),
     admin.from("twitter_tokens").select("twitter_handle, connected_at, token_expiry").eq("user_id", user!.id).single(),
     supabase.from("campaigns").select("*").eq("user_id", user!.id).order("created_at", { ascending: false }),
+    admin.from("profiles").select("zoho_account_key, workspace_email").eq("id", user!.id).single(),
   ])
+
+  // Zoho users don't need Gmail — treat them as having a valid connected account
+  const isZohoUser = !!(zohoProfile as any)?.zoho_account_key
+  const effectiveGmailToken = isZohoUser
+    ? { email: (zohoProfile as any).workspace_email, token_expiry: new Date(Date.now() + 86400000).toISOString() }
+    : gmailToken
 
   // Filter campaigns: for coaches, only show campaigns for the active player
   const campaigns = isCoach && activePlayerId
@@ -162,9 +170,9 @@ export default async function OutreachPage({
       templates={templates || []}
       programs={programs || []}
       playerPosition={playerPosition}
-      gmailEmail={gmailToken?.email || null}
-      hasGmailToken={!!gmailToken}
-      gmailTokenExpired={gmailToken ? new Date(gmailToken.token_expiry) <= new Date() : false}
+      gmailEmail={effectiveGmailToken?.email || null}
+      hasGmailToken={!!effectiveGmailToken}
+      gmailTokenExpired={effectiveGmailToken ? new Date(effectiveGmailToken.token_expiry) <= new Date() : false}
       twitterHandle={twitterToken?.twitter_handle || null}
       hasTwitterToken={!!twitterToken}
       campaigns={campaigns.map((c) => ({
