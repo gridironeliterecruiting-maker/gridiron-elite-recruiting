@@ -237,6 +237,17 @@ export function SlugLanding({
       return
     }
 
+    // Verify this user is actually a member of this program before granting access
+    const memberRes = await fetch(`/api/auth/check-slug-membership?slug=${encodeURIComponent(slug)}`)
+    const memberData = await memberRes.json()
+
+    if (!memberData.member) {
+      await supabase.auth.signOut()
+      setLoginError('No account found for this program. Register with your invite code or contact your coach.')
+      setLoginLoading(false)
+      return
+    }
+
     document.cookie = `site_session=${slug};path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
     router.push(`/${slug}/hub`)
   }

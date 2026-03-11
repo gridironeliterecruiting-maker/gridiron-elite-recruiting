@@ -132,20 +132,48 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
   // No programSlug → main site → no program membership required
 
-  // Gate access: render UnauthorizedPage directly (no redirect — redirecting would loop
-  // because the middleware sends /{slug} back to /{slug}/dashboard for logged-in users)
+  // Gate access: render error page directly (no redirect — redirecting would loop
+  // because the middleware sends /{slug} back to /{slug}/hub for logged-in users)
   if (programAccessDenied) {
-    // Check for an existing pending access request so the UI shows the right state
+    // Managed programs: simple "account not found" — no request-access form
+    if (managedProgramId && programSlug) {
+      const color = programBranding?.primary_color || '#0047AB'
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="w-full max-w-md p-8 text-center">
+            {programBranding?.logo_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={programBranding.logo_url}
+                alt={programBranding.program_name}
+                className="h-20 w-auto object-contain mx-auto mb-4"
+              />
+            )}
+            {programBranding?.program_name && (
+              <h2 className="font-display text-xl font-bold uppercase tracking-wide mb-6" style={{ color }}>
+                {programBranding.program_name}
+              </h2>
+            )}
+            <h1 className="text-2xl font-bold text-gray-900 mb-3">Account Not Found</h1>
+            <p className="text-gray-500 mb-8">
+              Your account is not registered with this program.<br />
+              Sign in with the correct account or register with your invite code.
+            </p>
+            <a
+              href={`/${programSlug}`}
+              className="inline-block w-full py-4 px-6 rounded-xl font-semibold text-white text-center transition"
+              style={{ backgroundColor: color }}
+            >
+              Back to {programBranding?.program_name || 'Program'} Login
+            </a>
+          </div>
+        </div>
+      )
+    }
+
+    // Legacy coach_profiles or admin: show request-access form
     let existingRequestStatus: string | null = null
-    if (managedProgramId) {
-      const { data: existingRequest } = await admin
-        .from('access_requests')
-        .select('status')
-        .eq('user_id', user.id)
-        .eq('program_id', managedProgramId)
-        .maybeSingle()
-      existingRequestStatus = existingRequest?.status || null
-    } else if (legacyCoachId) {
+    if (legacyCoachId) {
       const { data: existingRequest } = await admin
         .from('access_requests')
         .select('status')
@@ -161,7 +189,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         logoAlt={programBranding?.program_name || 'Program'}
         programName={programBranding?.program_name || undefined}
         primaryColor={programBranding?.primary_color || undefined}
-        programId={managedProgramId || undefined}
         coachProfileId={legacyCoachId || undefined}
         existingRequestStatus={existingRequestStatus}
       />

@@ -55,6 +55,7 @@ export async function POST(
         program_id: id,
         email: email.trim().toLowerCase(),
         role,
+        registered_via: 'admin_added',
       })
       .select()
       .single()

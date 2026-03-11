@@ -164,6 +164,7 @@ export async function POST(request: Request) {
       user_id: userId,
       email: recoveryEmail,
       role,
+      registered_via: 'slug_registration',
     }, { onConflict: 'program_id,email' })
 
     if (memberError) {
