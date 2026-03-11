@@ -22,7 +22,7 @@ export default async function LandingPage({ params }: LandingPageProps) {
 
   const { data: program } = await admin
     .from("managed_programs")
-    .select("id, school_name, mascot, logo_url, primary_color, accent_color")
+    .select("id, school_name, mascot, city, state, logo_url, primary_color, accent_color")
     .eq("landing_slug", slug)
     .maybeSingle()
 
@@ -36,6 +36,9 @@ export default async function LandingPage({ params }: LandingPageProps) {
     color: program.primary_color || "#0047AB",
     accent: program.accent_color || "#CC0000",
     bg: slugBackgrounds[slug] ?? "/locker-room-bg.png",
+    schoolName: program.school_name,
+    city: program.city || "",
+    state: program.state || "",
   }
 
   // If user is already authenticated and logged into THIS site, send them to hub
@@ -70,6 +73,9 @@ export default async function LandingPage({ params }: LandingPageProps) {
         accentColor={branding.accent}
         slug={slug}
         backgroundImage={branding.bg}
+        schoolName={branding.schoolName}
+        programCity={branding.city}
+        programState={branding.state}
       />
     </Suspense>
   )

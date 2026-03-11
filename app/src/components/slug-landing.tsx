@@ -21,6 +21,9 @@ interface SlugLandingProps {
   accentColor: string
   slug: string
   backgroundImage?: string
+  schoolName: string
+  programCity: string
+  programState: string
 }
 
 export function SlugLanding({
@@ -31,17 +34,17 @@ export function SlugLanding({
   accentColor,
   slug,
   backgroundImage = '/locker-room-bg.png',
+  schoolName,
+  programCity,
+  programState,
 }: SlugLandingProps) {
   const color = primaryColor || '#0047AB'
   const accent = accentColor || '#CC0000'
 
-  // ── State machine ──────────────────────────────────────────────────────────
-  // 'home'      → invite code box + login section
-  // 'register'  → full registration form (invite already validated)
   type View = 'home' | 'register'
   const [view, setView] = useState<View>('home')
 
-  // Invite code entry
+  // Invite
   const [inviteCode, setInviteCode] = useState('')
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteError, setInviteError] = useState('')
@@ -53,35 +56,35 @@ export function SlugLanding({
   const [loginLoading, setLoginLoading] = useState(false)
   const [loginError, setLoginError] = useState('')
 
-  // Registration form
-  const [form, setForm] = useState({
-    first_name: '',
-    last_name: '',
-    position: '',
-    grad_year: '',
-    jersey_number: '',
-    high_school: '',
-    city: '',
-    state: '',
-    gpa: '',
-    height: '',
-    weight: '',
-    hudl_url: '',
-    recovery_email: '',
-    password: '',
-    confirm_password: '',
-  })
+  // Shared registration fields
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [recoveryEmail, setRecoveryEmail] = useState('')
+
+  // Coach-only
+  const [title, setTitle] = useState('')
+
+  // Player-only
+  const [position, setPosition] = useState('')
+  const [gradYear, setGradYear] = useState('')
+  const [jerseyNumber, setJerseyNumber] = useState('')
+  const [gpa, setGpa] = useState('')
+  const [height, setHeight] = useState('')
+  const [weight, setWeight] = useState('')
+  const [hudlUrl, setHudlUrl] = useState('')
+
+  // Username / email
   const [generatedUsername, setGeneratedUsername] = useState('')
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
   const [checkingUsername, setCheckingUsername] = useState(false)
+
   const [registerLoading, setRegisterLoading] = useState(false)
   const [registerError, setRegisterError] = useState('')
-  const [lookingUpProfile, setLookingUpProfile] = useState(false)
 
   const supabase = createClient()
   const router = useRouter()
-
-  const update = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }))
 
   // ── Invite code validation ──────────────────────────────────────────────────
   const handleValidateInvite = async (e: React.FormEvent) => {
@@ -103,17 +106,25 @@ export function SlugLanding({
     setInviteLoading(false)
   }
 
-  // ── Username availability check ─────────────────────────────────────────────
-  const checkUsername = useCallback(async (first: string, last: string, jersey: string) => {
+  // ── Username availability (coaches: numeric suffix; players: jersey suffix) ──
+  const checkUsername = useCallback(async (first: string, last: string, role: 'coach' | 'player', jersey: string) => {
     const base = generateBaseUsername(first, last)
     if (base.length < 2) {
       setGeneratedUsername('')
       setUsernameAvailable(null)
       return
     }
-    const candidates = jersey
-      ? [base, `${base}${jersey}`, `${base}-${jersey}`, `${base}.${jersey}`]
-      : [base]
+
+    let candidates: string[]
+    if (role === 'coach') {
+      // Numeric suffix: ryansmith → ryansmith1 → ryansmith2 ...
+      candidates = [base, ...Array.from({ length: 9 }, (_, i) => `${base}${i + 1}`)]
+    } else {
+      // Jersey suffix for players
+      candidates = jersey
+        ? [base, `${base}${jersey}`, `${base}-${jersey}`, `${base}.${jersey}`]
+        : [base]
+    }
 
     setCheckingUsername(true)
     try {
@@ -134,64 +145,23 @@ export function SlugLanding({
   }, [])
 
   useEffect(() => {
+    if (!validatedRole) return
     const t = setTimeout(() => {
-      if (form.first_name && form.last_name) {
-        checkUsername(form.first_name, form.last_name, form.jersey_number)
+      if (firstName && lastName) {
+        checkUsername(firstName, lastName, validatedRole, jerseyNumber)
       }
     }, 400)
     return () => clearTimeout(t)
-  }, [form.first_name, form.last_name, form.jersey_number, checkUsername])
-
-  // ── Profile lookup for pre-population ──────────────────────────────────────
-  const handleRecoveryEmailBlur = async () => {
-    const email = form.recovery_email.trim().toLowerCase()
-    if (!email || !email.includes('@')) return
-    setLookingUpProfile(true)
-    try {
-      const res = await fetch(`/api/auth/lookup-profile?email=${encodeURIComponent(email)}`)
-      const data = await res.json()
-      if (data.found && data.profile) {
-        const p = data.profile
-        setForm(f => ({
-          ...f,
-          first_name: p.first_name || f.first_name,
-          last_name: p.last_name || f.last_name,
-          position: p.position || f.position,
-          grad_year: p.grad_year ? String(p.grad_year) : f.grad_year,
-          jersey_number: p.jersey_number || f.jersey_number,
-          high_school: p.high_school || f.high_school,
-          city: p.city || f.city,
-          state: p.state || f.state,
-          gpa: p.gpa ? String(p.gpa) : f.gpa,
-          height: p.height || f.height,
-          weight: p.weight ? String(p.weight) : f.weight,
-          hudl_url: p.hudl_url || f.hudl_url,
-        }))
-      }
-    } catch {
-      // Silently ignore — pre-fill is a convenience, not critical
-    } finally {
-      setLookingUpProfile(false)
-    }
-  }
+  }, [firstName, lastName, jerseyNumber, validatedRole, checkUsername])
 
   // ── Registration submit ─────────────────────────────────────────────────────
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setRegisterError('')
 
-    if (form.password !== form.confirm_password) {
-      setRegisterError('Passwords do not match.')
-      return
-    }
-    if (form.password.length < 8) {
-      setRegisterError('Password must be at least 8 characters.')
-      return
-    }
-    if (!generatedUsername || usernameAvailable === false) {
-      setRegisterError('Please wait for username to be confirmed available.')
-      return
-    }
+    if (password !== confirmPassword) { setRegisterError('Passwords do not match.'); return }
+    if (password.length < 8) { setRegisterError('Password must be at least 8 characters.'); return }
+    if (!generatedUsername || usernameAvailable === false) { setRegisterError('Username unavailable. Try a different name.'); return }
 
     setRegisterLoading(true)
 
@@ -201,21 +171,24 @@ export function SlugLanding({
       body: JSON.stringify({
         inviteCode,
         slug,
-        firstName: form.first_name,
-        lastName: form.last_name,
+        firstName,
+        lastName,
         username: generatedUsername,
-        password: form.password,
-        recoveryEmail: form.recovery_email,
-        position: form.position || null,
-        gradYear: form.grad_year || null,
-        jerseyNumber: form.jersey_number || null,
-        highSchool: form.high_school || null,
-        city: form.city || null,
-        state: form.state || null,
-        gpa: form.gpa || null,
-        height: form.height || null,
-        weight: form.weight || null,
-        hudlUrl: form.hudl_url || null,
+        password,
+        recoveryEmail,
+        // Coach fields
+        title: validatedRole === 'coach' ? title || null : null,
+        highSchool: schoolName,
+        city: programCity,
+        state: programState,
+        // Player-only fields
+        position: validatedRole === 'player' ? position || null : null,
+        gradYear: validatedRole === 'player' ? gradYear || null : null,
+        jerseyNumber: validatedRole === 'player' ? jerseyNumber || null : null,
+        gpa: validatedRole === 'player' ? gpa || null : null,
+        height: validatedRole === 'player' ? height || null : null,
+        weight: validatedRole === 'player' ? weight || null : null,
+        hudlUrl: validatedRole === 'player' ? hudlUrl || null : null,
       }),
     })
 
@@ -226,10 +199,9 @@ export function SlugLanding({
       return
     }
 
-    // Sign in with new workspace credentials
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: data.workspaceEmail,
-      password: form.password,
+      password,
     })
 
     if (signInError) {
@@ -248,10 +220,8 @@ export function SlugLanding({
     setLoginLoading(true)
     setLoginError('')
 
-    const workspaceEmail = `${username.trim().toLowerCase()}@${WORKSPACE_DOMAIN}`
-
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: workspaceEmail,
+      email: `${username.trim().toLowerCase()}@${WORKSPACE_DOMAIN}`,
       password: loginPassword,
     })
 
@@ -265,14 +235,7 @@ export function SlugLanding({
     router.push(`/${slug}/hub`)
   }
 
-  // ── Shared styles ───────────────────────────────────────────────────────────
-  const inputClass = `w-full px-4 py-2.5 border-2 rounded-xl bg-white focus:outline-none text-sm transition-colors`
-
-  const getInputStyle = (focused: boolean) => ({
-    borderColor: focused ? color : '#e5e7eb',
-  })
-
-  // ── Layout wrapper (shared background) ─────────────────────────────────────
+  // ── Shared layout ───────────────────────────────────────────────────────────
   return (
     <div
       className="relative min-h-screen flex items-start justify-center py-12 px-4"
@@ -283,7 +246,6 @@ export function SlugLanding({
         backgroundAttachment: 'fixed',
       }}
     >
-      {/* Overlays */}
       <div className="fixed inset-0 pointer-events-none" style={{ background: 'rgba(255,255,255,0.62)' }} aria-hidden />
       <div className="fixed inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 40%, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0) 100%)' }} aria-hidden />
 
@@ -293,10 +255,7 @@ export function SlugLanding({
           <div className="relative h-[160px] w-[160px] drop-shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
             <Image src={logoSrc} alt={logoAlt} fill className="object-contain" priority />
           </div>
-          <h2
-            className="mt-3 font-display text-2xl font-bold uppercase tracking-widest"
-            style={{ color }}
-          >
+          <h2 className="mt-3 font-display text-2xl font-bold uppercase tracking-widest" style={{ color }}>
             {programName}
           </h2>
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gray-400 mt-0.5">
@@ -306,26 +265,17 @@ export function SlugLanding({
 
         {view === 'home' && (
           <>
-            {/* ── Invite Code Section ─────────────────────────────────────── */}
+            {/* Invite Code */}
             <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-7 mb-5 border border-white">
-              <div
-                className="inline-block px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest mb-3"
-                style={{ background: `${color}18`, color }}
-              >
-                New Athlete
+              <div className="inline-block px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest mb-3" style={{ background: `${color}18`, color }}>
+                New Member
               </div>
-              <h1 className="text-xl font-bold text-gray-900 mb-1">
-                Join the Program
-              </h1>
-              <p className="text-sm text-gray-500 mb-5">
-                Enter the invite code your coach shared with you.
-              </p>
+              <h1 className="text-xl font-bold text-gray-900 mb-1">Join the Program</h1>
+              <p className="text-sm text-gray-500 mb-5">Enter the invite code your coach shared with you.</p>
 
               <form onSubmit={handleValidateInvite} className="space-y-3">
                 {inviteError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-                    {inviteError}
-                  </div>
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">{inviteError}</div>
                 )}
                 <div className="flex gap-2">
                   <input
@@ -351,43 +301,20 @@ export function SlugLanding({
               </form>
             </div>
 
-            {/* ── Login Section ───────────────────────────────────────────── */}
+            {/* Login */}
             <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-7 border border-white">
               <h2 className="text-lg font-bold text-gray-900 mb-1">Welcome Back</h2>
               <p className="text-sm text-gray-500 mb-5">Sign in to your recruiting hub.</p>
 
               <form onSubmit={handleLogin} className="space-y-4">
                 {loginError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-                    {loginError}
-                  </div>
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">{loginError}</div>
                 )}
-
-                <FocusInput
-                  label="Username"
-                  type="text"
-                  value={username}
-                  onChange={setUsername}
-                  placeholder="ryansmith"
-                  autoComplete="username"
-                  color={color}
-                />
-                <FocusInput
-                  label="Password"
-                  type="password"
-                  value={loginPassword}
-                  onChange={setLoginPassword}
-                  placeholder="Your password"
-                  autoComplete="current-password"
-                  color={color}
-                />
-
+                <FocusInput label="Username" type="text" value={username} onChange={setUsername} placeholder="ryansmith" autoComplete="username" color={color} />
+                <FocusInput label="Password" type="password" value={loginPassword} onChange={setLoginPassword} placeholder="Your password" autoComplete="current-password" color={color} />
                 <div className="text-right -mt-2">
-                  <Link href="/forgot-password" className="text-xs hover:underline" style={{ color }}>
-                    Forgot password?
-                  </Link>
+                  <Link href="/forgot-password" className="text-xs hover:underline" style={{ color }}>Forgot password?</Link>
                 </div>
-
                 <button
                   type="submit"
                   disabled={loginLoading}
@@ -407,178 +334,326 @@ export function SlugLanding({
           </>
         )}
 
-        {view === 'register' && (
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-7 border border-white">
-            {/* Header */}
-            <div
-              className="inline-block px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest mb-3"
-              style={{ background: `${color}18`, color }}
-            >
-              {validatedRole === 'coach' ? 'Coach' : 'Player'} Registration
-            </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Create Your Account</h1>
-            <p className="text-sm text-gray-500 mb-6">
-              Your recruiting email will be generated from your name.
-            </p>
+        {view === 'register' && validatedRole === 'coach' && (
+          <CoachRegisterForm
+            color={color}
+            accent={accent}
+            slug={slug}
+            inviteCode={inviteCode}
+            schoolName={schoolName}
+            programCity={programCity}
+            programState={programState}
+            firstName={firstName} setFirstName={setFirstName}
+            lastName={lastName} setLastName={setLastName}
+            title={title} setTitle={setTitle}
+            password={password} setPassword={setPassword}
+            confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword}
+            recoveryEmail={recoveryEmail} setRecoveryEmail={setRecoveryEmail}
+            generatedUsername={generatedUsername}
+            usernameAvailable={usernameAvailable}
+            checkingUsername={checkingUsername}
+            registerLoading={registerLoading}
+            registerError={registerError}
+            onSubmit={handleRegister}
+            onBack={() => { setView('home'); setInviteError('') }}
+          />
+        )}
 
-            <form onSubmit={handleRegister} className="space-y-4">
-              {registerError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-                  {registerError}
-                </div>
-              )}
-
-              {/* Recovery email first — enables pre-population */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
-                  Your Personal Email
-                  <span className="ml-1.5 text-[10px] font-normal text-gray-400 normal-case tracking-normal">(for password resets only)</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="email"
-                    value={form.recovery_email}
-                    onChange={e => update('recovery_email', e.target.value)}
-                    onBlur={handleRecoveryEmailBlur}
-                    placeholder="your@gmail.com"
-                    required
-                    className={inputClass}
-                    style={{ borderColor: form.recovery_email ? color : '#e5e7eb' }}
-                  />
-                  {lookingUpProfile && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="border-t border-gray-100 pt-4">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-3">Your Info</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <FocusInput label="First Name" type="text" value={form.first_name} onChange={v => update('first_name', v)} required color={color} />
-                  <FocusInput label="Last Name" type="text" value={form.last_name} onChange={v => update('last_name', v)} required color={color} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <FocusInput label="Position" type="text" value={form.position} onChange={v => update('position', v)} placeholder="QB" color={color} />
-                <FocusInput label="Grad Year" type="number" value={form.grad_year} onChange={v => update('grad_year', v)} placeholder="2026" color={color} />
-                <FocusInput label="Jersey #" type="text" value={form.jersey_number} onChange={v => update('jersey_number', v)} placeholder="33" maxLength={3} color={color} />
-              </div>
-
-              <FocusInput label="High School" type="text" value={form.high_school} onChange={v => update('high_school', v)} color={color} />
-
-              <div className="grid grid-cols-2 gap-3">
-                <FocusInput label="City" type="text" value={form.city} onChange={v => update('city', v)} color={color} />
-                <FocusInput label="State" type="text" value={form.state} onChange={v => update('state', v)} placeholder="IA" maxLength={2} color={color} />
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <FocusInput label="GPA" type="number" step="0.01" value={form.gpa} onChange={v => update('gpa', v)} placeholder="3.5" color={color} />
-                <FocusInput label="Height" type="text" value={form.height} onChange={v => update('height', v)} placeholder={'6\'2"'} color={color} />
-                <FocusInput label="Weight" type="number" value={form.weight} onChange={v => update('weight', v)} placeholder="185" color={color} />
-              </div>
-
-              <FocusInput label="Hudl URL" type="url" value={form.hudl_url} onChange={v => update('hudl_url', v)} placeholder="https://hudl.com/..." color={color} />
-
-              {/* Workspace email preview */}
-              <div className="rounded-xl p-4 border-2" style={{ borderColor: `${color}30`, background: `${color}08` }}>
-                <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: `${color}99` }}>
-                  Your Recruiting Email
-                </p>
-                {generatedUsername ? (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-mono font-semibold" style={{ color }}>
-                      {generatedUsername}@{WORKSPACE_DOMAIN}
-                    </span>
-                    {checkingUsername && <span className="text-xs text-gray-400">checking...</span>}
-                    {!checkingUsername && usernameAvailable === true && <span className="text-xs text-green-600 font-semibold">✓ available</span>}
-                    {!checkingUsername && usernameAvailable === false && <span className="text-xs text-red-500 font-semibold">taken — try a different name</span>}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-400 italic">Enter your name above to generate your email</p>
-                )}
-                <p className="text-xs text-gray-400 mt-1">Coaches will receive emails from this address.</p>
-              </div>
-
-              {/* Password */}
-              <div className="border-t border-gray-100 pt-4">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-3">Set Your Password</p>
-                <div className="space-y-3">
-                  <FocusInput
-                    label="Password (min 8 characters)"
-                    type="password"
-                    value={form.password}
-                    onChange={v => update('password', v)}
-                    required
-                    minLength={8}
-                    placeholder="Create a password"
-                    autoComplete="new-password"
-                    color={color}
-                  />
-                  <div>
-                    <FocusInput
-                      label="Confirm Password"
-                      type="password"
-                      value={form.confirm_password}
-                      onChange={v => update('confirm_password', v)}
-                      required
-                      placeholder="Repeat your password"
-                      autoComplete="new-password"
-                      color={form.confirm_password && form.password !== form.confirm_password ? '#ef4444' : color}
-                    />
-                    {form.confirm_password && form.password !== form.confirm_password && (
-                      <p className="text-red-500 text-xs mt-1">Passwords don&apos;t match</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={
-                  registerLoading ||
-                  !generatedUsername ||
-                  usernameAvailable === false ||
-                  form.password !== form.confirm_password ||
-                  form.password.length < 8
-                }
-                className="w-full py-4 rounded-xl text-white font-bold text-sm tracking-wide transition disabled:opacity-50 mt-2"
-                style={{ background: `linear-gradient(135deg, ${color} 0%, ${accent} 100%)` }}
-              >
-                {registerLoading ? 'Creating your account...' : 'CREATE ACCOUNT'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => { setView('home'); setInviteError('') }}
-                className="w-full text-xs text-gray-400 hover:text-gray-600 transition py-1"
-              >
-                ← Back
-              </button>
-            </form>
-          </div>
+        {view === 'register' && validatedRole === 'player' && (
+          <PlayerRegisterForm
+            color={color}
+            accent={accent}
+            slug={slug}
+            inviteCode={inviteCode}
+            schoolName={schoolName}
+            programCity={programCity}
+            programState={programState}
+            firstName={firstName} setFirstName={setFirstName}
+            lastName={lastName} setLastName={setLastName}
+            position={position} setPosition={setPosition}
+            gradYear={gradYear} setGradYear={setGradYear}
+            jerseyNumber={jerseyNumber} setJerseyNumber={setJerseyNumber}
+            gpa={gpa} setGpa={setGpa}
+            height={height} setHeight={setHeight}
+            weight={weight} setWeight={setWeight}
+            hudlUrl={hudlUrl} setHudlUrl={setHudlUrl}
+            password={password} setPassword={setPassword}
+            confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword}
+            recoveryEmail={recoveryEmail} setRecoveryEmail={setRecoveryEmail}
+            generatedUsername={generatedUsername}
+            usernameAvailable={usernameAvailable}
+            checkingUsername={checkingUsername}
+            registerLoading={registerLoading}
+            registerError={registerError}
+            onSubmit={handleRegister}
+            onBack={() => { setView('home'); setInviteError('') }}
+          />
         )}
       </div>
     </div>
   )
 }
 
+// ── Coach registration form ─────────────────────────────────────────────────
+
+function CoachRegisterForm({
+  color, accent,
+  schoolName, programCity, programState,
+  firstName, setFirstName, lastName, setLastName,
+  title, setTitle,
+  password, setPassword, confirmPassword, setConfirmPassword,
+  recoveryEmail, setRecoveryEmail,
+  generatedUsername, usernameAvailable, checkingUsername,
+  registerLoading, registerError,
+  onSubmit, onBack,
+}: any) {
+  return (
+    <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-7 border border-white">
+      <div className="inline-block px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest mb-3" style={{ background: `${color}18`, color }}>
+        Coach Registration
+      </div>
+      <h1 className="text-xl font-bold text-gray-900 mb-1">Create Your Account</h1>
+      <p className="text-sm text-gray-500 mb-6">Set up your coaching profile.</p>
+
+      <form onSubmit={onSubmit} className="space-y-4">
+        {registerError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">{registerError}</div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <FocusInput label="First Name" type="text" value={firstName} onChange={setFirstName} required color={color} />
+          <FocusInput label="Last Name" type="text" value={lastName} onChange={setLastName} required color={color} />
+        </div>
+
+        <FocusInput label="Title" type="text" value={title} onChange={setTitle} placeholder="Head Coach, OC, DC…" color={color} />
+
+        {/* Pre-populated school info */}
+        <div className="grid grid-cols-5 gap-3">
+          <div className="col-span-3">
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">High School</label>
+            <div className="px-4 py-2.5 border-2 border-gray-100 rounded-xl bg-gray-50 text-sm text-gray-600">{schoolName}</div>
+          </div>
+          <div className="col-span-1">
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">City</label>
+            <div className="px-3 py-2.5 border-2 border-gray-100 rounded-xl bg-gray-50 text-sm text-gray-600 truncate">{programCity}</div>
+          </div>
+          <div className="col-span-1">
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">State</label>
+            <div className="px-3 py-2.5 border-2 border-gray-100 rounded-xl bg-gray-50 text-sm text-gray-600">{programState}</div>
+          </div>
+        </div>
+
+        {/* Email preview */}
+        <EmailPreview color={color} generatedUsername={generatedUsername} checkingUsername={checkingUsername} usernameAvailable={usernameAvailable} />
+
+        {/* Password */}
+        <PasswordFields color={color} password={password} setPassword={setPassword} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} />
+
+        {/* Recovery email — last, de-emphasized */}
+        <RecoveryEmailField color={color} value={recoveryEmail} onChange={setRecoveryEmail} />
+
+        <SubmitButton color={color} accent={accent} loading={registerLoading} disabled={!generatedUsername || usernameAvailable === false || password !== confirmPassword || password.length < 8} />
+
+        <BackButton onBack={onBack} />
+      </form>
+    </div>
+  )
+}
+
+// ── Player registration form ────────────────────────────────────────────────
+
+function PlayerRegisterForm({
+  color, accent,
+  schoolName, programCity, programState,
+  firstName, setFirstName, lastName, setLastName,
+  position, setPosition, gradYear, setGradYear, jerseyNumber, setJerseyNumber,
+  gpa, setGpa, height, setHeight, weight, setWeight, hudlUrl, setHudlUrl,
+  password, setPassword, confirmPassword, setConfirmPassword,
+  recoveryEmail, setRecoveryEmail,
+  generatedUsername, usernameAvailable, checkingUsername,
+  registerLoading, registerError,
+  onSubmit, onBack,
+}: any) {
+  return (
+    <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-7 border border-white">
+      <div className="inline-block px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest mb-3" style={{ background: `${color}18`, color }}>
+        Player Registration
+      </div>
+      <h1 className="text-xl font-bold text-gray-900 mb-1">Create Your Account</h1>
+      <p className="text-sm text-gray-500 mb-6">Your recruiting email is generated from your name.</p>
+
+      <form onSubmit={onSubmit} className="space-y-4">
+        {registerError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">{registerError}</div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <FocusInput label="First Name" type="text" value={firstName} onChange={setFirstName} required color={color} />
+          <FocusInput label="Last Name" type="text" value={lastName} onChange={setLastName} required color={color} />
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <FocusInput label="Position" type="text" value={position} onChange={setPosition} placeholder="QB" color={color} />
+          <FocusInput label="Grad Year" type="number" value={gradYear} onChange={setGradYear} placeholder="2026" color={color} />
+          <FocusInput label="Jersey #" type="text" value={jerseyNumber} onChange={setJerseyNumber} placeholder="33" maxLength={3} color={color} />
+        </div>
+
+        {/* Pre-populated school info */}
+        <div className="grid grid-cols-5 gap-3">
+          <div className="col-span-3">
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">High School</label>
+            <div className="px-4 py-2.5 border-2 border-gray-100 rounded-xl bg-gray-50 text-sm text-gray-600">{schoolName}</div>
+          </div>
+          <div className="col-span-1">
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">City</label>
+            <div className="px-3 py-2.5 border-2 border-gray-100 rounded-xl bg-gray-50 text-sm text-gray-600 truncate">{programCity}</div>
+          </div>
+          <div className="col-span-1">
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">State</label>
+            <div className="px-3 py-2.5 border-2 border-gray-100 rounded-xl bg-gray-50 text-sm text-gray-600">{programState}</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <FocusInput label="GPA" type="number" step="0.01" value={gpa} onChange={setGpa} placeholder="3.5" color={color} />
+          <FocusInput label="Height" type="text" value={height} onChange={setHeight} placeholder={'6\'2"'} color={color} />
+          <FocusInput label="Weight" type="number" value={weight} onChange={setWeight} placeholder="185" color={color} />
+        </div>
+
+        <FocusInput label="Hudl URL" type="url" value={hudlUrl} onChange={setHudlUrl} placeholder="https://hudl.com/..." color={color} />
+
+        {/* Email preview */}
+        <EmailPreview color={color} generatedUsername={generatedUsername} checkingUsername={checkingUsername} usernameAvailable={usernameAvailable} />
+
+        {/* Password */}
+        <PasswordFields color={color} password={password} setPassword={setPassword} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} />
+
+        {/* Recovery email — last, de-emphasized */}
+        <RecoveryEmailField color={color} value={recoveryEmail} onChange={setRecoveryEmail} />
+
+        <SubmitButton color={color} accent={accent} loading={registerLoading} disabled={!generatedUsername || usernameAvailable === false || password !== confirmPassword || password.length < 8} />
+
+        <BackButton onBack={onBack} />
+      </form>
+    </div>
+  )
+}
+
+// ── Shared sub-components ───────────────────────────────────────────────────
+
+function EmailPreview({ color, generatedUsername, checkingUsername, usernameAvailable }: {
+  color: string
+  generatedUsername: string
+  checkingUsername: boolean
+  usernameAvailable: boolean | null
+}) {
+  return (
+    <div className="rounded-xl p-4 border-2" style={{ borderColor: `${color}30`, background: `${color}08` }}>
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: `${color}99` }}>
+        Your Recruiting Email
+      </p>
+      {generatedUsername ? (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-mono font-semibold" style={{ color }}>
+            {generatedUsername}@{WORKSPACE_DOMAIN}
+          </span>
+          {checkingUsername && <span className="text-xs text-gray-400">checking...</span>}
+          {!checkingUsername && usernameAvailable === true && <span className="text-xs text-green-600 font-semibold">✓ available</span>}
+          {!checkingUsername && usernameAvailable === false && <span className="text-xs text-red-500 font-semibold">unavailable</span>}
+        </div>
+      ) : (
+        <p className="text-sm text-gray-400 italic">Enter your name above</p>
+      )}
+      <p className="text-xs text-gray-400 mt-1">Coaches will receive emails from this address.</p>
+    </div>
+  )
+}
+
+function PasswordFields({ color, password, setPassword, confirmPassword, setConfirmPassword }: {
+  color: string
+  password: string
+  setPassword: (v: string) => void
+  confirmPassword: string
+  setConfirmPassword: (v: string) => void
+}) {
+  return (
+    <div className="space-y-3">
+      <FocusInput
+        label="Password (min 8 characters)"
+        type="password"
+        value={password}
+        onChange={setPassword}
+        required
+        minLength={8}
+        placeholder="Create a password"
+        autoComplete="new-password"
+        color={color}
+      />
+      <div>
+        <FocusInput
+          label="Confirm Password"
+          type="password"
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          required
+          placeholder="Repeat your password"
+          autoComplete="new-password"
+          color={confirmPassword && password !== confirmPassword ? '#ef4444' : color}
+        />
+        {confirmPassword && password !== confirmPassword && (
+          <p className="text-red-500 text-xs mt-1">Passwords don&apos;t match</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function RecoveryEmailField({ color, value, onChange }: { color: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="pt-1">
+      <label className="block text-xs font-medium text-gray-400 mb-1.5">
+        Personal email
+        <span className="ml-1 font-normal text-gray-300">(for password resets only — never shared)</span>
+      </label>
+      <FocusInput
+        label=""
+        type="email"
+        value={value}
+        onChange={onChange}
+        placeholder="your@gmail.com"
+        required
+        color={color}
+      />
+    </div>
+  )
+}
+
+function SubmitButton({ color, accent, loading, disabled }: { color: string; accent: string; loading: boolean; disabled: boolean }) {
+  return (
+    <button
+      type="submit"
+      disabled={loading || disabled}
+      className="w-full py-4 rounded-xl text-white font-bold text-sm tracking-wide transition disabled:opacity-50 mt-2"
+      style={{ background: `linear-gradient(135deg, ${color} 0%, ${accent} 100%)` }}
+    >
+      {loading ? 'Creating your account...' : 'CREATE ACCOUNT'}
+    </button>
+  )
+}
+
+function BackButton({ onBack }: { onBack: () => void }) {
+  return (
+    <button type="button" onClick={onBack} className="w-full text-xs text-gray-400 hover:text-gray-600 transition py-1">
+      ← Back
+    </button>
+  )
+}
+
 // ── Reusable focused input ──────────────────────────────────────────────────
 
 function FocusInput({
-  label,
-  type,
-  value,
-  onChange,
-  placeholder,
-  required,
-  autoComplete,
-  minLength,
-  maxLength,
-  step,
-  color,
+  label, type, value, onChange, placeholder, required,
+  autoComplete, minLength, maxLength, step, color,
 }: {
   label: string
   type: string
@@ -593,10 +668,9 @@ function FocusInput({
   color: string
 }) {
   const [focused, setFocused] = useState(false)
-
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>
+      {label && <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>}
       <input
         type={type}
         value={value}
