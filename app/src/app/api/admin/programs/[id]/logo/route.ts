@@ -27,9 +27,9 @@ export async function POST(
 
     const formData = await request.formData()
 
-    // Supports two fields: 'logo' (team logo) and 'landing_logo' (landing page logo)
-    const isLanding = formData.has('landing_logo')
-    const file = (formData.get('landing_logo') ?? formData.get('logo')) as File | null
+    // Supports two fields: 'logo' (team logo) and 'background_image' (slug page background)
+    const isBgImage = formData.has('background_image')
+    const file = (formData.get('background_image') ?? formData.get('logo')) as File | null
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
@@ -44,8 +44,8 @@ export async function POST(
     }
 
     const admin = createAdminClient()
-    const ext = file.name.split('.').pop() || 'png'
-    const fileKey = isLanding ? 'landing-logo' : 'logo'
+    const ext = file.name.split('.').pop() || 'jpg'
+    const fileKey = isBgImage ? 'background' : 'logo'
     const filePath = `${id}/${fileKey}.${ext}`
 
     const arrayBuffer = await file.arrayBuffer()
@@ -62,7 +62,7 @@ export async function POST(
       .from('program-logos')
       .getPublicUrl(filePath)
 
-    const dbField = isLanding ? 'landing_logo_url' : 'logo_url'
+    const dbField = isBgImage ? 'background_image_url' : 'logo_url'
     const { error: updateError } = await admin
       .from('managed_programs')
       .update({ [dbField]: publicUrl })

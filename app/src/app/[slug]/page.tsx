@@ -7,11 +7,6 @@ import { Suspense } from "react"
 
 export const dynamic = "force-dynamic"
 
-// Per-program background images. Add new slugs here as programs onboard.
-const slugBackgrounds: Record<string, string> = {
-  'prairie-ia': '/prairie-ia-bg.png',
-}
-
 interface LandingPageProps {
   params: Promise<{ slug: string }>
 }
@@ -22,7 +17,7 @@ export default async function LandingPage({ params }: LandingPageProps) {
 
   const { data: program } = await admin
     .from("managed_programs")
-    .select("id, school_name, mascot, city, state, logo_url, landing_logo_url, primary_color, accent_color")
+    .select("id, school_name, mascot, city, state, logo_url, background_image_url, primary_color, accent_color")
     .eq("landing_slug", slug)
     .maybeSingle()
 
@@ -32,10 +27,10 @@ export default async function LandingPage({ params }: LandingPageProps) {
 
   const branding = {
     name: [program.school_name, program.mascot].filter(Boolean).join(" "),
-    logo: program.landing_logo_url || program.logo_url || "/logo.png",
+    logo: program.logo_url || "/logo.png",
     color: program.primary_color || "#0047AB",
     accent: program.accent_color || "#CC0000",
-    bg: slugBackgrounds[slug] ?? "/locker-room-bg.png",
+    bg: program.background_image_url || "/locker-room-bg.png",
     schoolName: program.school_name,
     city: program.city || "",
     state: program.state || "",

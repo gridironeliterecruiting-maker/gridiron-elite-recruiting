@@ -26,7 +26,7 @@ interface Program {
   state: string | null
   landing_slug: string | null
   logo_url: string | null
-  landing_logo_url: string | null
+  background_image_url: string | null
   primary_color: string
   secondary_color: string
   accent_color: string
@@ -82,10 +82,10 @@ export function AdminDashboard() {
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null)
-  const [uploadingLandingLogo, setUploadingLandingLogo] = useState(false)
-  const [landingLogoPreview, setLandingLogoPreview] = useState<string | null>(null)
-  const [pendingLandingLogoFile, setPendingLandingLogoFile] = useState<File | null>(null)
-  const landingLogoInputRef = useRef<HTMLInputElement>(null)
+  const [uploadingBgImage, setUploadingBgImage] = useState(false)
+  const [bgImagePreview, setBgImagePreview] = useState<string | null>(null)
+  const [pendingBgImageFile, setPendingBgImageFile] = useState<File | null>(null)
+  const bgImageInputRef = useRef<HTMLInputElement>(null)
   const [maxCoaches, setMaxCoaches] = useState(5)
   const [maxPlayers, setMaxPlayers] = useState(30)
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
@@ -113,8 +113,8 @@ export function AdminDashboard() {
     setForm(emptyForm)
     setLogoPreview(null)
     setPendingLogoFile(null)
-    setLandingLogoPreview(null)
-    setPendingLandingLogoFile(null)
+    setBgImagePreview(null)
+    setPendingBgImageFile(null)
     setEditing(null)
     setCreating(true)
     setPendingMembers([])
@@ -137,8 +137,8 @@ export function AdminDashboard() {
       instagram_username: program.instagram_username || '',
     })
     setLogoPreview(program.logo_url)
-    setLandingLogoPreview(program.landing_logo_url || null)
-    setPendingLandingLogoFile(null)
+    setBgImagePreview(program.background_image_url || null)
+    setPendingBgImageFile(null)
     setMaxCoaches(program.max_coaches ?? 5)
     setMaxPlayers(program.max_players ?? 30)
     setEditing(program)
@@ -210,13 +210,13 @@ export function AdminDashboard() {
             console.error('Failed to upload logo during creation')
           }
         }
-        if (pendingLandingLogoFile) {
+        if (pendingBgImageFile) {
           try {
             const formData = new FormData()
-            formData.append('landing_logo', pendingLandingLogoFile)
+            formData.append('background_image', pendingBgImageFile)
             await fetch(`/api/admin/programs/${data.program.id}/logo`, { method: 'POST', body: formData })
           } catch {
-            console.error('Failed to upload landing logo during creation')
+            console.error('Failed to upload background image during creation')
           }
         }
         if (pendingMembers.length > 0) {
@@ -358,31 +358,31 @@ export function AdminDashboard() {
     }
   }
 
-  const handleLandingLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBgImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0]) return
     const file = e.target.files[0]
 
     if (creating) {
-      setPendingLandingLogoFile(file)
-      setLandingLogoPreview(URL.createObjectURL(file))
+      setPendingBgImageFile(file)
+      setBgImagePreview(URL.createObjectURL(file))
       return
     }
 
     if (!editing) return
-    setUploadingLandingLogo(true)
+    setUploadingBgImage(true)
     try {
       const formData = new FormData()
-      formData.append('landing_logo', file)
+      formData.append('background_image', file)
       const res = await fetch(`/api/admin/programs/${editing.id}/logo`, { method: 'POST', body: formData })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      setLandingLogoPreview(data.landing_logo_url)
-      setEditing(prev => prev ? { ...prev, landing_logo_url: data.landing_logo_url } : null)
-      setPrograms(prev => prev.map(p => p.id === editing.id ? { ...p, landing_logo_url: data.landing_logo_url } : p))
+      setBgImagePreview(data.background_image_url)
+      setEditing(prev => prev ? { ...prev, background_image_url: data.background_image_url } : null)
+      setPrograms(prev => prev.map(p => p.id === editing.id ? { ...p, background_image_url: data.background_image_url } : p))
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to upload landing logo')
+      setError(err instanceof Error ? err.message : 'Failed to upload background image')
     } finally {
-      setUploadingLandingLogo(false)
+      setUploadingBgImage(false)
     }
   }
 
@@ -609,12 +609,12 @@ export function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Landing Page Logo */}
+                  {/* Background Image */}
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-gray-700">Landing Page Logo</label>
+                    <label className="mb-1.5 block text-xs font-medium text-gray-700">Landing Page Background</label>
                     <div className="flex items-start gap-3">
-                      {landingLogoPreview ? (
-                        <img src={landingLogoPreview} alt="Landing logo preview" className="h-16 w-16 rounded-lg border border-gray-200 object-contain" />
+                      {bgImagePreview ? (
+                        <img src={bgImagePreview} alt="Background preview" className="h-16 w-16 rounded-lg border border-gray-200 object-cover" />
                       ) : (
                         <div className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-400">
                           <Upload className="h-5 w-5" />
@@ -623,14 +623,14 @@ export function AdminDashboard() {
                       <div>
                         <button
                           type="button"
-                          onClick={() => landingLogoInputRef.current?.click()}
-                          disabled={uploadingLandingLogo}
+                          onClick={() => bgImageInputRef.current?.click()}
+                          disabled={uploadingBgImage}
                           className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
                         >
-                          {uploadingLandingLogo ? 'Uploading...' : 'Upload'}
+                          {uploadingBgImage ? 'Uploading...' : 'Upload'}
                         </button>
-                        <p className="mt-1 text-[10px] text-gray-400 leading-tight">400×400px PNG<br />transparent bg</p>
-                        <input ref={landingLogoInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLandingLogoUpload} className="hidden" />
+                        <p className="mt-1 text-[10px] text-gray-400 leading-tight">Wide photo · JPG/PNG<br />1920×1080 ideal</p>
+                        <input ref={bgImageInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleBgImageUpload} className="hidden" />
                       </div>
                     </div>
                   </div>
