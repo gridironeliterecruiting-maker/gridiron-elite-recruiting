@@ -151,6 +151,7 @@ export async function POST(request: Request) {
       role: role === 'coach' ? 'coach' : 'athlete',
       can_send_emails: true,
       is_grandfathered: false,
+      registered_via: `slug:${slug}`,
     })
 
     if (profileError) {

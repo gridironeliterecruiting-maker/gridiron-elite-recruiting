@@ -115,6 +115,7 @@ export async function POST(request: Request) {
       twitter_handle: twitterHandle || null,
       stripe_customer_id: stripeCustomerId,
       is_grandfathered: false,
+      registered_via: 'main_site',
     })
 
     if (profileError) {
