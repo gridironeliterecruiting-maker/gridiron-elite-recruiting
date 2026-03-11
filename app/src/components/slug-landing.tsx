@@ -224,8 +224,10 @@ export function SlugLanding({
     setLoginLoading(true)
     setLoginError('')
 
+    const loginInput = username.trim().toLowerCase()
+    const loginEmail = loginInput.includes('@') ? loginInput : `${loginInput}@${WORKSPACE_DOMAIN}`
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: `${username.trim().toLowerCase()}@${WORKSPACE_DOMAIN}`,
+      email: loginEmail,
       password: loginPassword,
     })
 
@@ -480,7 +482,7 @@ function CoachRegisterForm({
         <EmailPreview color={color} generatedUsername={generatedUsername} checkingUsername={checkingUsername} usernameAvailable={usernameAvailable} />
 
         {/* Password */}
-        <PasswordFields color={color} password={password} setPassword={setPassword} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} />
+        <PasswordFields color={color} password={password} setPassword={setPassword} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} generatedUsername={generatedUsername} />
 
         {/* Recovery email — last, de-emphasized */}
         <RecoveryEmailField color={color} value={recoveryEmail} onChange={setRecoveryEmail} />
@@ -559,7 +561,7 @@ function PlayerRegisterForm({
         <EmailPreview color={color} generatedUsername={generatedUsername} checkingUsername={checkingUsername} usernameAvailable={usernameAvailable} />
 
         {/* Password */}
-        <PasswordFields color={color} password={password} setPassword={setPassword} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} />
+        <PasswordFields color={color} password={password} setPassword={setPassword} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} generatedUsername={generatedUsername} />
 
         {/* Recovery email — last, de-emphasized */}
         <RecoveryEmailField color={color} value={recoveryEmail} onChange={setRecoveryEmail} />
@@ -602,15 +604,27 @@ function EmailPreview({ color, generatedUsername, checkingUsername, usernameAvai
   )
 }
 
-function PasswordFields({ color, password, setPassword, confirmPassword, setConfirmPassword }: {
+function PasswordFields({ color, password, setPassword, confirmPassword, setConfirmPassword, generatedUsername }: {
   color: string
   password: string
   setPassword: (v: string) => void
   confirmPassword: string
   setConfirmPassword: (v: string) => void
+  generatedUsername: string
 }) {
   return (
     <div className="space-y-3">
+      <div className="border-t border-gray-200 pt-4">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+          You will log in with:
+        </p>
+        <div className="bg-gray-50 rounded-lg px-4 py-2.5 mb-3 flex items-center gap-3">
+          <span className="text-xs text-gray-500">Username</span>
+          <span className="text-sm font-mono font-semibold text-[#0047AB]">
+            {generatedUsername || <span className="text-gray-400 italic">generated from your name</span>}
+          </span>
+        </div>
+      </div>
       <FocusInput
         label="Password (min 8 characters)"
         type="password"
