@@ -39,10 +39,22 @@ export async function GET() {
       .select('*')
       .in('program_id', programIds.length > 0 ? programIds : ['none'])
 
-    // Attach members to programs
+    // Fetch profiles for registered members
+    const userIds = (members || []).filter((m: { user_id: string | null }) => m.user_id).map((m: { user_id: string }) => m.user_id)
+    const { data: profilesData } = userIds.length > 0
+      ? await admin.from('profiles').select('id, first_name, last_name, username, workspace_email').in('id', userIds)
+      : { data: [] }
+    const profilesById = Object.fromEntries((profilesData || []).map((p: { id: string }) => [p.id, p]))
+
+    // Attach members (with profile) to programs
     const programsWithMembers = programs.map((p: { id: string }) => ({
       ...p,
-      members: (members || []).filter((m: { program_id: string }) => m.program_id === p.id),
+      members: (members || [])
+        .filter((m: { program_id: string }) => m.program_id === p.id)
+        .map((m: { user_id: string | null }) => ({
+          ...m,
+          profile: m.user_id ? (profilesById[m.user_id] ?? null) : null,
+        })),
     }))
 
     return NextResponse.json({ programs: programsWithMembers })

@@ -16,6 +16,12 @@ interface Member {
   email: string
   role: 'coach' | 'player'
   user_id: string | null
+  profile: {
+    first_name: string | null
+    last_name: string | null
+    username: string | null
+    workspace_email: string | null
+  } | null
 }
 
 interface Program {
@@ -75,10 +81,6 @@ export function AdminDashboard() {
   const [form, setForm] = useState<ProgramForm>(emptyForm)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [newEmail, setNewEmail] = useState('')
-  const [newRole, setNewRole] = useState<'coach' | 'player'>('coach')
-  const [addingMember, setAddingMember] = useState(false)
-  const [pendingMembers, setPendingMembers] = useState<{ email: string; role: 'coach' | 'player' }[]>([])
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null)
@@ -117,7 +119,6 @@ export function AdminDashboard() {
     setPendingBgImageFile(null)
     setEditing(null)
     setCreating(true)
-    setPendingMembers([])
     setMaxCoaches(5)
     setMaxPlayers(30)
     setError('')
@@ -219,15 +220,6 @@ export function AdminDashboard() {
             console.error('Failed to upload background image during creation')
           }
         }
-        if (pendingMembers.length > 0) {
-          await Promise.all(pendingMembers.map(m =>
-            fetch(`/api/admin/programs/${data.program.id}/members`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(m),
-            })
-          ))
-        }
       }
 
       await loadPrograms()
@@ -255,49 +247,6 @@ export function AdminDashboard() {
       closeForm()
     } catch {
       setError('Failed to delete program')
-    }
-  }
-
-  const handleAddMember = async () => {
-    if (!newEmail.trim()) return
-
-    // Creating mode — add to local pending list
-    if (creating) {
-      const email = newEmail.trim().toLowerCase()
-      if (pendingMembers.some(m => m.email === email)) {
-        setError('This email is already added')
-        return
-      }
-      setPendingMembers(prev => [...prev, { email, role: newRole }])
-      setNewEmail('')
-      setError('')
-      return
-    }
-
-    if (!editing) return
-    setAddingMember(true)
-    try {
-      const res = await fetch(`/api/admin/programs/${editing.id}/members`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: newEmail.trim(), role: newRole }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-
-      setEditing(prev => prev ? {
-        ...prev,
-        members: [...prev.members, data.member],
-      } : null)
-      setPrograms(prev => prev.map(p => p.id === editing.id
-        ? { ...p, members: [...p.members, data.member] }
-        : p
-      ))
-      setNewEmail('')
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to add member')
-    } finally {
-      setAddingMember(false)
     }
   }
 
@@ -386,7 +335,7 @@ export function AdminDashboard() {
     }
   }
 
-  const activeMembers = creating ? pendingMembers.map(m => ({ ...m, id: `pending-${m.email}`, user_id: null })) : (editing?.members || [])
+  const activeMembers = editing?.members || []
   const coachMembers = activeMembers.filter(m => m.role === 'coach')
   const playerMembers = activeMembers.filter(m => m.role === 'player')
 
@@ -777,83 +726,41 @@ export function AdminDashboard() {
               </Section>
 
               {/* Members */}
-              <Section title="Team Members" icon={<Users className="h-4 w-4" />}>
-                {/* Add Member */}
-                <div className="mb-4 flex items-end gap-2">
-                  <div className="flex-1">
-                    <label className="mb-1.5 block text-xs font-medium text-gray-700">Email</label>
-                    <input
-                      type="email"
-                      value={newEmail}
-                      onChange={e => setNewEmail(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleAddMember()}
-                      placeholder="name@email.com"
-                      className="input"
-                    />
-                  </div>
-                  <div className="w-28">
-                    <label className="mb-1.5 block text-xs font-medium text-gray-700">Role</label>
-                    <select
-                      value={newRole}
-                      onChange={e => setNewRole(e.target.value as 'coach' | 'player')}
-                      className="input"
-                    >
-                      <option value="coach">Coach</option>
-                      <option value="player">Player</option>
-                    </select>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleAddMember}
-                    disabled={!newEmail.trim() || addingMember}
-                    className="rounded-lg bg-[#0047AB] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#003580] disabled:opacity-50"
-                  >
-                    {addingMember ? '...' : 'Add'}
-                  </button>
-                </div>
+              {editing && (
+                <Section title="Team Members" icon={<Users className="h-4 w-4" />}>
+                  <p className="text-xs text-gray-400 mb-4">Members who have registered via the invite code. Removing a member revokes their access and deletes their account.</p>
 
-                {/* Coach List */}
-                {coachMembers.length > 0 && (
-                  <div className="mb-3">
-                    <h4 className="mb-1.5 text-xs font-semibold uppercase text-gray-500">Coaches</h4>
-                    <div className="space-y-1">
-                      {coachMembers.map(m => (
-                        <MemberRow key={m.id} member={m} onRemove={() => {
-                          if (creating) {
-                            setPendingMembers(prev => prev.filter(p => `pending-${p.email}` !== m.id))
-                          } else {
-                            handleRemoveMember(m.id)
-                          }
-                        }} />
-                      ))}
+                  {/* Coach List */}
+                  {coachMembers.length > 0 && (
+                    <div className="mb-3">
+                      <h4 className="mb-1.5 text-xs font-semibold uppercase text-gray-500">Coaches ({coachMembers.length}/{editing.max_coaches})</h4>
+                      <div className="space-y-1">
+                        {coachMembers.map(m => (
+                          <MemberRow key={m.id} member={m} onRemove={() => handleRemoveMember(m.id)} />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Player List */}
-                {playerMembers.length > 0 && (
-                  <div>
-                    <h4 className="mb-1.5 text-xs font-semibold uppercase text-gray-500">Players</h4>
-                    <div className="space-y-1">
-                      {playerMembers.map(m => (
-                        <MemberRow key={m.id} member={m} onRemove={() => {
-                          if (creating) {
-                            setPendingMembers(prev => prev.filter(p => `pending-${p.email}` !== m.id))
-                          } else {
-                            handleRemoveMember(m.id)
-                          }
-                        }} />
-                      ))}
+                  {/* Player List */}
+                  {playerMembers.length > 0 && (
+                    <div>
+                      <h4 className="mb-1.5 text-xs font-semibold uppercase text-gray-500">Players ({playerMembers.length}/{editing.max_players})</h4>
+                      <div className="space-y-1">
+                        {playerMembers.map(m => (
+                          <MemberRow key={m.id} member={m} onRemove={() => handleRemoveMember(m.id)} />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {coachMembers.length === 0 && playerMembers.length === 0 && (
-                  <p className="text-center text-sm text-gray-400 py-4">
-                    No members yet. Add coach and player emails above.
-                  </p>
-                )}
-              </Section>
+                  {coachMembers.length === 0 && playerMembers.length === 0 && (
+                    <p className="text-center text-sm text-gray-400 py-4">
+                      No members have registered yet.
+                    </p>
+                  )}
+                </Section>
+              )}
             </div>
           </div>
         </div>
@@ -933,10 +840,18 @@ function ColorField({ label, description, value, onChange }: { label: string; de
 }
 
 function MemberRow({ member, onRemove }: { member: Member; onRemove: () => void }) {
+  const name = member.profile
+    ? [member.profile.first_name, member.profile.last_name].filter(Boolean).join(' ')
+    : member.email
+  const username = member.profile?.username
+
   return (
     <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
       <div className="min-w-0 flex-1">
-        <span className="text-sm text-gray-900">{member.email}</span>
+        <span className="text-sm font-medium text-gray-900">{name}</span>
+        {username && (
+          <span className="ml-2 font-mono text-xs text-gray-400">{username}@jetstreammail.com</span>
+        )}
       </div>
       {member.user_id && (
         <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
