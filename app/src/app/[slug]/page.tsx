@@ -17,7 +17,7 @@ export default async function LandingPage({ params }: LandingPageProps) {
 
   const { data: program } = await admin
     .from("managed_programs")
-    .select("id, school_name, mascot, logo_url, primary_color, accent_color, background_image_url")
+    .select("id, school_name, mascot, logo_url, primary_color, accent_color")
     .eq("landing_slug", slug)
     .maybeSingle()
 
@@ -30,7 +30,7 @@ export default async function LandingPage({ params }: LandingPageProps) {
     logo: program.logo_url || "/logo.png",
     color: program.primary_color || "#0047AB",
     accent: program.accent_color || "#CC0000",
-    bg: program.background_image_url || "/locker-room-bg.png",
+    bg: "/locker-room-bg.png",
   }
 
   // If user is already authenticated and logged into THIS site, send them to hub
