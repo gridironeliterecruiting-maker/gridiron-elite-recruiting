@@ -158,13 +158,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: profileError.message }, { status: 500 })
     }
 
-    // Insert program_members entry
-    const { error: memberError } = await admin.from('program_members').insert({
+    // Upsert program_members entry (handles pre-seeded rows by email)
+    const { error: memberError } = await admin.from('program_members').upsert({
       program_id: program.id,
       user_id: userId,
       email: recoveryEmail,
       role,
-    })
+    }, { onConflict: 'program_id,email' })
 
     if (memberError) {
       console.error('[register-slug] program_members insert failed:', memberError)
