@@ -26,6 +26,7 @@ interface Program {
   state: string | null
   landing_slug: string | null
   logo_url: string | null
+  landing_logo_url: string | null
   primary_color: string
   secondary_color: string
   accent_color: string
@@ -81,6 +82,10 @@ export function AdminDashboard() {
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null)
+  const [uploadingLandingLogo, setUploadingLandingLogo] = useState(false)
+  const [landingLogoPreview, setLandingLogoPreview] = useState<string | null>(null)
+  const [pendingLandingLogoFile, setPendingLandingLogoFile] = useState<File | null>(null)
+  const landingLogoInputRef = useRef<HTMLInputElement>(null)
   const [maxCoaches, setMaxCoaches] = useState(5)
   const [maxPlayers, setMaxPlayers] = useState(30)
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
@@ -108,6 +113,8 @@ export function AdminDashboard() {
     setForm(emptyForm)
     setLogoPreview(null)
     setPendingLogoFile(null)
+    setLandingLogoPreview(null)
+    setPendingLandingLogoFile(null)
     setEditing(null)
     setCreating(true)
     setPendingMembers([])
@@ -130,6 +137,8 @@ export function AdminDashboard() {
       instagram_username: program.instagram_username || '',
     })
     setLogoPreview(program.logo_url)
+    setLandingLogoPreview(program.landing_logo_url || null)
+    setPendingLandingLogoFile(null)
     setMaxCoaches(program.max_coaches ?? 5)
     setMaxPlayers(program.max_players ?? 30)
     setEditing(program)
@@ -199,6 +208,15 @@ export function AdminDashboard() {
             await uploadLogoForProgram(data.program.id, pendingLogoFile)
           } catch {
             console.error('Failed to upload logo during creation')
+          }
+        }
+        if (pendingLandingLogoFile) {
+          try {
+            const formData = new FormData()
+            formData.append('landing_logo', pendingLandingLogoFile)
+            await fetch(`/api/admin/programs/${data.program.id}/logo`, { method: 'POST', body: formData })
+          } catch {
+            console.error('Failed to upload landing logo during creation')
           }
         }
         if (pendingMembers.length > 0) {
@@ -320,7 +338,6 @@ export function AdminDashboard() {
     if (!e.target.files?.[0]) return
     const file = e.target.files[0]
 
-    // Creating mode — hold the file locally and show a preview
     if (creating) {
       setPendingLogoFile(file)
       setLogoPreview(URL.createObjectURL(file))
@@ -333,14 +350,39 @@ export function AdminDashboard() {
       const logoUrl = await uploadLogoForProgram(editing.id, file)
       setLogoPreview(logoUrl)
       setEditing(prev => prev ? { ...prev, logo_url: logoUrl } : null)
-      setPrograms(prev => prev.map(p => p.id === editing.id
-        ? { ...p, logo_url: logoUrl }
-        : p
-      ))
+      setPrograms(prev => prev.map(p => p.id === editing.id ? { ...p, logo_url: logoUrl } : p))
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to upload logo')
     } finally {
       setUploadingLogo(false)
+    }
+  }
+
+  const handleLandingLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.[0]) return
+    const file = e.target.files[0]
+
+    if (creating) {
+      setPendingLandingLogoFile(file)
+      setLandingLogoPreview(URL.createObjectURL(file))
+      return
+    }
+
+    if (!editing) return
+    setUploadingLandingLogo(true)
+    try {
+      const formData = new FormData()
+      formData.append('landing_logo', file)
+      const res = await fetch(`/api/admin/programs/${editing.id}/logo`, { method: 'POST', body: formData })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setLandingLogoPreview(data.landing_logo_url)
+      setEditing(prev => prev ? { ...prev, landing_logo_url: data.landing_logo_url } : null)
+      setPrograms(prev => prev.map(p => p.id === editing.id ? { ...p, landing_logo_url: data.landing_logo_url } : p))
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to upload landing logo')
+    } finally {
+      setUploadingLandingLogo(false)
     }
   }
 
@@ -540,39 +582,56 @@ export function AdminDashboard() {
 
               {/* Branding */}
               <Section title="Branding" icon={<Palette className="h-4 w-4" />}>
-                <div className="mb-4">
-                  <label className="mb-1.5 block text-xs font-medium text-gray-700">Program Logo</label>
-                  <div className="flex items-center gap-4">
-                    {logoPreview ? (
-                      <img
-                        src={logoPreview}
-                        alt="Logo preview"
-                        className="h-20 w-20 rounded-lg border border-gray-200 object-contain"
-                      />
-                    ) : (
-                      <div className="flex h-20 w-20 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-400">
-                        <Upload className="h-6 w-6" />
+                <div className="mb-4 grid grid-cols-2 gap-6">
+                  {/* Team Logo */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-gray-700">Team Logo</label>
+                    <div className="flex items-start gap-3">
+                      {logoPreview ? (
+                        <img src={logoPreview} alt="Logo preview" className="h-16 w-16 rounded-lg border border-gray-200 object-contain" />
+                      ) : (
+                        <div className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-400">
+                          <Upload className="h-5 w-5" />
+                        </div>
+                      )}
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadingLogo}
+                          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          {uploadingLogo ? 'Uploading...' : 'Upload'}
+                        </button>
+                        <p className="mt-1 text-[10px] text-gray-400 leading-tight">500×500px PNG<br />transparent bg</p>
+                        <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLogoUpload} className="hidden" />
                       </div>
-                    )}
-                    <div>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadingLogo}
-                        className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
-                      </button>
-                      <p className="mt-1 text-xs text-gray-400">
-                        Optimal: 500x500px PNG with transparent background
-                      </p>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp"
-                        onChange={handleLogoUpload}
-                        className="hidden"
-                      />
+                    </div>
+                  </div>
+
+                  {/* Landing Page Logo */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-gray-700">Landing Page Logo</label>
+                    <div className="flex items-start gap-3">
+                      {landingLogoPreview ? (
+                        <img src={landingLogoPreview} alt="Landing logo preview" className="h-16 w-16 rounded-lg border border-gray-200 object-contain" />
+                      ) : (
+                        <div className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-400">
+                          <Upload className="h-5 w-5" />
+                        </div>
+                      )}
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => landingLogoInputRef.current?.click()}
+                          disabled={uploadingLandingLogo}
+                          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          {uploadingLandingLogo ? 'Uploading...' : 'Upload'}
+                        </button>
+                        <p className="mt-1 text-[10px] text-gray-400 leading-tight">400×400px PNG<br />transparent bg</p>
+                        <input ref={landingLogoInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLandingLogoUpload} className="hidden" />
+                      </div>
                     </div>
                   </div>
                 </div>

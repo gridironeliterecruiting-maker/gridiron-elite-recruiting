@@ -70,21 +70,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `This program has reached its ${role} limit.` }, { status: 409 })
     }
 
-    // Check username not already taken
-    const { data: existingUsername } = await admin
-      .from('profiles')
-      .select('id')
-      .eq('username', username)
-      .maybeSingle()
+    const domain = process.env.ZOHO_DOMAIN || 'jetstreammail.com'
 
-    if (existingUsername) {
-      return NextResponse.json({ error: 'Username is already taken' }, { status: 409 })
+    // Resolve final username: if the client-suggested one is taken (in DB or Zoho),
+    // silently increment until we find a free slot. User never sees this.
+    const base = username.replace(/\d+$/, '') // strip any trailing digits from client suggestion
+    let resolvedUsername = username
+    let zohoAccountKey: string | null = null
+
+    for (let attempt = 0; attempt <= 20; attempt++) {
+      const candidate = attempt === 0 ? base : `${base}${attempt}`
+
+      // Check Supabase profiles
+      const { data: existing } = await admin
+        .from('profiles')
+        .select('id')
+        .eq('username', candidate)
+        .maybeSingle()
+
+      if (existing) continue // taken in DB, try next
+
+      // Try Zoho
+      try {
+        zohoAccountKey = await provisionZohoAccount(candidate, firstName, lastName)
+        resolvedUsername = candidate
+        break
+      } catch (zohoErr: any) {
+        const alreadyAdded = zohoErr?.message?.includes('already added') || zohoErr?.message?.includes('1000')
+        if (alreadyAdded) continue // taken in Zoho (e.g. orphaned from prior attempt), try next
+        throw zohoErr // real Zoho error — bubble up
+      }
     }
 
-    const workspaceEmail = `${username}@${process.env.ZOHO_DOMAIN || 'jetstreammail.com'}`
+    if (!zohoAccountKey) {
+      return NextResponse.json({ error: 'Could not generate a unique username. Please contact support.' }, { status: 500 })
+    }
 
-    // Provision Zoho Mail360 account
-    const zohoAccountKey = await provisionZohoAccount(username, firstName, lastName)
+    const workspaceEmail = `${resolvedUsername}@${domain}`
 
     // Create Supabase auth user
     const { data: authData, error: authError } = await admin.auth.admin.createUser({
@@ -108,7 +130,7 @@ export async function POST(request: Request) {
     // Upsert profile
     const { error: profileError } = await admin.from('profiles').upsert({
       id: userId,
-      username,
+      username: resolvedUsername,
       workspace_email: workspaceEmail,
       zoho_account_key: zohoAccountKey,
       recovery_email: recoveryEmail,
@@ -149,7 +171,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: memberError.message }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, workspaceEmail, username, role })
+    return NextResponse.json({ success: true, workspaceEmail, username: resolvedUsername, role })
   } catch (error: any) {
     console.error('[register-slug] Unexpected error:', error)
     return NextResponse.json({ error: error?.message || 'Internal server error' }, { status: 500 })
