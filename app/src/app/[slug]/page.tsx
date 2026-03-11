@@ -7,6 +7,11 @@ import { Suspense } from "react"
 
 export const dynamic = "force-dynamic"
 
+// Per-program background images. Add new slugs here as programs onboard.
+const slugBackgrounds: Record<string, string> = {
+  'prairie-ia': '/prairie-ia-bg.png',
+}
+
 interface LandingPageProps {
   params: Promise<{ slug: string }>
 }
@@ -30,7 +35,7 @@ export default async function LandingPage({ params }: LandingPageProps) {
     logo: program.logo_url || "/logo.png",
     color: program.primary_color || "#0047AB",
     accent: program.accent_color || "#CC0000",
-    bg: "/locker-room-bg.png",
+    bg: slugBackgrounds[slug] ?? "/locker-room-bg.png",
   }
 
   // If user is already authenticated and logged into THIS site, send them to hub
