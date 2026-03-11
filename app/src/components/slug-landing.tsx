@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronRight, Loader2 } from 'lucide-react'
+import { ChevronRight, Loader2, CheckCircle2 } from 'lucide-react'
 
 const WORKSPACE_DOMAIN = 'jetstreammail.com'
 
@@ -41,8 +41,10 @@ export function SlugLanding({
   const color = primaryColor || '#0047AB'
   const accent = accentColor || '#CC0000'
 
-  type View = 'home' | 'register'
+  type View = 'home' | 'register' | 'success'
   const [view, setView] = useState<View>('home')
+  const [createdEmail, setCreatedEmail] = useState('')
+  const [createdRole, setCreatedRole] = useState<'coach' | 'player' | null>(null)
 
   // Invite
   const [inviteCode, setInviteCode] = useState('')
@@ -211,7 +213,9 @@ export function SlugLanding({
     }
 
     document.cookie = `site_session=${slug};path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
-    router.push(`/${slug}/hub`)
+    setCreatedEmail(data.workspaceEmail)
+    setCreatedRole(validatedRole)
+    setView('success')
   }
 
   // ── Login submit ────────────────────────────────────────────────────────────
@@ -388,6 +392,35 @@ export function SlugLanding({
             onSubmit={handleRegister}
             onBack={() => { setView('home'); setInviteError('') }}
           />
+        )}
+
+        {view === 'success' && (
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-white text-center">
+            <div className="flex justify-center mb-5">
+              <div className="rounded-full p-4" style={{ background: `${color}15` }}>
+                <CheckCircle2 className="h-14 w-14" style={{ color }} strokeWidth={1.5} />
+              </div>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">You&apos;re In!</h1>
+            <p className="text-sm text-gray-500 mb-5">
+              Your {createdRole === 'coach' ? 'coaching' : 'player'} account has been created.
+            </p>
+            <div className="rounded-xl p-4 mb-6" style={{ background: `${color}08`, border: `2px solid ${color}25` }}>
+              <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: `${color}99` }}>
+                Your Recruiting Email
+              </p>
+              <p className="text-sm font-mono font-bold" style={{ color }}>{createdEmail}</p>
+              <p className="text-xs text-gray-400 mt-1">Save this — it&apos;s how coaches will hear from you.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push(`/${slug}/hub`)}
+              className="w-full py-4 rounded-xl text-white font-bold text-sm tracking-wide transition flex items-center justify-center gap-2"
+              style={{ background: `linear-gradient(135deg, ${color} 0%, ${accent} 100%)` }}
+            >
+              Go to My Hub <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         )}
       </div>
     </div>
