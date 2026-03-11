@@ -64,11 +64,15 @@ export async function POST(request: Request) {
       school_name, mascot, city, state, landing_slug,
       primary_color, secondary_color, accent_color,
       twitter_username, hudl_url, instagram_username,
+      max_coaches, max_players,
     } = body
 
     if (!school_name) {
       return NextResponse.json({ error: 'School name is required' }, { status: 400 })
     }
+
+    // Generate unique 8-char invite codes
+    const makeCode = () => Math.random().toString(36).substring(2, 10).toUpperCase()
 
     const admin = createAdminClient()
     const { data: program, error } = await admin
@@ -85,6 +89,10 @@ export async function POST(request: Request) {
         twitter_username: twitter_username || null,
         hudl_url: hudl_url || null,
         instagram_username: instagram_username || null,
+        max_coaches: max_coaches ?? 5,
+        max_players: max_players ?? 30,
+        coach_invite_code: makeCode(),
+        player_invite_code: makeCode(),
       })
       .select()
       .single()

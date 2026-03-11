@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Plus, X, Trash2, Upload, Users, Globe, Palette } from 'lucide-react'
+import { Plus, X, Trash2, Upload, Users, Globe, Palette, Copy, Check } from 'lucide-react'
 /* eslint-disable @next/next/no-img-element */
 
 const US_STATES = [
@@ -32,6 +32,10 @@ interface Program {
   twitter_username: string | null
   hudl_url: string | null
   instagram_username: string | null
+  coach_invite_code: string | null
+  player_invite_code: string | null
+  max_coaches: number
+  max_players: number
   created_at: string
   members: Member[]
 }
@@ -77,6 +81,9 @@ export function AdminDashboard() {
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null)
+  const [maxCoaches, setMaxCoaches] = useState(5)
+  const [maxPlayers, setMaxPlayers] = useState(30)
+  const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const isOpen = creating || editing !== null
@@ -104,6 +111,8 @@ export function AdminDashboard() {
     setEditing(null)
     setCreating(true)
     setPendingMembers([])
+    setMaxCoaches(5)
+    setMaxPlayers(30)
     setError('')
   }
 
@@ -121,9 +130,17 @@ export function AdminDashboard() {
       instagram_username: program.instagram_username || '',
     })
     setLogoPreview(program.logo_url)
+    setMaxCoaches(program.max_coaches ?? 5)
+    setMaxPlayers(program.max_players ?? 30)
     setEditing(program)
     setCreating(false)
     setError('')
+  }
+
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code).catch(() => {})
+    setCopiedCode(code)
+    setTimeout(() => setCopiedCode(null), 2000)
   }
 
   const closeForm = () => {
@@ -170,7 +187,7 @@ export function AdminDashboard() {
       const res = await fetch(url, {
         method: editing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, max_coaches: maxCoaches, max_players: maxPlayers }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to save')
@@ -613,6 +630,90 @@ export function AdminDashboard() {
                       className="input"
                     />
                   </Field>
+                </div>
+              </Section>
+
+              {/* Invite Codes */}
+              <Section title="Invite Codes" icon={<Users className="h-4 w-4" />}>
+                <p className="text-xs text-gray-500 mb-4">
+                  Share these codes with coaches and players. They use them to register on the program&apos;s landing page.
+                  A code stops working once the seat limit is reached.
+                </p>
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  {/* Coach Code */}
+                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Coach Code</p>
+                    {editing?.coach_invite_code ? (
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-lg font-bold tracking-widest text-[#0047AB]">
+                          {editing.coach_invite_code}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => copyCode(editing.coach_invite_code!)}
+                          className="rounded p-1 text-gray-400 hover:text-[#0047AB] transition"
+                        >
+                          {copiedCode === editing.coach_invite_code ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400 italic">Generated on save</p>
+                    )}
+                    <div className="mt-3">
+                      <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Max Coaches</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={maxCoaches}
+                        onChange={e => setMaxCoaches(parseInt(e.target.value) || 1)}
+                        className="input w-20"
+                      />
+                      {editing && (
+                        <p className="text-[10px] text-gray-400 mt-1">
+                          {editing.members.filter(m => m.role === 'coach').length} / {maxCoaches} used
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Player Code */}
+                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Player Code</p>
+                    {editing?.player_invite_code ? (
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-lg font-bold tracking-widest text-[#0047AB]">
+                          {editing.player_invite_code}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => copyCode(editing.player_invite_code!)}
+                          className="rounded p-1 text-gray-400 hover:text-[#0047AB] transition"
+                        >
+                          {copiedCode === editing.player_invite_code ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400 italic">Generated on save</p>
+                    )}
+                    <div className="mt-3">
+                      <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Max Players</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={200}
+                        value={maxPlayers}
+                        onChange={e => setMaxPlayers(parseInt(e.target.value) || 1)}
+                        className="input w-20"
+                      />
+                      {editing && (
+                        <p className="text-[10px] text-gray-400 mt-1">
+                          {editing.members.filter(m => m.role === 'player').length} / {maxPlayers} used
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </Section>
 
