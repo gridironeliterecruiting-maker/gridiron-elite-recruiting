@@ -45,7 +45,7 @@ function NewUserSetup({
     weight: '',
     hudl_url: '',
     twitter_handle: '',
-    recovery_email: checkoutEmail,
+    recovery_email: '',
     password: '',
     confirm_password: '',
   })
@@ -533,11 +533,10 @@ function ExistingUserSetup() {
 function ProfileSetupInner() {
   const searchParams = useSearchParams()
   const subId = searchParams.get('sub_id')
-  const email = searchParams.get('email') || ''
   const plan = searchParams.get('plan') || 'monthly'
 
   if (subId) {
-    return <NewUserSetup subscriptionId={subId} checkoutEmail={decodeURIComponent(email)} plan={plan} />
+    return <NewUserSetup subscriptionId={subId} checkoutEmail="" plan={plan} />
   }
 
   return <ExistingUserSetup />
