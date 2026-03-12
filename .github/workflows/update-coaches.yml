@@ -1,11 +1,8 @@
 name: Update Coach Data from RML
 
 on:
-  schedule:
-    # 1st and 15th of every month at 6:00 AM UTC (bi-weekly)
-    - cron: '0 6 1,15 * *'
   workflow_dispatch:
-    # Manual trigger from GitHub Actions UI
+    # Manual trigger only — automatic schedule removed 2026-03-11
 
 jobs:
   update-coaches:
