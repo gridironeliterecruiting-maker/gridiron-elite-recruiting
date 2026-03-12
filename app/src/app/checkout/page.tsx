@@ -148,8 +148,8 @@ function CheckoutInner() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h1 className="text-2xl font-bold text-center text-[#0047AB] mb-1">
-            Start Recruiting
+          <h1 className="text-2xl font-bold text-center text-[#0047AB] mb-1 uppercase">
+            Choose Plan
           </h1>
           <p className="text-center text-gray-500 text-sm mb-6">
             Full access to the complete Runway Recruit system.<br />Prepare for take off.

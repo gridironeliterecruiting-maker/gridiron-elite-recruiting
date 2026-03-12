@@ -183,12 +183,14 @@ function NewUserSetup({
       <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 60% 70% at 50% 50%, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 100%)' }} aria-hidden />
       <div className="relative z-10 w-full max-w-lg">
         <div className="flex justify-center mb-6">
-          <Image src="/logo.png" alt="Runway Recruit" width={180} height={180} className="object-contain" />
+          <div className="relative h-[100px] w-[100px]">
+            <Image src="/logo.png" alt="Runway Recruit" fill className="object-contain" priority />
+          </div>
         </div>
-        <h1 className="text-2xl font-bold text-center text-[#0047AB] mb-1">Complete Your Profile</h1>
-        <p className="text-center text-gray-500 mb-6 text-sm">Tell us about yourself so coaches know who you are.</p>
 
-        <form onSubmit={handleSubmit} className="space-y-3 bg-white rounded-2xl shadow-xl p-6">
+        <form onSubmit={handleSubmit} className="space-y-3 bg-white rounded-2xl shadow-xl p-8">
+          <h1 className="text-2xl font-bold text-center text-[#0047AB] mb-1 uppercase">Complete Your Profile</h1>
+          <p className="text-center text-gray-500 mb-6 text-sm">Tell us about yourself so coaches know who you are.</p>
           {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
 
           <div className="grid grid-cols-2 gap-3">
@@ -434,12 +436,14 @@ function ExistingUserSetup() {
       <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 60% 70% at 50% 50%, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 100%)' }} aria-hidden />
       <div className="relative z-10 w-full max-w-lg">
         <div className="flex justify-center mb-6">
-          <Image src="/logo.png" alt="Runway Recruit" width={180} height={180} className="object-contain" />
+          <div className="relative h-[100px] w-[100px]">
+            <Image src="/logo.png" alt="Runway Recruit" fill className="object-contain" priority />
+          </div>
         </div>
-        <h1 className="text-2xl font-bold text-center text-[#0047AB] mb-1">Complete Your Profile</h1>
-        <p className="text-center text-gray-500 mb-6 text-sm">Tell us about yourself so coaches know who you are.</p>
 
-        <form onSubmit={handleSubmit} className="space-y-3 bg-white rounded-2xl shadow-xl p-6">
+        <form onSubmit={handleSubmit} className="space-y-3 bg-white rounded-2xl shadow-xl p-8">
+          <h1 className="text-2xl font-bold text-center text-[#0047AB] mb-1 uppercase">Complete Your Profile</h1>
+          <p className="text-center text-gray-500 mb-6 text-sm">Tell us about yourself so coaches know who you are.</p>
           {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
 
           <div className="grid grid-cols-2 gap-3">
