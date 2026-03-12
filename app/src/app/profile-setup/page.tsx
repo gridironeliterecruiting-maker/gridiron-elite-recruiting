@@ -278,19 +278,6 @@ function NewUserSetup({
               <p className="text-xs text-gray-500 mt-1.5">Coaches will receive emails from this address.</p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Recovery Email
-                <span className="ml-1 text-xs text-gray-400 font-normal">(for password resets only — never shared)</span>
-              </label>
-              <input
-                type="email"
-                value={form.recovery_email}
-                onChange={e => update('recovery_email', e.target.value)}
-                placeholder="your@gmail.com"
-                className={inputClass}
-              />
-            </div>
           </div>
 
           {/* Account Credentials */}
@@ -338,6 +325,21 @@ function NewUserSetup({
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Recovery email — last, de-emphasized */}
+          <div className="pt-1">
+            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+              Personal email
+              <span className="ml-1 font-normal text-gray-300">(for password resets only — never shared)</span>
+            </label>
+            <input
+              type="email"
+              value={form.recovery_email}
+              onChange={e => update('recovery_email', e.target.value)}
+              placeholder="your@gmail.com"
+              className={inputClass}
+            />
           </div>
 
           <button
