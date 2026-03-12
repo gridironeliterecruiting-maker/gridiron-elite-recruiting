@@ -75,6 +75,23 @@ function MainSiteLogin({
       return
     }
 
+    // Reject slug-registered users — this is a completely separate site
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('registered_via')
+        .eq('id', user.id)
+        .single()
+
+      if (profile?.registered_via?.startsWith('slug:')) {
+        await supabase.auth.signOut()
+        setError('Incorrect username or password.')
+        setLoading(false)
+        return
+      }
+    }
+
     document.cookie = `site_session=main;path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
     router.push('/hub')
   }
