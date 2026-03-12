@@ -8,7 +8,7 @@ const programRoutes = ['hub', 'coaches', 'pipeline', 'outreach', 'profile', 'ema
 const knownTopLevel = ['hub', 'coaches', 'pipeline', 'outreach', 'profile', 'email', 'profile-setup', 'login', 'signup', 'auth', 'api', 'recruit', 'admin', 'checkout', 'welcome', 'forgot-password']
 
 // Routes the middleware never blocks (no auth or site_session check)
-const alwaysPublic = ['/auth/callback', '/auth/reset-password', '/api/track', '/api/unsubscribe', '/api/email/process-queue', '/api/email/check-replies', '/api/gmail/oauth-callback', '/api/gmail/authorize', '/api/twitter/oauth-callback', '/api/access-request', '/recruit', '/checkout', '/api/stripe', '/api/auth/check-username', '/api/auth/complete-profile', '/api/auth/forgot-password', '/forgot-password', '/api/auth/validate-invite', '/api/auth/register-slug', '/api/auth/lookup-profile']
+const alwaysPublic = ['/auth/callback', '/auth/reset-password', '/api/track', '/api/unsubscribe', '/api/email/process-queue', '/api/email/check-replies', '/api/gmail/oauth-callback', '/api/gmail/authorize', '/api/twitter/oauth-callback', '/api/access-request', '/recruit', '/checkout', '/api/stripe', '/api/auth/check-username', '/api/auth/check-main-site-user', '/api/auth/complete-profile', '/api/auth/forgot-password', '/forgot-password', '/api/auth/validate-invite', '/api/auth/register-slug', '/api/auth/lookup-profile']
 
 export async function updateSession(request: NextRequest) {
   // Serve static public files without auth

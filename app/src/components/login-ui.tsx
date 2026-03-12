@@ -64,15 +64,11 @@ function MainSiteLogin({
 
     const usernameClean = username.trim().toLowerCase()
 
-    // Only recognize main site users — check before touching auth
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('username', usernameClean)
-      .eq('registered_via', 'main_site')
-      .maybeSingle()
+    // Only recognize main site users — server-side check bypasses RLS
+    const res = await fetch(`/api/auth/check-main-site-user?username=${encodeURIComponent(usernameClean)}`)
+    const { allowed } = await res.json()
 
-    if (!profile) {
+    if (!allowed) {
       setError('Incorrect username or password.')
       setLoading(false)
       return
