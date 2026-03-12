@@ -159,14 +159,39 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: profileError.message }, { status: 500 })
     }
 
-    // Upsert program_members entry (handles pre-seeded rows by email)
-    const { error: memberError } = await admin.from('program_members').upsert({
-      program_id: program.id,
-      user_id: userId,
-      email: recoveryEmail,
-      role,
-      registered_via: 'slug_registration',
-    }, { onConflict: 'program_id,email' })
+    // Handle program_members: claim a pre-seeded row if one exists for this recovery email,
+    // otherwise insert a fresh row. Using recovery email as the conflict target only when
+    // the row is unclaimed (user_id IS NULL) avoids overwriting another user who shares the
+    // same personal email.
+    const { data: preSeeded } = await admin
+      .from('program_members')
+      .select('id')
+      .eq('program_id', program.id)
+      .eq('email', recoveryEmail)
+      .is('user_id', null)
+      .maybeSingle()
+
+    let memberError
+    if (preSeeded) {
+      // Claim the pre-seeded row
+      const { error } = await admin
+        .from('program_members')
+        .update({ user_id: userId, role, registered_via: 'slug_registration' })
+        .eq('id', preSeeded.id)
+      memberError = error
+    } else {
+      // No pre-seeded row — insert fresh, keyed by workspace email to guarantee uniqueness
+      const { error } = await admin
+        .from('program_members')
+        .insert({
+          program_id: program.id,
+          user_id: userId,
+          email: workspaceEmail,
+          role,
+          registered_via: 'slug_registration',
+        })
+      memberError = error
+    }
 
     if (memberError) {
       console.error('[register-slug] program_members insert failed:', memberError)
