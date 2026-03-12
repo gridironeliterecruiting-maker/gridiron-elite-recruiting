@@ -5,8 +5,8 @@ export async function POST(request: Request) {
   try {
     const { plan, email } = await request.json()
 
-    if (!plan || !email) {
-      return NextResponse.json({ error: 'plan and email are required' }, { status: 400 })
+    if (!plan) {
+      return NextResponse.json({ error: 'plan is required' }, { status: 400 })
     }
 
     if (!['monthly', 'annual'].includes(plan)) {
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     }
 
     const stripe = getStripe()
-    const customer = await findOrCreateCustomer(stripe, email)
+    const customer = await findOrCreateCustomer(stripe, email || null)
     const priceId = getPriceId(plan as 'monthly' | 'annual')
 
     // Create a subscription with payment_behavior='default_incomplete' so Stripe

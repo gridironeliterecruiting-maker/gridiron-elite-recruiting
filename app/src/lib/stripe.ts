@@ -14,8 +14,11 @@ export function getPriceId(plan: 'monthly' | 'annual'): string {
   return id
 }
 
-export async function findOrCreateCustomer(stripe: Stripe, email: string): Promise<Stripe.Customer> {
-  const existing = await stripe.customers.list({ email, limit: 1 })
-  if (existing.data.length > 0) return existing.data[0]
-  return stripe.customers.create({ email })
+export async function findOrCreateCustomer(stripe: Stripe, email: string | null): Promise<Stripe.Customer> {
+  if (email) {
+    const existing = await stripe.customers.list({ email, limit: 1 })
+    if (existing.data.length > 0) return existing.data[0]
+    return stripe.customers.create({ email })
+  }
+  return stripe.customers.create({})
 }

@@ -124,7 +124,7 @@ function CheckoutInner() {
 
   return (
     <div
-      className="relative min-h-screen flex items-center justify-center px-4 py-12"
+      className="relative min-h-screen flex items-start justify-center px-4 py-12"
       style={{
         backgroundImage: 'url(/locker-room-bg.png)',
         backgroundSize: 'cover',
