@@ -15,19 +15,32 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 
 type Plan = 'monthly' | 'annual'
 
+function PaymentSkeleton() {
+  return (
+    <div className="space-y-3" aria-hidden>
+      {/* Card number row */}
+      <div className="h-[44px] bg-gray-100 rounded-lg animate-pulse" />
+      {/* Expiry + CVC */}
+      <div className="flex gap-3">
+        <div className="flex-1 h-[44px] bg-gray-100 rounded-lg animate-pulse" />
+        <div className="flex-1 h-[44px] bg-gray-100 rounded-lg animate-pulse" />
+      </div>
+    </div>
+  )
+}
+
 function CheckoutForm({
   subscriptionId,
-  email,
   plan,
 }: {
   subscriptionId: string
-  email: string
   plan: Plan
 }) {
   const stripe = useStripe()
   const elements = useElements()
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [ready, setReady] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -52,7 +65,11 @@ function CheckoutForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement />
+      {/* Keep skeleton visible until PaymentElement is ready */}
+      {!ready && <PaymentSkeleton />}
+      <div className={ready ? '' : 'hidden'}>
+        <PaymentElement onReady={() => setReady(true)} />
+      </div>
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
           {error}
@@ -60,7 +77,7 @@ function CheckoutForm({
       )}
       <button
         type="submit"
-        disabled={!stripe || loading}
+        disabled={!stripe || !ready || loading}
         className="w-full py-4 rounded-xl font-display font-bold uppercase tracking-wider text-white transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:translate-y-0"
         style={{
           background: 'linear-gradient(135deg, #d93025 0%, #9a1010 100%)',
@@ -182,13 +199,24 @@ function CheckoutInner() {
             </div>
           )}
 
-          {loading && (
-            <div className="flex justify-center py-8">
-              <div className="h-6 w-6 rounded-full border-2 border-[#0047AB] border-t-transparent animate-spin" />
+          {/* Payment area — skeleton shown until clientSecret arrives, then Stripe Elements */}
+          {loading && !clientSecret && (
+            <div className="space-y-4">
+              <PaymentSkeleton />
+              <button
+                disabled
+                className="w-full py-4 rounded-xl font-display font-bold uppercase tracking-wider text-white opacity-50 cursor-not-allowed"
+                style={{ background: 'linear-gradient(135deg, #d93025 0%, #9a1010 100%)' }}
+              >
+                PLACE ORDER
+              </button>
+              <p className="text-center text-xs text-gray-400">
+                Secured by Stripe · Cancel anytime
+              </p>
             </div>
           )}
 
-          {!loading && clientSecret && (
+          {clientSecret && (
             <Elements
               key={clientSecret}
               stripe={stripePromise}
@@ -200,7 +228,7 @@ function CheckoutInner() {
                 },
               }}
             >
-              <CheckoutForm subscriptionId={subscriptionId!} email="" plan={plan} />
+              <CheckoutForm subscriptionId={subscriptionId!} plan={plan} />
             </Elements>
           )}
         </div>
