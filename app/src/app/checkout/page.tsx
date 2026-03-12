@@ -174,6 +174,7 @@ function CheckoutInner() {
               mode: 'subscription',
               amount: PLAN_AMOUNTS[plan],
               currency: 'usd',
+              paymentMethodTypes: ['card'],
               appearance: {
                 theme: 'stripe',
                 variables: { colorPrimary: '#1a3a6e', borderRadius: '8px' },
