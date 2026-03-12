@@ -62,8 +62,23 @@ function MainSiteLogin({
     setLoading(true)
     setError('')
 
-    const workspaceEmail = `${username.trim().toLowerCase()}@jetstreammail.com`
+    const usernameClean = username.trim().toLowerCase()
 
+    // Only recognize main site users — check before touching auth
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', usernameClean)
+      .eq('registered_via', 'main_site')
+      .maybeSingle()
+
+    if (!profile) {
+      setError('Incorrect username or password.')
+      setLoading(false)
+      return
+    }
+
+    const workspaceEmail = `${usernameClean}@jetstreammail.com`
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: workspaceEmail,
       password,
@@ -73,23 +88,6 @@ function MainSiteLogin({
       setError('Incorrect username or password.')
       setLoading(false)
       return
-    }
-
-    // Reject slug-registered users — this is a completely separate site
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('registered_via')
-        .eq('id', user.id)
-        .single()
-
-      if (profile?.registered_via?.startsWith('slug:')) {
-        await supabase.auth.signOut()
-        setError('Incorrect username or password.')
-        setLoading(false)
-        return
-      }
     }
 
     document.cookie = `site_session=main;path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
