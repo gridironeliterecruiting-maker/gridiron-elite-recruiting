@@ -59,11 +59,11 @@ export async function GET(request: Request) {
 
         const now = new Date()
 
-        // Skip if email was sent less than 5 minutes ago (catches Gmail proxy and scanner prefetch)
+        // Skip if email was sent less than 15 seconds ago (catches scanner prefetch on delivery)
         if (recipient?.sent_at) {
           const sentAt = new Date(recipient.sent_at)
           const secondsSinceSend = (now.getTime() - sentAt.getTime()) / 1000
-          if (secondsSinceSend < 300) {
+          if (secondsSinceSend < 15) {
             return new NextResponse(PIXEL, { status: 200, headers: pixelHeaders() })
           }
         }
