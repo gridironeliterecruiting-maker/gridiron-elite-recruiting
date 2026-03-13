@@ -295,7 +295,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
           <button
             type="button"
             onClick={handleClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-border hover:text-foreground"
             aria-label="Close"
           >
             <ArrowLeft className="h-4 w-4" />

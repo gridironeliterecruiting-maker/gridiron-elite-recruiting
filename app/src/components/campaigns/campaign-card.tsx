@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Mail, MailOpen, Users, Play, Pause, Rocket, AlertCircle, MessageCircle, MousePointerClick, Send } from "lucide-react"
+import { Mail, MailOpen, Users, Play, Pause, Rocket, AlertCircle, MessageCircle, MousePointerClick, Send, Trash2 } from "lucide-react"
 import { useState } from "react"
 
 interface CampaignCardProps {
@@ -23,6 +23,7 @@ interface CampaignCardProps {
   }
   onClick: () => void
   onStatusChange?: () => void
+  onDelete?: () => void
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -33,9 +34,22 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   cancelled: { label: "Cancelled", className: "bg-red-100 text-red-700" },
 }
 
-export function CampaignCard({ campaign, onClick, onStatusChange }: CampaignCardProps) {
+export function CampaignCard({ campaign, onClick, onStatusChange, onDelete }: CampaignCardProps) {
   const [isLaunching, setIsLaunching] = useState(false)
   const [launchError, setLaunchError] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm('Delete this draft? This cannot be undone.')) return
+    setIsDeleting(true)
+    try {
+      await fetch(`/api/campaigns/${campaign.id}`, { method: 'DELETE' })
+      onDelete?.()
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   const isDm = campaign.type === 'dm'
   const isDraft = campaign.status === 'draft'
@@ -95,6 +109,17 @@ export function CampaignCard({ campaign, onClick, onStatusChange }: CampaignCard
             <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${status.className}`}>
               {status.label}
             </span>
+            {isDraft && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="ml-auto shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:text-red-600 disabled:opacity-50"
+                aria-label="Delete draft"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             {isDm ? 'DM Campaign' : 'Email Campaign'} · {new Date(campaign.created_at).toLocaleDateString()}

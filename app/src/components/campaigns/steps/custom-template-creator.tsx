@@ -91,7 +91,7 @@ export function CustomTemplateCreator({ onSave, onClose }: CustomTemplateCreator
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-border hover:text-foreground"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
@@ -165,7 +165,7 @@ export function CustomTemplateCreator({ onSave, onClose }: CustomTemplateCreator
                   key={tag.key}
                   type="button"
                   onClick={() => insertMergeTag(tag.label)}
-                  className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                  className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] text-foreground transition-colors hover:bg-primary/10 hover:text-primary"
                 >
                   {tag.label}
                 </button>

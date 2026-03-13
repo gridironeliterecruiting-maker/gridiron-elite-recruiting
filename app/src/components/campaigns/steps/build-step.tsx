@@ -360,7 +360,7 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
         <button
           type="button"
           onClick={onBack}
-          className="rounded-md border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+          className="rounded-md border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-border hover:text-foreground"
         >
           Back
         </button>
@@ -505,7 +505,7 @@ function AddTemplateOverlay({
         <button
           type="button"
           onClick={onClose}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-border hover:text-foreground"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
@@ -593,7 +593,7 @@ function AddTemplateOverlay({
                                 <button
                                   type="button"
                                   onClick={() => setConfirmDeleteId(null)}
-                                  className="rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                                  className="rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-border hover:text-foreground"
                                 >
                                   Cancel
                                 </button>
@@ -773,7 +773,7 @@ function TemplateEditorOverlay({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-border hover:text-foreground"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
@@ -814,7 +814,7 @@ function TemplateEditorOverlay({
                     <button
                       type="button"
                       onClick={() => { setShowOverwriteConfirm(false) }}
-                      className="rounded-md border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                      className="rounded-md border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-border hover:text-foreground"
                     >
                       Go Back
                     </button>
@@ -849,7 +849,7 @@ function TemplateEditorOverlay({
                     <button
                       type="button"
                       onClick={() => setShowSaveAs(false)}
-                      className="rounded-md border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                      className="rounded-md border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-border hover:text-foreground"
                     >
                       Cancel
                     </button>
@@ -894,7 +894,7 @@ function TemplateEditorOverlay({
                 <button
                   type="button"
                   onClick={() => setDelayDays(Math.max(1, delayDays - 1))}
-                  className="rounded border border-border bg-secondary px-2 py-1 transition-colors hover:bg-primary hover:text-primary-foreground"
+                  className="rounded border border-border bg-secondary px-2 py-1 transition-colors hover:bg-border hover:text-foreground"
                 >
                   <Minus className="h-3 w-3" />
                 </button>
@@ -907,7 +907,7 @@ function TemplateEditorOverlay({
                 <button
                   type="button"
                   onClick={() => setDelayDays(delayDays + 1)}
-                  className="rounded border border-border bg-secondary px-2 py-1 transition-colors hover:bg-primary hover:text-primary-foreground"
+                  className="rounded border border-border bg-secondary px-2 py-1 transition-colors hover:bg-border hover:text-foreground"
                 >
                   <Plus className="h-3 w-3" />
                 </button>
@@ -980,7 +980,7 @@ function TemplateEditorOverlay({
                   key={label}
                   type="button"
                   onClick={() => insertMergeTag(label)}
-                  className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                  className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-foreground transition-colors hover:bg-primary/10 hover:text-primary"
                 >
                   {label}
                 </button>

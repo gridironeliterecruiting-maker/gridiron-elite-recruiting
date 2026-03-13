@@ -442,6 +442,7 @@ export function OutreachClient({
                     }
                   }}
                   onStatusChange={() => window.location.reload()}
+                  onDelete={() => window.location.reload()}
                 />
               ))}
             </div>
