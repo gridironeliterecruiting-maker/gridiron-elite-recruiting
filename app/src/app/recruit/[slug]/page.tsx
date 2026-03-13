@@ -74,7 +74,7 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
         <div className="mx-auto flex max-w-3xl justify-center">
           <div className="flex items-center gap-6 sm:gap-8">
             {/* Logo — left */}
-            <div className="relative h-[160px] w-[160px] shrink-0 drop-shadow-lg">
+            <div className="relative h-[80px] w-[80px] shrink-0 drop-shadow-lg">
               <Image
                 src={logoSrc}
                 alt={logoAlt}
