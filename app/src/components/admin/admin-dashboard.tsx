@@ -134,8 +134,10 @@ export function AdminDashboard() {
         </nav>
       </header>
 
-      {/* Tab Content */}
-      {activeTab === 'teams' ? <TeamsTab /> : <PromosTab />}
+      {/* Tab Content — single main wrapper matches app layout exactly */}
+      <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
+        {activeTab === 'teams' ? <TeamsTab /> : <PromosTab />}
+      </main>
 
       {/* Shared Tailwind styles for inputs */}
       <style jsx global>{`
@@ -427,7 +429,7 @@ function TeamsTab() {
   return (
     <>
       {/* Section Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
             Team Administration
@@ -448,7 +450,7 @@ function TeamsTab() {
       </div>
 
       {/* Program Grid */}
-      <div className="mx-auto max-w-7xl px-4 pb-8 lg:px-8">
+      <div className="mt-6">
         {loading ? (
           <p className="text-center text-gray-500">Loading programs...</p>
         ) : programs.length === 0 ? (
@@ -841,7 +843,7 @@ function PromosTab() {
   return (
     <>
       {/* Section Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
             Promos
@@ -861,7 +863,7 @@ function PromosTab() {
         </button>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 pb-8 lg:px-8">
+      <div className="mt-6">
         {/* Alerts */}
         {error && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
