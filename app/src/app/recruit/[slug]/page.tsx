@@ -71,7 +71,7 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
 
       {/* Header content box */}
       <header className="px-4 pb-0 pt-3">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto flex max-w-3xl justify-center">
           <div className="flex items-center gap-6 sm:gap-8">
             {/* Logo — left */}
             <div className="relative h-[160px] w-[160px] shrink-0 drop-shadow-lg">
@@ -85,7 +85,7 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
             </div>
 
             {/* Info — right, left-justified */}
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0">
               {/* Row 1: Name */}
               <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-white sm:text-3xl lg:text-4xl">
                 {fullName}
