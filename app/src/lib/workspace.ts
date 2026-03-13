@@ -1,8 +1,19 @@
 /**
  * Zoho Mail360 helpers
  * Single app-level access token, per-mailbox account_key routing.
- * No per-user OAuth, no DWD, no suspension issues.
+ *
+ * RESILIENCE DESIGN:
+ * 1. Refresh token stored in Supabase (system_settings.zoho_refresh_token) as
+ *    primary source — can be rotated without a Vercel redeploy.
+ *    Falls back to ZOHO_REFRESH_TOKEN env var if DB has none.
+ * 2. Access token cached in-process (~1 hour). Cache is immediately invalidated
+ *    on any MA_9067 (Invalid OAuth Token) error.
+ * 3. Every Zoho API call auto-retries once with a fresh token on MA_9067.
+ * 4. If access token fetch returns empty/invalid, throws immediately with a
+ *    clear message rather than caching a broken token.
  */
+
+import { createAdminClient } from '@/lib/supabase/admin'
 
 const ZOHO_API_BASE = 'https://mail360.zoho.com/api'
 const DOMAIN = () => process.env.ZOHO_DOMAIN || 'jetstreammail.com'
@@ -10,35 +21,138 @@ const DOMAIN = () => process.env.ZOHO_DOMAIN || 'jetstreammail.com'
 function getZohoCredentials() {
   const clientId = process.env.ZOHO_CLIENT_ID
   const clientSecret = process.env.ZOHO_CLIENT_SECRET
-  const refreshToken = process.env.ZOHO_REFRESH_TOKEN
-  if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error('Zoho Mail360 credentials not configured (ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN)')
+  if (!clientId || !clientSecret) {
+    throw new Error('Zoho Mail360 credentials not configured (ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET)')
   }
-  return { clientId, clientSecret, refreshToken }
+  return { clientId, clientSecret }
 }
 
 // Process-level token cache (~1 hour validity, resets on cold start)
 let _cachedToken: { token: string; expiresAt: number } | null = null
 
-export async function getZohoAccessToken(): Promise<string> {
-  if (_cachedToken && Date.now() < _cachedToken.expiresAt - 60_000) {
-    return _cachedToken.token
+/** Invalidate the cached access token — called on MA_9067 */
+function invalidateTokenCache() {
+  _cachedToken = null
+}
+
+/** Get the refresh token: Supabase first, env var fallback */
+async function getRefreshToken(): Promise<string> {
+  try {
+    const admin = createAdminClient()
+    const { data } = await admin
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'zoho_refresh_token')
+      .maybeSingle()
+    if (data?.value && data.value.trim()) {
+      return data.value.trim()
+    }
+  } catch {
+    // Fall through to env var
   }
-  const { clientId, clientSecret, refreshToken } = getZohoCredentials()
+  const envToken = process.env.ZOHO_REFRESH_TOKEN
+  if (!envToken) {
+    throw new Error('No Zoho refresh token found — set ZOHO_REFRESH_TOKEN env var or zoho_refresh_token in system_settings')
+  }
+  return envToken
+}
+
+/** Fetch a fresh access token from Zoho using the refresh token */
+async function fetchFreshAccessToken(): Promise<string> {
+  const { clientId, clientSecret } = getZohoCredentials()
+  const refreshToken = await getRefreshToken()
+
   const res = await fetch(`${ZOHO_API_BASE}/access-token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken }),
   })
+
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`Failed to get Zoho access token: ${err}`)
+    throw new Error(`Zoho access token request failed (${res.status}): ${err}`)
   }
+
   const data = await res.json()
-  const token = data.data?.access_token as string
+  const token = data.data?.access_token as string | undefined
+
+  if (!token || typeof token !== 'string' || token.trim() === '') {
+    throw new Error(`Zoho returned empty/invalid access token. Response: ${JSON.stringify(data)}`)
+  }
+
   const expiresIn = (data.data?.expires_in as number) || 3600
   _cachedToken = { token, expiresAt: Date.now() + expiresIn * 1000 }
   return token
+}
+
+export async function getZohoAccessToken(): Promise<string> {
+  if (_cachedToken && Date.now() < _cachedToken.expiresAt - 60_000) {
+    return _cachedToken.token
+  }
+  return fetchFreshAccessToken()
+}
+
+/** Check if a Zoho API response body indicates an invalid token (MA_9067) */
+function isInvalidTokenError(body: unknown): boolean {
+  if (typeof body !== 'object' || body === null) return false
+  const b = body as Record<string, unknown>
+  const errorCode = (b.data as Record<string, unknown>)?.errorCode
+  return errorCode === 'MA_9067'
+}
+
+/**
+ * Execute a Zoho API call. Auto-retries once with a fresh token on MA_9067.
+ */
+async function zohoFetch(
+  url: string,
+  options: RequestInit,
+  attempt = 1
+): Promise<Response> {
+  const token = await getZohoAccessToken()
+  const headers = {
+    ...(options.headers as Record<string, string> || {}),
+    Authorization: `Zoho-oauthtoken ${token}`,
+  }
+
+  const res = await fetch(url, { ...options, headers })
+
+  // For non-OK responses, check for invalid token and retry once
+  if (!res.ok || res.status === 403) {
+    const body = await res.clone().json().catch(() => null)
+    if (attempt === 1 && isInvalidTokenError(body)) {
+      console.error('[Zoho] MA_9067 invalid token — invalidating cache and retrying')
+      invalidateTokenCache()
+      return zohoFetch(url, options, 2)
+    }
+  }
+
+  return res
+}
+
+/**
+ * Verify Zoho connectivity. Returns { ok, error } — never throws.
+ * Used by health check endpoint and cron.
+ */
+export async function checkZohoHealth(): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const token = await getZohoAccessToken()
+    // Lightweight call: list accounts (limit 1) to verify token works end-to-end
+    const res = await fetch(`${ZOHO_API_BASE}/accounts?limit=1`, {
+      headers: { Authorization: `Zoho-oauthtoken ${token}` },
+    })
+    if (!res.ok) {
+      const body = await res.text()
+      return { ok: false, error: `Zoho API returned ${res.status}: ${body}` }
+    }
+    const data = await res.json()
+    if (isInvalidTokenError(data)) {
+      invalidateTokenCache()
+      return { ok: false, error: `Zoho token invalid (MA_9067). Rotate ZOHO_REFRESH_TOKEN in Supabase system_settings or Vercel env.` }
+    }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: String(err) }
+  }
 }
 
 /**
@@ -50,28 +164,23 @@ export async function provisionZohoAccount(
   firstName: string,
   lastName: string,
 ): Promise<string> {
-  const token = await getZohoAccessToken()
   const emailid = `${username}@${DOMAIN()}`
-  const res = await fetch(`${ZOHO_API_BASE}/accounts`, {
+  const res = await zohoFetch(`${ZOHO_API_BASE}/accounts`, {
     method: 'POST',
-    headers: {
-      Authorization: `Zoho-oauthtoken ${token}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       accountType: '1',
       emailid,
       displayName: `${firstName} ${lastName}`,
     }),
   })
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Failed to provision Zoho account: ${err}`)
-  }
+
   const data = await res.json()
-  if (data.status?.code !== 200) {
-    throw new Error(`Zoho account creation failed: ${JSON.stringify(data.status)}`)
+
+  if (!res.ok || data.status?.code !== 200) {
+    throw new Error(`Failed to provision Zoho account: ${JSON.stringify(data)}`)
   }
+
   return data.data.account_key as string
 }
 
@@ -79,10 +188,8 @@ export async function provisionZohoAccount(
  * Delete a Zoho Mail360 account.
  */
 export async function deleteZohoAccount(accountKey: string): Promise<void> {
-  const token = await getZohoAccessToken()
-  const res = await fetch(`${ZOHO_API_BASE}/accounts/${accountKey}`, {
+  const res = await zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}`, {
     method: 'DELETE',
-    headers: { Authorization: `Zoho-oauthtoken ${token}` },
   })
   if (!res.ok && res.status !== 404) {
     const err = await res.text()
@@ -101,14 +208,10 @@ export async function sendZohoEmail(
   htmlContent: string,
   senderDisplayName?: string,
 ): Promise<{ messageId: string }> {
-  const token = await getZohoAccessToken()
   const from = senderDisplayName ? `${senderDisplayName} <${fromAddress}>` : fromAddress
-  const res = await fetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages`, {
+  const res = await zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages`, {
     method: 'POST',
-    headers: {
-      Authorization: `Zoho-oauthtoken ${token}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       fromAddress: from,
       toAddress,
@@ -117,10 +220,12 @@ export async function sendZohoEmail(
       mailFormat: 'html',
     }),
   })
+
   if (!res.ok) {
     const err = await res.text()
     throw new Error(`Failed to send Zoho email: ${err}`)
   }
+
   const data = await res.json()
   return { messageId: data.data?.messageId || data.data?.message_id || '' }
 }
