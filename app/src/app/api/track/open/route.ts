@@ -24,6 +24,12 @@ const BOT_UA_PATTERNS = [
   /go-http/i,
   /okhttp/i,
   /apache-httpclient/i,
+  /google image proxy/i,
+  /googleimageproxy/i,
+  /outlook.*safe/i,
+  /mimecast/i,
+  /barracuda/i,
+  /proofpoint/i,
 ]
 
 function isBotUserAgent(ua: string): boolean {
@@ -53,11 +59,11 @@ export async function GET(request: Request) {
 
         const now = new Date()
 
-        // Skip if email was sent less than 60 seconds ago (bot/scanner prefetch)
+        // Skip if email was sent less than 5 minutes ago (catches Gmail proxy and scanner prefetch)
         if (recipient?.sent_at) {
           const sentAt = new Date(recipient.sent_at)
           const secondsSinceSend = (now.getTime() - sentAt.getTime()) / 1000
-          if (secondsSinceSend < 60) {
+          if (secondsSinceSend < 300) {
             return new NextResponse(PIXEL, { status: 200, headers: pixelHeaders() })
           }
         }

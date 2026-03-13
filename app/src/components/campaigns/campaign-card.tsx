@@ -54,8 +54,8 @@ export function CampaignCard({ campaign, onClick, onStatusChange, onDelete }: Ca
   const isDm = campaign.type === 'dm'
   const isDraft = campaign.status === 'draft'
 
-  const openRate = campaign.stats.sent > 0
-    ? Math.round((campaign.stats.opened / campaign.stats.sent) * 100)
+  const openRate = campaign.stats.total > 0
+    ? Math.round((campaign.stats.opened / campaign.stats.total) * 100)
     : 0
 
   const handleLaunch = async (e: React.MouseEvent) => {

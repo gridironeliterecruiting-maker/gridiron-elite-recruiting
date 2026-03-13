@@ -410,6 +410,12 @@ export async function GET(request: Request) {
             sentMessageId = gmailResult.id
           }
 
+          // Stamp sent_at on the recipient row (used by open tracking time gate)
+          await admin
+            .from('campaign_recipients')
+            .update({ sent_at: now })
+            .eq('id', recipient.id)
+
           // Log the send
           await admin.from('email_send_log').insert({
             user_id: userId,
