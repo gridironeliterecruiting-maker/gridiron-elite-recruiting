@@ -94,19 +94,19 @@ export function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('teams')
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top Nav Bar — mirrors main site NavBar */}
+    <div className="min-h-screen bg-background">
+      {/* Top Nav Bar — exact mirror of main site NavBar */}
       <header className="sticky top-0 z-50">
         {/* Red accent stripe */}
         <div className="h-1 bg-accent" />
 
-        <nav className="bg-primary shadow-lg">
-          <div className="mx-auto max-w-6xl px-6">
+        <nav className="relative bg-primary shadow-lg">
+          <div className="mx-auto max-w-7xl px-4 lg:px-8">
             <div className="flex h-16 items-center justify-between">
               {/* Brand */}
               <div className="flex items-center gap-3">
                 <div className="relative -mb-5 shrink-0 drop-shadow-[0_6px_16px_rgba(0,0,0,0.5)]">
-                  <div className="relative h-[72px] w-[72px]">
+                  <div className="relative h-[72px] w-[72px] lg:h-[80px] lg:w-[80px]">
                     <Image src="/logo.png" alt="Runway Recruit logo" fill className="object-contain" priority />
                   </div>
                 </div>
@@ -120,7 +120,7 @@ export function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Tab Nav — centered */}
+              {/* Tab Nav — centered, matches main nav item style exactly */}
               <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
                 <TabButton active={activeTab === 'teams'} onClick={() => setActiveTab('teams')}>
                   Teams
@@ -151,8 +151,8 @@ export function AdminDashboard() {
         }
         .input:focus {
           outline: none;
-          border-color: #0047AB;
-          box-shadow: 0 0 0 1px #0047AB;
+          border-color: hsl(var(--primary));
+          box-shadow: 0 0 0 1px hsl(var(--primary));
         }
         .input::placeholder {
           color: #9ca3af;
@@ -427,30 +427,28 @@ function TeamsTab() {
   return (
     <>
       {/* Section Header */}
-      <div className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-          <div>
-            <h2 className="font-display text-xl font-bold uppercase tracking-tight text-gray-900">
-              Team Administration
-            </h2>
-            <p className="flex items-center gap-1.5 text-sm text-gray-500 mt-0.5">
-              <Users className="h-3.5 w-3.5" />
-              Manage teams, members, and branding.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={openCreate}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            New Program
-          </button>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
+        <div>
+          <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
+            Team Administration
+          </h1>
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Users className="h-3.5 w-3.5 text-accent" />
+            MANAGE TEAMS, MEMBERS, AND BRANDING.
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={openCreate}
+          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+        >
+          <Plus className="h-4 w-4" />
+          New Program
+        </button>
       </div>
 
       {/* Program Grid */}
-      <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="mx-auto max-w-7xl px-4 pb-8 lg:px-8">
         {loading ? (
           <p className="text-center text-gray-500">Loading programs...</p>
         ) : programs.length === 0 ? (
@@ -843,29 +841,27 @@ function PromosTab() {
   return (
     <>
       {/* Section Header */}
-      <div className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-          <div>
-            <h2 className="font-display text-xl font-bold uppercase tracking-tight text-gray-900">
-              Promos
-            </h2>
-            <p className="flex items-center gap-1.5 text-sm text-gray-500 mt-0.5">
-              <Tag className="h-3.5 w-3.5" />
-              Create and manage promo codes.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => { setCreating(true); setError(''); setSuccess('') }}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            New Code
-          </button>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
+        <div>
+          <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
+            Promos
+          </h1>
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Tag className="h-3.5 w-3.5 text-accent" />
+            CREATE AND MANAGE PROMO CODES.
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={() => { setCreating(true); setError(''); setSuccess('') }}
+          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+        >
+          <Plus className="h-4 w-4" />
+          New Code
+        </button>
       </div>
 
-      <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="mx-auto max-w-7xl px-4 pb-8 lg:px-8">
         {/* Alerts */}
         {error && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
