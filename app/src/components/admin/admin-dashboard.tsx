@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Plus, X, Trash2, Upload, Users, Globe, Palette, Copy, Check } from 'lucide-react'
+import Image from 'next/image'
+import { Plus, X, Trash2, Upload, Users, Globe, Palette, Copy, Check, Tag } from 'lucide-react'
 /* eslint-disable @next/next/no-img-element */
 
 const US_STATES = [
@@ -60,6 +61,20 @@ interface ProgramForm {
   instagram_username: string
 }
 
+interface PromoCode {
+  id: string
+  code: string
+  percent_off: number | null
+  amount_off: number | null
+  currency: string | null
+  duration: string
+  duration_in_months: number | null
+  max_redemptions: number | null
+  times_redeemed: number
+  valid: boolean
+  created: number
+}
+
 const emptyForm: ProgramForm = {
   school_name: '',
   mascot: '',
@@ -73,7 +88,99 @@ const emptyForm: ProgramForm = {
   instagram_username: '',
 }
 
+type Tab = 'teams' | 'promos'
+
 export function AdminDashboard() {
+  const [activeTab, setActiveTab] = useState<Tab>('teams')
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Top Nav Bar — mirrors main site NavBar */}
+      <header className="sticky top-0 z-50">
+        {/* Red accent stripe */}
+        <div className="h-1 bg-accent" />
+
+        <nav className="bg-primary shadow-lg">
+          <div className="mx-auto max-w-6xl px-6">
+            <div className="flex h-16 items-center justify-between">
+              {/* Brand */}
+              <div className="flex items-center gap-3">
+                <div className="relative -mb-5 shrink-0 drop-shadow-[0_6px_16px_rgba(0,0,0,0.5)]">
+                  <div className="relative h-[72px] w-[72px]">
+                    <Image src="/logo.png" alt="Runway Recruit logo" fill className="object-contain" priority />
+                  </div>
+                </div>
+                <div className="hidden sm:block">
+                  <h1 className="font-display text-lg font-bold uppercase leading-tight tracking-wide text-primary-foreground">
+                    Runway Recruit
+                  </h1>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary-foreground/50">
+                    Admin Portal
+                  </p>
+                </div>
+              </div>
+
+              {/* Tab Nav — centered */}
+              <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
+                <TabButton active={activeTab === 'teams'} onClick={() => setActiveTab('teams')}>
+                  Teams
+                </TabButton>
+                <TabButton active={activeTab === 'promos'} onClick={() => setActiveTab('promos')}>
+                  Promos
+                </TabButton>
+              </div>
+            </div>
+          </div>
+        </nav>
+      </header>
+
+      {/* Tab Content */}
+      {activeTab === 'teams' ? <TeamsTab /> : <PromosTab />}
+
+      {/* Shared Tailwind styles for inputs */}
+      <style jsx global>{`
+        .input {
+          width: 100%;
+          border-radius: 0.5rem;
+          border: 1px solid #d1d5db;
+          background: white;
+          padding: 0.5rem 0.75rem;
+          font-size: 0.875rem;
+          color: #111827;
+          transition: border-color 0.15s;
+        }
+        .input:focus {
+          outline: none;
+          border-color: #0047AB;
+          box-shadow: 0 0 0 1px #0047AB;
+        }
+        .input::placeholder {
+          color: #9ca3af;
+        }
+      `}</style>
+    </div>
+  )
+}
+
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all ${
+        active
+          ? 'bg-primary-foreground/15 text-primary-foreground shadow-inner ring-1 ring-primary-foreground/20'
+          : 'text-primary-foreground/70 hover:bg-primary-foreground/10 hover:text-primary-foreground'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+// ─── TEAMS TAB ─────────────────────────────────────────────────────────────
+
+function TeamsTab() {
   const [programs, setPrograms] = useState<Program[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<Program | null>(null)
@@ -159,7 +266,6 @@ export function AdminDashboard() {
     setError('')
   }
 
-  // Auto-suggest slug from school name + state
   const suggestSlug = (name: string, state: string) => {
     if (!name) return ''
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -169,7 +275,6 @@ export function AdminDashboard() {
   const handleFieldChange = (field: keyof ProgramForm, value: string) => {
     setForm(prev => {
       const next = { ...prev, [field]: value }
-      // Auto-suggest slug when school name or state changes (only if slug is empty or matches old suggestion)
       if (field === 'school_name' || field === 'state') {
         const oldSuggestion = suggestSlug(prev.school_name, prev.state)
         if (!prev.landing_slug || prev.landing_slug === oldSuggestion) {
@@ -191,9 +296,7 @@ export function AdminDashboard() {
     setSaving(true)
     setError('')
     try {
-      const url = editing
-        ? `/api/admin/programs/${editing.id}`
-        : '/api/admin/programs'
+      const url = editing ? `/api/admin/programs/${editing.id}` : '/api/admin/programs'
       const res = await fetch(url, {
         method: editing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -202,29 +305,21 @@ export function AdminDashboard() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to save')
 
-      // If creating, upload pending logo and add pending members
       if (!editing && data.program) {
         if (pendingLogoFile) {
-          try {
-            await uploadLogoForProgram(data.program.id, pendingLogoFile)
-          } catch {
-            console.error('Failed to upload logo during creation')
-          }
+          try { await uploadLogoForProgram(data.program.id, pendingLogoFile) } catch {}
         }
         if (pendingBgImageFile) {
           try {
             const formData = new FormData()
             formData.append('background_image', pendingBgImageFile)
             await fetch(`/api/admin/programs/${data.program.id}/logo`, { method: 'POST', body: formData })
-          } catch {
-            console.error('Failed to upload background image during creation')
-          }
+          } catch {}
         }
       }
 
       await loadPrograms()
       if (!editing && data.program) {
-        // Open the newly created program for editing (to add members, logo)
         const refreshed = await fetch(`/api/admin/programs/${data.program.id}`)
         const refreshedData = await refreshed.json()
         openEdit(refreshedData.program)
@@ -258,10 +353,7 @@ export function AdminDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memberId }),
       })
-      setEditing(prev => prev ? {
-        ...prev,
-        members: prev.members.filter(m => m.id !== memberId),
-      } : null)
+      setEditing(prev => prev ? { ...prev, members: prev.members.filter(m => m.id !== memberId) } : null)
       setPrograms(prev => prev.map(p => p.id === editing.id
         ? { ...p, members: p.members.filter(m => m.id !== memberId) }
         : p
@@ -274,10 +366,7 @@ export function AdminDashboard() {
   const uploadLogoForProgram = async (programId: string, file: File) => {
     const formData = new FormData()
     formData.append('logo', file)
-    const res = await fetch(`/api/admin/programs/${programId}/logo`, {
-      method: 'POST',
-      body: formData,
-    })
+    const res = await fetch(`/api/admin/programs/${programId}/logo`, { method: 'POST', body: formData })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error)
     return data.logo_url as string
@@ -286,13 +375,11 @@ export function AdminDashboard() {
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0]) return
     const file = e.target.files[0]
-
     if (creating) {
       setPendingLogoFile(file)
       setLogoPreview(URL.createObjectURL(file))
       return
     }
-
     if (!editing) return
     setUploadingLogo(true)
     try {
@@ -310,13 +397,11 @@ export function AdminDashboard() {
   const handleBgImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0]) return
     const file = e.target.files[0]
-
     if (creating) {
       setPendingBgImageFile(file)
       setBgImagePreview(URL.createObjectURL(file))
       return
     }
-
     if (!editing) return
     setUploadingBgImage(true)
     try {
@@ -340,20 +425,23 @@ export function AdminDashboard() {
   const playerMembers = activeMembers.filter(m => m.role === 'player')
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+    <>
+      {/* Section Header */}
       <div className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
           <div>
-            <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-[#0047AB]">
-              Program Administration
-            </h1>
-            <p className="text-sm text-gray-500">Manage high school programs, members, and branding</p>
+            <h2 className="font-display text-xl font-bold uppercase tracking-tight text-gray-900">
+              Team Administration
+            </h2>
+            <p className="flex items-center gap-1.5 text-sm text-gray-500 mt-0.5">
+              <Users className="h-3.5 w-3.5" />
+              Manage teams, members, and branding.
+            </p>
           </div>
           <button
             type="button"
             onClick={openCreate}
-            className="flex items-center gap-2 rounded-lg bg-[#0047AB] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#003580]"
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />
             New Program
@@ -380,15 +468,11 @@ export function AdminDashboard() {
                   key={program.id}
                   type="button"
                   onClick={() => openEdit(program)}
-                  className="group rounded-xl border border-gray-200 bg-white p-5 text-left transition hover:border-[#0047AB]/30 hover:shadow-md"
+                  className="group rounded-xl border border-gray-200 bg-white p-5 text-left transition hover:border-primary/30 hover:shadow-md"
                 >
                   <div className="mb-3 flex items-center gap-3">
                     {program.logo_url ? (
-                      <img
-                        src={program.logo_url}
-                        alt={program.school_name}
-                        className="h-12 w-12 rounded-lg object-contain"
-                      />
+                      <img src={program.logo_url} alt={program.school_name} className="h-12 w-12 rounded-lg object-contain" />
                     ) : (
                       <div
                         className="flex h-12 w-12 items-center justify-center rounded-lg text-lg font-bold text-white"
@@ -431,12 +515,11 @@ export function AdminDashboard() {
         <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-50 duration-200">
           <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={closeForm} />
           <div className="absolute inset-y-0 right-0 flex w-full max-w-2xl flex-col overflow-hidden bg-white shadow-2xl">
-            {/* Overlay Header */}
             <div className="flex items-center gap-4 border-b border-gray-200 px-6 py-4">
               <button
                 type="button"
                 onClick={closeForm}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-600 transition hover:bg-[#0047AB] hover:text-white"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-600 transition hover:bg-primary hover:text-primary-foreground"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -456,13 +539,12 @@ export function AdminDashboard() {
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="rounded-lg bg-[#0047AB] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#003580] disabled:opacity-50"
+                className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
               >
                 {saving ? 'Saving...' : creating ? 'Create Program' : 'Save Changes'}
               </button>
             </div>
 
-            {/* Overlay Body */}
             <div className="flex-1 overflow-y-auto px-6 py-6">
               {error && (
                 <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -470,46 +552,21 @@ export function AdminDashboard() {
                 </div>
               )}
 
-              {/* Basic Info */}
               <Section title="Basic Info">
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="High School Name" required>
-                    <input
-                      type="text"
-                      value={form.school_name}
-                      onChange={e => handleFieldChange('school_name', e.target.value)}
-                      placeholder="e.g. Prairie"
-                      className="input"
-                    />
+                    <input type="text" value={form.school_name} onChange={e => handleFieldChange('school_name', e.target.value)} placeholder="e.g. Prairie" className="input" />
                   </Field>
                   <Field label="Mascot">
-                    <input
-                      type="text"
-                      value={form.mascot}
-                      onChange={e => handleFieldChange('mascot', e.target.value)}
-                      placeholder="e.g. Hawks"
-                      className="input"
-                    />
+                    <input type="text" value={form.mascot} onChange={e => handleFieldChange('mascot', e.target.value)} placeholder="e.g. Hawks" className="input" />
                   </Field>
                   <Field label="City">
-                    <input
-                      type="text"
-                      value={form.city}
-                      onChange={e => handleFieldChange('city', e.target.value)}
-                      placeholder="e.g. Cedar Rapids"
-                      className="input"
-                    />
+                    <input type="text" value={form.city} onChange={e => handleFieldChange('city', e.target.value)} placeholder="e.g. Cedar Rapids" className="input" />
                   </Field>
                   <Field label="State">
-                    <select
-                      value={form.state}
-                      onChange={e => handleFieldChange('state', e.target.value)}
-                      className="input"
-                    >
+                    <select value={form.state} onChange={e => handleFieldChange('state', e.target.value)} className="input">
                       <option value="">Select state</option>
-                      {US_STATES.map(s => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
+                      {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </Field>
                 </div>
@@ -529,10 +586,8 @@ export function AdminDashboard() {
                 </div>
               </Section>
 
-              {/* Branding */}
               <Section title="Branding" icon={<Palette className="h-4 w-4" />}>
                 <div className="mb-4 grid grid-cols-2 gap-6">
-                  {/* Team Logo */}
                   <div>
                     <label className="mb-1.5 block text-xs font-medium text-gray-700">Team Logo</label>
                     <div className="flex items-start gap-3">
@@ -544,12 +599,7 @@ export function AdminDashboard() {
                         </div>
                       )}
                       <div>
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={uploadingLogo}
-                          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
-                        >
+                        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingLogo} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50">
                           {uploadingLogo ? 'Uploading...' : 'Upload'}
                         </button>
                         <p className="mt-1 text-[10px] text-gray-400 leading-tight">500×500px PNG<br />transparent bg</p>
@@ -557,8 +607,6 @@ export function AdminDashboard() {
                       </div>
                     </div>
                   </div>
-
-                  {/* Background Image */}
                   <div>
                     <label className="mb-1.5 block text-xs font-medium text-gray-700">Landing Page Background</label>
                     <div className="flex items-start gap-3">
@@ -570,12 +618,7 @@ export function AdminDashboard() {
                         </div>
                       )}
                       <div>
-                        <button
-                          type="button"
-                          onClick={() => bgImageInputRef.current?.click()}
-                          disabled={uploadingBgImage}
-                          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
-                        >
+                        <button type="button" onClick={() => bgImageInputRef.current?.click()} disabled={uploadingBgImage} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50">
                           {uploadingBgImage ? 'Uploading...' : 'Upload'}
                         </button>
                         <p className="mt-1 text-[10px] text-gray-400 leading-tight">Wide photo · JPG/PNG<br />1920×1080 ideal</p>
@@ -585,83 +628,45 @@ export function AdminDashboard() {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-6">
-                  <ColorField
-                    label="Primary / Banner"
-                    description="Navbar background, buttons, active states"
-                    value={form.primary_color}
-                    onChange={v => handleFieldChange('primary_color', v)}
-                  />
-                  <ColorField
-                    label="Secondary / Accents"
-                    description="Top stripe, highlights, badges"
-                    value={form.accent_color}
-                    onChange={v => handleFieldChange('accent_color', v)}
-                  />
+                  <ColorField label="Primary / Banner" description="Navbar background, buttons, active states" value={form.primary_color} onChange={v => handleFieldChange('primary_color', v)} />
+                  <ColorField label="Secondary / Accents" description="Top stripe, highlights, badges" value={form.accent_color} onChange={v => handleFieldChange('accent_color', v)} />
                 </div>
               </Section>
 
-              {/* Social Media */}
               <Section title="Social Media" icon={<Globe className="h-4 w-4" />}>
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="Twitter / X Username">
                     <div className="flex items-center">
                       <span className="rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">@</span>
-                      <input
-                        type="text"
-                        value={form.twitter_username}
-                        onChange={e => handleFieldChange('twitter_username', e.target.value.replace('@', ''))}
-                        placeholder="username"
-                        className="input rounded-l-none"
-                      />
+                      <input type="text" value={form.twitter_username} onChange={e => handleFieldChange('twitter_username', e.target.value.replace('@', ''))} placeholder="username" className="input rounded-l-none" />
                     </div>
                   </Field>
                   <Field label="Instagram Username">
                     <div className="flex items-center">
                       <span className="rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">@</span>
-                      <input
-                        type="text"
-                        value={form.instagram_username}
-                        onChange={e => handleFieldChange('instagram_username', e.target.value.replace('@', ''))}
-                        placeholder="username"
-                        className="input rounded-l-none"
-                      />
+                      <input type="text" value={form.instagram_username} onChange={e => handleFieldChange('instagram_username', e.target.value.replace('@', ''))} placeholder="username" className="input rounded-l-none" />
                     </div>
                   </Field>
                 </div>
                 <div className="mt-4">
                   <Field label="Hudl URL">
-                    <input
-                      type="url"
-                      value={form.hudl_url}
-                      onChange={e => handleFieldChange('hudl_url', e.target.value)}
-                      placeholder="https://www.hudl.com/..."
-                      className="input"
-                    />
+                    <input type="url" value={form.hudl_url} onChange={e => handleFieldChange('hudl_url', e.target.value)} placeholder="https://www.hudl.com/..." className="input" />
                   </Field>
                 </div>
               </Section>
 
-              {/* Invite Codes */}
               <Section title="Invite Codes" icon={<Users className="h-4 w-4" />}>
                 <p className="text-xs text-gray-500 mb-4">
                   Share these codes with coaches and players. They use them to register on the program&apos;s landing page.
                   A code stops working once the seat limit is reached.
                 </p>
-
                 <div className="grid grid-cols-2 gap-4 mb-4">
-                  {/* Coach Code */}
                   <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Coach Code</p>
                     {editing?.coach_invite_code ? (
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-lg font-bold tracking-widest text-[#0047AB]">
-                          {editing.coach_invite_code}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => copyCode(editing.coach_invite_code!)}
-                          className="rounded p-1 text-gray-400 hover:text-[#0047AB] transition"
-                        >
+                        <span className="font-mono text-lg font-bold tracking-widest text-primary">{editing.coach_invite_code}</span>
+                        <button type="button" onClick={() => copyCode(editing.coach_invite_code!)} className="rounded p-1 text-gray-400 hover:text-primary transition">
                           {copiedCode === editing.coach_invite_code ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                         </button>
                       </div>
@@ -670,35 +675,16 @@ export function AdminDashboard() {
                     )}
                     <div className="mt-3">
                       <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Max Coaches</label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={50}
-                        value={maxCoaches}
-                        onChange={e => setMaxCoaches(parseInt(e.target.value) || 1)}
-                        className="input w-20"
-                      />
-                      {editing && (
-                        <p className="text-[10px] text-gray-400 mt-1">
-                          {editing.members.filter(m => m.role === 'coach').length} / {maxCoaches} used
-                        </p>
-                      )}
+                      <input type="number" min={1} max={50} value={maxCoaches} onChange={e => setMaxCoaches(parseInt(e.target.value) || 1)} className="input w-20" />
+                      {editing && <p className="text-[10px] text-gray-400 mt-1">{editing.members.filter(m => m.role === 'coach').length} / {maxCoaches} used</p>}
                     </div>
                   </div>
-
-                  {/* Player Code */}
                   <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Player Code</p>
                     {editing?.player_invite_code ? (
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-lg font-bold tracking-widest text-[#0047AB]">
-                          {editing.player_invite_code}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => copyCode(editing.player_invite_code!)}
-                          className="rounded p-1 text-gray-400 hover:text-[#0047AB] transition"
-                        >
+                        <span className="font-mono text-lg font-bold tracking-widest text-primary">{editing.player_invite_code}</span>
+                        <button type="button" onClick={() => copyCode(editing.player_invite_code!)} className="rounded p-1 text-gray-400 hover:text-primary transition">
                           {copiedCode === editing.player_invite_code ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                         </button>
                       </div>
@@ -707,57 +693,34 @@ export function AdminDashboard() {
                     )}
                     <div className="mt-3">
                       <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Max Players</label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={200}
-                        value={maxPlayers}
-                        onChange={e => setMaxPlayers(parseInt(e.target.value) || 1)}
-                        className="input w-20"
-                      />
-                      {editing && (
-                        <p className="text-[10px] text-gray-400 mt-1">
-                          {editing.members.filter(m => m.role === 'player').length} / {maxPlayers} used
-                        </p>
-                      )}
+                      <input type="number" min={1} max={200} value={maxPlayers} onChange={e => setMaxPlayers(parseInt(e.target.value) || 1)} className="input w-20" />
+                      {editing && <p className="text-[10px] text-gray-400 mt-1">{editing.members.filter(m => m.role === 'player').length} / {maxPlayers} used</p>}
                     </div>
                   </div>
                 </div>
               </Section>
 
-              {/* Members */}
               {editing && (
                 <Section title="Team Members" icon={<Users className="h-4 w-4" />}>
                   <p className="text-xs text-gray-400 mb-4">Members who have registered via the invite code. Removing a member revokes their access and deletes their account.</p>
-
-                  {/* Coach List */}
                   {coachMembers.length > 0 && (
                     <div className="mb-3">
                       <h4 className="mb-1.5 text-xs font-semibold uppercase text-gray-500">Coaches ({coachMembers.length}/{editing.max_coaches})</h4>
                       <div className="space-y-1">
-                        {coachMembers.map(m => (
-                          <MemberRow key={m.id} member={m} onRemove={() => handleRemoveMember(m.id)} />
-                        ))}
+                        {coachMembers.map(m => <MemberRow key={m.id} member={m} onRemove={() => handleRemoveMember(m.id)} />)}
                       </div>
                     </div>
                   )}
-
-                  {/* Player List */}
                   {playerMembers.length > 0 && (
                     <div>
                       <h4 className="mb-1.5 text-xs font-semibold uppercase text-gray-500">Players ({playerMembers.length}/{editing.max_players})</h4>
                       <div className="space-y-1">
-                        {playerMembers.map(m => (
-                          <MemberRow key={m.id} member={m} onRemove={() => handleRemoveMember(m.id)} />
-                        ))}
+                        {playerMembers.map(m => <MemberRow key={m.id} member={m} onRemove={() => handleRemoveMember(m.id)} />)}
                       </div>
                     </div>
                   )}
-
                   {coachMembers.length === 0 && playerMembers.length === 0 && (
-                    <p className="text-center text-sm text-gray-400 py-4">
-                      No members have registered yet.
-                    </p>
+                    <p className="text-center text-sm text-gray-400 py-4">No members have registered yet.</p>
                   )}
                 </Section>
               )}
@@ -765,29 +728,298 @@ export function AdminDashboard() {
           </div>
         </div>
       )}
+    </>
+  )
+}
 
-      {/* Shared Tailwind styles for inputs */}
-      <style jsx global>{`
-        .input {
-          width: 100%;
-          border-radius: 0.5rem;
-          border: 1px solid #d1d5db;
-          background: white;
-          padding: 0.5rem 0.75rem;
-          font-size: 0.875rem;
-          color: #111827;
-          transition: border-color 0.15s;
-        }
-        .input:focus {
-          outline: none;
-          border-color: #0047AB;
-          box-shadow: 0 0 0 1px #0047AB;
-        }
-        .input::placeholder {
-          color: #9ca3af;
-        }
-      `}</style>
-    </div>
+// ─── PROMOS TAB ─────────────────────────────────────────────────────────────
+
+function PromosTab() {
+  const [codes, setCodes] = useState<PromoCode[]>([])
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  // New code form
+  const [newCode, setNewCode] = useState('')
+  const [discountType, setDiscountType] = useState<'percent' | 'amount'>('percent')
+  const [discountValue, setDiscountValue] = useState('')
+  const [duration, setDuration] = useState<'once' | 'repeating' | 'forever'>('once')
+  const [durationMonths, setDurationMonths] = useState('3')
+  const [maxRedemptions, setMaxRedemptions] = useState('')
+
+  useEffect(() => {
+    loadCodes()
+  }, [])
+
+  const loadCodes = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/admin/promo-codes')
+      const data = await res.json()
+      setCodes(data.codes || [])
+    } catch {
+      console.error('Failed to load promo codes')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCreate = async () => {
+    if (!newCode.trim()) { setError('Code is required'); return }
+    if (!discountValue || parseFloat(discountValue) <= 0) { setError('Discount value must be greater than 0'); return }
+    if (discountType === 'percent' && parseFloat(discountValue) > 100) { setError('Percent off cannot exceed 100'); return }
+    if (duration === 'repeating' && (!durationMonths || parseInt(durationMonths) < 1)) { setError('Duration months must be at least 1'); return }
+
+    setSaving(true)
+    setError('')
+    setSuccess('')
+    try {
+      const res = await fetch('/api/admin/promo-codes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: newCode.trim().toUpperCase(),
+          discountType,
+          discountValue: parseFloat(discountValue),
+          duration,
+          durationMonths: duration === 'repeating' ? parseInt(durationMonths) : undefined,
+          maxRedemptions: maxRedemptions ? parseInt(maxRedemptions) : undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to create promo code')
+      setSuccess(`Promo code "${data.code.code}" created successfully.`)
+      setCreating(false)
+      setNewCode('')
+      setDiscountValue('')
+      setMaxRedemptions('')
+      await loadCodes()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to create promo code')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeactivate = async (id: string, code: string) => {
+    if (!confirm(`Deactivate promo code "${code}"? It will no longer be usable.`)) return
+    try {
+      const res = await fetch(`/api/admin/promo-codes/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Failed to deactivate code')
+        return
+      }
+      setSuccess(`Promo code "${code}" deactivated.`)
+      await loadCodes()
+    } catch {
+      setError('Failed to deactivate code')
+    }
+  }
+
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code).catch(() => {})
+    setCopiedId(code)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  const formatDiscount = (c: PromoCode) => {
+    if (c.percent_off) return `${c.percent_off}% off`
+    if (c.amount_off) return `$${(c.amount_off / 100).toFixed(0)} off`
+    return '—'
+  }
+
+  const formatDuration = (c: PromoCode) => {
+    if (c.duration === 'once') return 'One-time'
+    if (c.duration === 'forever') return 'Forever'
+    if (c.duration === 'repeating') return `${c.duration_in_months} month${c.duration_in_months !== 1 ? 's' : ''}`
+    return c.duration
+  }
+
+  return (
+    <>
+      {/* Section Header */}
+      <div className="border-b border-gray-200 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+          <div>
+            <h2 className="font-display text-xl font-bold uppercase tracking-tight text-gray-900">
+              Promos
+            </h2>
+            <p className="flex items-center gap-1.5 text-sm text-gray-500 mt-0.5">
+              <Tag className="h-3.5 w-3.5" />
+              Create and manage promo codes.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => { setCreating(true); setError(''); setSuccess('') }}
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            New Code
+          </button>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-6xl px-6 py-8">
+        {/* Alerts */}
+        {error && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            {success}
+          </div>
+        )}
+
+        {/* Create Form */}
+        {creating && (
+          <div className="mb-6 rounded-xl border border-primary/20 bg-white p-6 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-display text-base font-bold uppercase tracking-tight text-gray-900">New Promo Code</h3>
+              <button type="button" onClick={() => { setCreating(false); setError('') }} className="rounded-lg border border-gray-200 p-1.5 text-gray-400 hover:text-gray-700 transition">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Code" required>
+                <input
+                  type="text"
+                  value={newCode}
+                  onChange={e => setNewCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                  placeholder="e.g. SUMMER25"
+                  className="input font-mono tracking-widest"
+                />
+              </Field>
+              <Field label="Discount Type">
+                <select value={discountType} onChange={e => setDiscountType(e.target.value as 'percent' | 'amount')} className="input">
+                  <option value="percent">Percent off (%)</option>
+                  <option value="amount">Amount off ($)</option>
+                </select>
+              </Field>
+              <Field label={discountType === 'percent' ? 'Percent Off' : 'Amount Off (USD)'} required>
+                <div className="flex items-center">
+                  {discountType === 'amount' && <span className="rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">$</span>}
+                  <input
+                    type="number"
+                    min="0"
+                    max={discountType === 'percent' ? 100 : undefined}
+                    step={discountType === 'percent' ? 1 : 0.01}
+                    value={discountValue}
+                    onChange={e => setDiscountValue(e.target.value)}
+                    placeholder={discountType === 'percent' ? '25' : '10.00'}
+                    className={`input ${discountType === 'amount' ? 'rounded-l-none' : ''}`}
+                  />
+                  {discountType === 'percent' && <span className="rounded-r-md border border-l-0 border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">%</span>}
+                </div>
+              </Field>
+              <Field label="Duration">
+                <select value={duration} onChange={e => setDuration(e.target.value as 'once' | 'repeating' | 'forever')} className="input">
+                  <option value="once">Once (applies once)</option>
+                  <option value="repeating">Repeating (N months)</option>
+                  <option value="forever">Forever</option>
+                </select>
+              </Field>
+              {duration === 'repeating' && (
+                <Field label="Duration (months)" required>
+                  <input type="number" min="1" value={durationMonths} onChange={e => setDurationMonths(e.target.value)} className="input" />
+                </Field>
+              )}
+              <Field label="Max Redemptions">
+                <input
+                  type="number"
+                  min="1"
+                  value={maxRedemptions}
+                  onChange={e => setMaxRedemptions(e.target.value)}
+                  placeholder="Unlimited"
+                  className="input"
+                />
+              </Field>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-3">
+              <button type="button" onClick={() => { setCreating(false); setError('') }} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">
+                Cancel
+              </button>
+              <button type="button" onClick={handleCreate} disabled={saving} className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50">
+                {saving ? 'Creating...' : 'Create Code'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Codes Table */}
+        {loading ? (
+          <p className="text-center text-gray-500">Loading promo codes...</p>
+        ) : codes.length === 0 ? (
+          <div className="rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
+            <Tag className="mx-auto mb-3 h-10 w-10 text-gray-400" />
+            <p className="text-gray-500">No promo codes yet. Create your first code to offer discounts.</p>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">Code</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">Discount</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">Duration</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">Uses</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">Status</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">Created</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {codes.map(c => (
+                  <tr key={c.id} className="transition hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm font-bold tracking-wider text-gray-900">{c.code}</span>
+                        <button type="button" onClick={() => copyCode(c.code)} className="rounded p-0.5 text-gray-400 hover:text-primary transition">
+                          {copiedId === c.code ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{formatDiscount(c)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{formatDuration(c)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {c.times_redeemed}{c.max_redemptions ? ` / ${c.max_redemptions}` : ''}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${c.valid ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {c.valid ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">
+                      {new Date(c.created * 1000).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {c.valid && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeactivate(c.id, c.code)}
+                          className="rounded-lg border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 transition hover:bg-red-50"
+                        >
+                          Deactivate
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </>
   )
 }
 
@@ -822,18 +1054,8 @@ function ColorField({ label, description, value, onChange }: { label: string; de
       <label className="mb-0.5 block text-xs font-semibold text-gray-700">{label}</label>
       {description && <p className="mb-2 text-[11px] text-gray-400">{description}</p>}
       <div className="flex items-center gap-2">
-        <input
-          type="color"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          className="h-9 w-9 cursor-pointer rounded border border-gray-300 p-0.5"
-        />
-        <input
-          type="text"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          className="input flex-1 font-mono text-xs"
-        />
+        <input type="color" value={value} onChange={e => onChange(e.target.value)} className="h-9 w-9 cursor-pointer rounded border border-gray-300 p-0.5" />
+        <input type="text" value={value} onChange={e => onChange(e.target.value)} className="input flex-1 font-mono text-xs" />
       </div>
     </div>
   )
@@ -849,20 +1071,12 @@ function MemberRow({ member, onRemove }: { member: Member; onRemove: () => void 
     <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
       <div className="min-w-0 flex-1">
         <span className="text-sm font-medium text-gray-900">{name}</span>
-        {username && (
-          <span className="ml-2 font-mono text-xs text-gray-400">{username}@jetstreammail.com</span>
-        )}
+        {username && <span className="ml-2 font-mono text-xs text-gray-400">{username}@jetstreammail.com</span>}
       </div>
       {member.user_id && (
-        <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
-          Active
-        </span>
+        <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">Active</span>
       )}
-      <button
-        type="button"
-        onClick={onRemove}
-        className="rounded p-1 text-gray-400 transition hover:bg-red-50 hover:text-red-600"
-      >
+      <button type="button" onClick={onRemove} className="rounded p-1 text-gray-400 transition hover:bg-red-50 hover:text-red-600">
         <Trash2 className="h-3.5 w-3.5" />
       </button>
     </div>
