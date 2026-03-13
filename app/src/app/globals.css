@@ -52,9 +52,6 @@
   * {
     @apply border-border;
   }
-  html {
-    scrollbar-gutter: stable both-edges;
-  }
   body {
     @apply bg-background text-foreground;
   }
