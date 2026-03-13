@@ -155,12 +155,12 @@ export function TwitterProfileCard({ profile, handle, loadFailed, onConnect }: T
             <div className="flex items-center gap-2">
               <h3 className="text-base font-bold text-foreground">{profile.name}</h3>
               {profile.isProtected ? (
-                <Badge className="border-0 bg-amber-100 text-amber-700 text-[10px]">
+                <Badge className="border-0 bg-amber-100 text-amber-700 text-[10px] hover:bg-amber-100">
                   <Lock className="mr-0.5 h-2.5 w-2.5" />
                   Private
                 </Badge>
               ) : (
-                <Badge className="border-0 bg-green-100 text-green-700 text-[10px]">
+                <Badge className="border-0 bg-green-100 text-green-700 text-[10px] hover:bg-green-100">
                   <Globe className="mr-0.5 h-2.5 w-2.5" />
                   Public
                 </Badge>

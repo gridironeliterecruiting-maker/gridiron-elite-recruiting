@@ -149,7 +149,7 @@ export function ContentCalendar({ profile }: ContentCalendarProps) {
           <h3 className="font-display text-sm font-bold uppercase tracking-wider text-foreground">
             Weekly Content Calendar
           </h3>
-          <Badge className="border-0 bg-primary/10 text-primary text-[10px] font-bold">
+          <Badge className="border-0 bg-primary/10 text-primary text-[10px] font-bold hover:bg-primary/10">
             {seasonal.season}
           </Badge>
         </div>
@@ -207,7 +207,7 @@ export function ContentCalendar({ profile }: ContentCalendarProps) {
             className={`mt-3 flex w-full items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-bold transition-colors ${
               copiedDay === selectedDay
                 ? "bg-green-600 text-white"
-                : "bg-foreground/90 text-background hover:bg-foreground"
+                : "bg-foreground/90 text-background hover:bg-foreground/75 hover:ring-2 hover:ring-white/20"
             }`}
           >
             {copiedDay === selectedDay ? (

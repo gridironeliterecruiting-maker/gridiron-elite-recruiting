@@ -113,7 +113,7 @@ function MainSiteLogin({
             Runway Recruit
           </h2>
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gray-400 mt-0.5">
-            Welcome Back
+            Take Flight
           </p>
         </div>
 
