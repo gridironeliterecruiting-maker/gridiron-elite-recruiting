@@ -87,25 +87,18 @@ export async function POST(
 
     const schedule = calculateSendSchedule(recipients.length, launchTime)
 
-    // Update each recipient with their scheduled send time
+    // Batch update all recipients in one query using upsert
     const updates = recipients.map((r, i) => ({
       id: r.id,
+      campaign_id: id,
       status: 'scheduled' as const,
       next_send_at: schedule[i].toISOString(),
       updated_at: new Date().toISOString(),
     }))
 
-    // Batch update recipients
-    for (const update of updates) {
-      await supabase
-        .from('campaign_recipients')
-        .update({
-          status: update.status,
-          next_send_at: update.next_send_at,
-          updated_at: update.updated_at,
-        })
-        .eq('id', update.id)
-    }
+    await supabase
+      .from('campaign_recipients')
+      .upsert(updates, { onConflict: 'id' })
 
     // Activate campaign
     await supabase
@@ -117,25 +110,12 @@ export async function POST(
       })
       .eq('id', id)
 
-    // Trigger immediate email processing for "Launch Now" campaigns
+    // Trigger email processing fire-and-forget — don't await so launch returns immediately
     if (!launchTime || launchTime <= new Date()) {
-      try {
-        const processUrl = `${getAppUrl()}/api/email/process-queue`
-        const processRes = await fetch(processUrl, {
-          headers: {
-            'Authorization': `Bearer ${process.env.CRON_SECRET}`,
-          },
-        })
-        
-        if (!processRes.ok) {
-          console.error('Failed to trigger email processing:', await processRes.text())
-        } else {
-          console.log('Email queue processing triggered successfully')
-        }
-      } catch (processError) {
-        // Don't fail the launch if queue processing fails - cron will pick it up later
-        console.error('Error triggering email queue:', processError)
-      }
+      const processUrl = `${getAppUrl()}/api/email/process-queue`
+      fetch(processUrl, {
+        headers: { 'Authorization': `Bearer ${process.env.CRON_SECRET}` },
+      }).catch(err => console.error('Error triggering email queue:', err))
     }
 
     return NextResponse.json({
