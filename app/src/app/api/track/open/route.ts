@@ -24,8 +24,6 @@ const BOT_UA_PATTERNS = [
   /go-http/i,
   /okhttp/i,
   /apache-httpclient/i,
-  /google image proxy/i,
-  /googleimageproxy/i,
   /outlook.*safe/i,
   /mimecast/i,
   /barracuda/i,

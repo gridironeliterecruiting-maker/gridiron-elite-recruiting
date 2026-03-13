@@ -193,7 +193,8 @@ export function addTrackingPixel(
   campaignId: string
 ): string {
   const appUrl = getAppUrl()
-  const pixelUrl = `${appUrl}/api/track/open?rid=${recipientId}&cid=${campaignId}`
+  const nonce = Math.random().toString(36).slice(2)
+  const pixelUrl = `${appUrl}/api/track/open?rid=${recipientId}&cid=${campaignId}&t=${nonce}`
   const pixel = `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:none;width:1px;height:1px;border:0;" />`
 
   // Insert before closing body tag if present, otherwise append
