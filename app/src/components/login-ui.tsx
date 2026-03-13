@@ -43,7 +43,6 @@ function MainSiteLogin({
   color,
   logoSrc,
   logoAlt,
-  registerMode,
 }: {
   color: string
   logoSrc: string
@@ -92,62 +91,46 @@ function MainSiteLogin({
 
   return (
     <div
-      className="relative min-h-screen flex items-center justify-center"
+      className="relative min-h-screen flex items-start justify-center py-12 px-4"
       style={{
         backgroundImage: 'url(/locker-room-bg.png)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
       }}
     >
-      <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.60)' }} aria-hidden />
-      <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 60% 70% at 50% 50%, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 100%)' }} aria-hidden />
+      <div className="fixed inset-0 pointer-events-none" style={{ background: 'rgba(255,255,255,0.62)' }} aria-hidden />
+      <div className="fixed inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 40%, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0) 100%)' }} aria-hidden />
 
-      <div className="relative z-10 w-full max-w-md p-8 text-center">
-        <div className="flex justify-center mb-3">
-          <div className="relative h-[200px] w-[200px]">
+      <div className="relative z-10 w-full max-w-md">
+
+        {/* Logo + site name — identical structure to slug page */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="relative h-[160px] w-[160px] drop-shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
             <Image src={logoSrc} alt={logoAlt} fill className="object-contain" priority />
           </div>
+          <h2 className="mt-3 font-display text-2xl font-bold uppercase tracking-widest" style={{ color }}>
+            Runway Recruit
+          </h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gray-400 mt-0.5">
+            Welcome Back
+          </p>
         </div>
 
-        <h1 className="text-2xl font-bold mb-1" style={{ color }}>
-          {registerMode ? 'Get Started' : 'Welcome Back'}
-        </h1>
-        <p className="text-gray-500 mb-8">
-          {registerMode
-            ? 'Create your account to start recruiting.'
-            : 'Sign in to your recruiting hub.'}
-        </p>
+        {/* Login box — same style as slug Welcome Back box */}
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-7 border border-white">
+          <h2 className="text-lg font-bold text-gray-900 mb-1">Welcome Back</h2>
+          <p className="text-sm text-gray-500 mb-5">Sign in to your recruiting hub.</p>
 
-        {registerMode ? (
-          <div className="space-y-3">
-            <Link
-              href="/checkout?plan=monthly"
-              className="w-full flex items-center justify-center py-4 px-6 rounded-xl text-white font-semibold transition hover:-translate-y-0.5"
-              style={{ background: 'linear-gradient(135deg, #d93025 0%, #9a1010 100%)', boxShadow: '0 4px 20px rgba(200,32,47,0.4)' }}
-            >
-              Get Started — $50/month
-            </Link>
-            <Link
-              href="/checkout?plan=annual"
-              className="w-full flex items-center justify-center py-3 px-6 rounded-xl border-2 font-semibold transition hover:bg-blue-50"
-              style={{ borderColor: color, color }}
-            >
-              Annual Plan — $450/year (Save 25%)
-            </Link>
-            <p className="text-xs text-gray-400">Already have an account?{' '}
-              <Link href="/login" className="hover:underline" style={{ color }}>Sign in</Link>
-            </p>
-          </div>
-        ) : (
           <form onSubmit={handleSignIn} className="space-y-4">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm text-left">
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
                 {error}
               </div>
             )}
 
-            <div className="text-left">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Username</label>
               <input
                 type="text"
                 value={username}
@@ -155,15 +138,15 @@ function MainSiteLogin({
                 placeholder="ryansmith"
                 required
                 autoComplete="username"
-                className="w-full px-4 py-3 border-2 rounded-xl bg-white focus:outline-none text-sm"
+                className="w-full px-4 py-2.5 border-2 rounded-xl bg-white focus:outline-none text-sm transition-colors"
                 style={{ borderColor: '#e5e7eb' }}
                 onFocus={e => e.target.style.borderColor = color}
                 onBlur={e => e.target.style.borderColor = '#e5e7eb'}
               />
             </div>
 
-            <div className="text-left">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Password</label>
               <input
                 type="password"
                 value={password}
@@ -171,14 +154,14 @@ function MainSiteLogin({
                 placeholder="Your password"
                 required
                 autoComplete="current-password"
-                className="w-full px-4 py-3 border-2 rounded-xl bg-white focus:outline-none text-sm"
+                className="w-full px-4 py-2.5 border-2 rounded-xl bg-white focus:outline-none text-sm transition-colors"
                 style={{ borderColor: '#e5e7eb' }}
                 onFocus={e => e.target.style.borderColor = color}
                 onBlur={e => e.target.style.borderColor = '#e5e7eb'}
               />
             </div>
 
-            <div className="text-right -mt-1">
+            <div className="text-right -mt-2">
               <Link href="/forgot-password" className="text-xs hover:underline" style={{ color }}>
                 Forgot password?
               </Link>
@@ -187,22 +170,23 @@ function MainSiteLogin({
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 px-6 rounded-xl text-white font-semibold transition disabled:opacity-50"
+              className="w-full py-3.5 rounded-xl text-white font-semibold transition disabled:opacity-50"
               style={{ background: color }}
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
-
-            <p className="text-xs text-gray-400 mt-4">
-              Don&apos;t have an account?{' '}
-              <Link href="/checkout" className="hover:underline" style={{ color }}>
-                Get started
-              </Link>
-            </p>
           </form>
-        )}
+        </div>
 
-        <p className="mt-6 text-xs text-gray-400">
+        {/* Below box: get started + legal */}
+        <p className="mt-5 text-center text-sm text-gray-500">
+          Don&apos;t have an account?{' '}
+          <Link href="/checkout" className="font-semibold hover:underline" style={{ color }}>
+            Get started
+          </Link>
+        </p>
+
+        <p className="mt-3 text-center text-xs text-gray-400">
           <a href="https://runwayrecruit.com/privacy" target="_blank" rel="noopener noreferrer" className="hover:underline">
             Privacy Policy
           </a>
