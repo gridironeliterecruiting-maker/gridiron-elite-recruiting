@@ -25,7 +25,7 @@ export async function GET() {
     { count: offers },
   ] = await Promise.all([
     admin.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'athlete'),
-    admin.from('managed_programs').select('*', { count: 'exact', head: true }),
+    admin.from('programs').select('*', { count: 'exact', head: true }),
     admin.from('coaches').select('*', { count: 'exact', head: true }).eq('is_active', true),
     admin.from('campaigns').select('*', { count: 'exact', head: true }),
     admin.from('pipeline_entries').select('*', { count: 'exact', head: true })
