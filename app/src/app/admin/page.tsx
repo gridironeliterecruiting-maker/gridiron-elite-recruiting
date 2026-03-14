@@ -1,11 +1,12 @@
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import { AdminLogin } from "@/components/admin/admin-login"
-import { UnauthorizedPage } from "@/components/unauthorized-page"
 import { AdminDashboard } from "@/components/admin/admin-dashboard"
 import { Suspense } from "react"
 
 export const dynamic = "force-dynamic"
+
+const ADMIN_EMAIL = 'pauladmin@jetstreammail.com'
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -13,29 +14,11 @@ export default async function AdminPage() {
   const cookieStore = await cookies()
   const siteSession = cookieStore.get('site_session')?.value
 
-  // Not logged in, or logged into a different site — show admin login page
-  if (!user || siteSession !== 'admin') {
+  // Must be logged in, have admin session cookie, and be the authorized admin email
+  if (!user || siteSession !== 'admin' || user.email !== ADMIN_EMAIL) {
     return (
       <Suspense>
         <AdminLogin />
-      </Suspense>
-    )
-  }
-
-  // Check if user is admin
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') {
-    return (
-      <Suspense>
-        <UnauthorizedPage
-          programName="Platform Administration"
-          adminMode
-        />
       </Suspense>
     )
   }
