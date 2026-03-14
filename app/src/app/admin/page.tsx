@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
-import { LoginUI } from "@/components/login-ui"
+import { AdminLogin } from "@/components/admin/admin-login"
 import { UnauthorizedPage } from "@/components/unauthorized-page"
 import { AdminDashboard } from "@/components/admin/admin-dashboard"
 import { Suspense } from "react"
@@ -17,10 +17,7 @@ export default async function AdminPage() {
   if (!user || siteSession !== 'admin') {
     return (
       <Suspense>
-        <LoginUI
-          programName="Platform Administration"
-          slug="admin"
-        />
+        <AdminLogin />
       </Suspense>
     )
   }
