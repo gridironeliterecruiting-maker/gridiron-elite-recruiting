@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { Plus, X, Trash2, Upload, Users, Globe, Palette, Copy, Check, Tag } from 'lucide-react'
+import { Plus, X, Trash2, Upload, Users, Globe, Palette, Copy, Check, Tag, LayoutDashboard, TrendingUp, TrendingDown, Building2, UserCheck, Send, Target, Instagram, Youtube, Link2, MessageCircle } from 'lucide-react'
 /* eslint-disable @next/next/no-img-element */
 
 const US_STATES = [
@@ -88,10 +88,10 @@ const emptyForm: ProgramForm = {
   instagram_username: '',
 }
 
-type Tab = 'teams' | 'promos'
+type Tab = 'dashboard' | 'teams' | 'promos'
 
 export function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<Tab>('teams')
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard')
 
   return (
     <div className="min-h-screen bg-background">
@@ -122,10 +122,13 @@ export function AdminDashboard() {
 
               {/* Tab Nav — centered, matches main nav item style exactly */}
               <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
-                <TabButton active={activeTab === 'teams'} onClick={() => setActiveTab('teams')}>
+                <TabButton icon={LayoutDashboard} active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')}>
+                  Dashboard
+                </TabButton>
+                <TabButton icon={Users} active={activeTab === 'teams'} onClick={() => setActiveTab('teams')}>
                   Teams
                 </TabButton>
-                <TabButton active={activeTab === 'promos'} onClick={() => setActiveTab('promos')}>
+                <TabButton icon={Tag} active={activeTab === 'promos'} onClick={() => setActiveTab('promos')}>
                   Promos
                 </TabButton>
               </div>
@@ -136,7 +139,9 @@ export function AdminDashboard() {
 
       {/* Tab Content — single main wrapper matches app layout exactly */}
       <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
-        {activeTab === 'teams' ? <TeamsTab /> : <PromosTab />}
+        {activeTab === 'dashboard' && <DashboardTab />}
+        {activeTab === 'teams' && <TeamsTab />}
+        {activeTab === 'promos' && <PromosTab />}
       </main>
 
       {/* Shared Tailwind styles for inputs */}
@@ -164,19 +169,145 @@ export function AdminDashboard() {
   )
 }
 
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function TabButton({ active, onClick, icon: Icon, children }: { active: boolean; onClick: () => void; icon: React.ElementType; children: React.ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all ${
+      className={`relative flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all ${
         active
           ? 'bg-primary-foreground/15 text-primary-foreground shadow-inner ring-1 ring-primary-foreground/20'
           : 'text-primary-foreground/70 hover:bg-primary-foreground/10 hover:text-primary-foreground'
       }`}
     >
+      <Icon className="h-4 w-4" />
       {children}
     </button>
+  )
+}
+
+// ─── DASHBOARD TAB ─────────────────────────────────────────────────────────
+
+interface DashboardStats {
+  recruits: number
+  programs: number
+  coaches: number
+  campaigns: number
+  offers: number
+}
+
+function DashboardTab() {
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/admin/dashboard')
+      .then(r => r.json())
+      .then(data => setStats(data))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const metricCards = [
+    { label: 'Recruits', value: stats?.recruits ?? 0, icon: UserCheck, color: 'primary' as const },
+    { label: 'Programs', value: stats?.programs ?? 0, icon: Building2, color: 'primary' as const },
+    { label: 'Coaches', value: stats?.coaches ?? 0, icon: Users, color: 'primary' as const },
+    { label: 'Campaigns', value: stats?.campaigns ?? 0, icon: Send, color: 'accent' as const },
+    { label: 'Offers', value: stats?.offers ?? 0, icon: Target, color: 'accent' as const },
+  ]
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Page header */}
+      <div>
+        <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
+          Dashboard
+        </h1>
+        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+          <LayoutDashboard className="h-3.5 w-3.5 text-accent" />
+          PLATFORM OVERVIEW AND CONNECTIONS.
+        </p>
+      </div>
+
+      {/* Social connections — X large left, 3 stacked right */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+        {/* Connect X — primary feature, large left card */}
+        <div className="lg:col-span-9">
+          <div className="overflow-hidden rounded-xl border bg-card">
+            <div className="bg-gradient-to-br from-primary/5 to-primary/10 p-8">
+              <div className="flex flex-col items-center gap-5 text-center">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 ring-2 ring-primary/20">
+                  <MessageCircle className="h-10 w-10 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-display text-xl font-bold uppercase tracking-tight text-foreground">
+                    Connect X / Twitter
+                  </h3>
+                  <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                    Connect the platform&apos;s X account to enable DM tracking, engagement analytics, and automated outreach features.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 rounded-lg bg-primary px-8 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+                >
+                  <Link2 className="h-4 w-4" />
+                  Connect X Account
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 3 stacked social placeholders */}
+        <div className="flex flex-col gap-4 lg:col-span-3">
+          {[
+            { label: 'Instagram', icon: Instagram, color: 'from-pink-500/10 to-purple-500/10', iconColor: 'text-pink-500', ring: 'ring-pink-500/20', bg: 'bg-pink-500/10' },
+            { label: 'Facebook', icon: Globe, color: 'from-blue-600/10 to-blue-500/10', iconColor: 'text-blue-600', ring: 'ring-blue-500/20', bg: 'bg-blue-500/10' },
+            { label: 'YouTube', icon: Youtube, color: 'from-red-500/10 to-red-600/10', iconColor: 'text-red-500', ring: 'ring-red-500/20', bg: 'bg-red-500/10' },
+          ].map(({ label, icon: Icon, color, iconColor, ring, bg }) => (
+            <div key={label} className="flex-1 overflow-hidden rounded-xl border bg-card">
+              <div className={`flex h-full items-center gap-4 bg-gradient-to-br ${color} px-5 py-4`}>
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${bg} ring-2 ${ring}`}>
+                  <Icon className={`h-5 w-5 ${iconColor}`} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-foreground">Connect {label}</p>
+                  <p className="text-xs text-muted-foreground">Coming soon</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Platform metrics */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {metricCards.map((stat) => (
+          <div
+            key={stat.label}
+            className="group relative overflow-hidden rounded-xl border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg"
+          >
+            <div className={`absolute inset-x-0 top-0 h-1 ${stat.color === 'accent' ? 'bg-accent' : 'bg-primary'}`} />
+            <div className="p-5 pt-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {stat.label}
+                  </p>
+                  <p className="mt-2 font-display text-4xl font-bold tracking-tight text-foreground">
+                    {loading ? '—' : stat.value.toLocaleString()}
+                  </p>
+                </div>
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${stat.color === 'accent' ? 'bg-accent/10 text-accent' : 'bg-primary/10 text-primary'}`}>
+                  <stat.icon className="h-5 w-5" />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
