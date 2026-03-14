@@ -1,8 +1,12 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Plus, X, Trash2, Upload, Users, Globe, Palette, Copy, Check, Tag, LayoutDashboard, TrendingUp, TrendingDown, Building2, UserCheck, Send, Target, Instagram, Youtube, Link2, MessageCircle } from 'lucide-react'
+import { Plus, X, Trash2, Upload, Users, Globe, Palette, Copy, Check, Tag, LayoutDashboard, TrendingUp, TrendingDown, Building2, UserCheck, Send, Target, Instagram, Youtube, Link2, MessageCircle, ChevronDown, LogOut } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 /* eslint-disable @next/next/no-img-element */
 
 const US_STATES = [
@@ -92,6 +96,29 @@ type Tab = 'dashboard' | 'teams' | 'promos'
 
 export function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
+  const [adminName, setAdminName] = useState<{ first: string; last: string } | null>(null)
+  const router = useRouter()
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase.from('profiles').select('first_name, last_name').eq('id', user.id).single()
+        .then(({ data }) => {
+          if (data?.first_name) setAdminName({ first: data.first_name, last: data.last_name || '' })
+        })
+    })
+  }, [])
+
+  const handleSignOut = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    document.cookie = 'site_session=;path=/;max-age=0'
+    router.push('/admin')
+  }
+
+  const initials = adminName ? `${adminName.first[0]}${adminName.last[0] || ''}`.toUpperCase() : 'PA'
+  const fullName = adminName ? `${adminName.first} ${adminName.last}`.trim() : 'Paul Admin'
 
   return (
     <div className="min-h-screen bg-background">
@@ -132,6 +159,33 @@ export function AdminDashboard() {
                   Promos
                 </TabButton>
               </div>
+
+              {/* User avatar dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-primary-foreground/80 transition-colors hover:bg-primary-foreground/10 hover:text-primary-foreground"
+                  >
+                    <Avatar className="h-8 w-8 ring-2 ring-accent">
+                      <AvatarFallback className="bg-accent text-accent-foreground text-xs font-bold">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="hidden text-left lg:block">
+                      <p className="text-sm font-semibold leading-tight text-primary-foreground">{fullName}</p>
+                      <p className="text-[11px] text-primary-foreground/50">Administrator</p>
+                    </div>
+                    <ChevronDown className="hidden h-3.5 w-3.5 text-primary-foreground/50 lg:block" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </nav>
