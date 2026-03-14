@@ -6,25 +6,20 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-const ADMIN_EMAIL = 'pauladmin@jetstreammail.com'
 const PRIMARY_COLOR = '#1a3a6e' // hsl(224 76% 30%)
 
 export function AdminLogin() {
   const supabase = createClient()
   const router = useRouter()
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // Sign out any existing non-admin session silently on mount
+  // Sign out any existing session silently on mount
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user && user.email !== ADMIN_EMAIL) {
-        supabase.auth.signOut()
-        document.cookie = 'site_session=;path=/;max-age=0'
-      }
-    })
+    supabase.auth.signOut()
+    document.cookie = 'site_session=;path=/;max-age=0'
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -33,27 +28,19 @@ export function AdminLogin() {
     setLoading(true)
     setError('')
 
-    const emailClean = email.trim().toLowerCase()
+    const email = `${username.trim().toLowerCase()}@jetstreammail.com`
 
-    if (emailClean !== ADMIN_EMAIL) {
-      setError('Incorrect email or password.')
-      setLoading(false)
-      return
-    }
-
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: emailClean,
-      password,
-    })
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (signInError) {
-      setError('Incorrect email or password.')
+      setError('Incorrect username or password.')
       setLoading(false)
       return
     }
 
     document.cookie = `site_session=admin;path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
     router.push('/admin')
+    router.refresh()
   }
 
   return (
@@ -97,14 +84,14 @@ export function AdminLogin() {
             )}
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">Email</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Username</label>
               <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="pauladmin@jetstreammail.com"
+                type="text"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                placeholder="username"
                 required
-                autoComplete="email"
+                autoComplete="username"
                 className="w-full px-4 py-2.5 border-2 rounded-xl bg-white focus:outline-none text-sm transition-colors"
                 style={{ borderColor: '#e5e7eb' }}
                 onFocus={e => (e.target.style.borderColor = PRIMARY_COLOR)}
@@ -118,7 +105,7 @@ export function AdminLogin() {
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="Your password"
+                placeholder="password"
                 required
                 autoComplete="current-password"
                 className="w-full px-4 py-2.5 border-2 rounded-xl bg-white focus:outline-none text-sm transition-colors"

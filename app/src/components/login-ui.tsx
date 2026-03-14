@@ -135,7 +135,7 @@ function MainSiteLogin({
                 type="text"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
-                placeholder="ryansmith"
+                placeholder="username"
                 required
                 autoComplete="username"
                 className="w-full px-4 py-2.5 border-2 rounded-xl bg-white focus:outline-none text-sm transition-colors"
@@ -151,7 +151,7 @@ function MainSiteLogin({
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="Your password"
+                placeholder="password"
                 required
                 autoComplete="current-password"
                 className="w-full px-4 py-2.5 border-2 rounded-xl bg-white focus:outline-none text-sm transition-colors"
