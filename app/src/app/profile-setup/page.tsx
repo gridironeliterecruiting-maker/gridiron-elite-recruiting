@@ -16,6 +16,8 @@ function ProfileSetupInner() {
 
   const subId = searchParams.get('sub_id')
   const plan = searchParams.get('plan') || 'monthly'
+  const slug = searchParams.get('slug')
+  const code = searchParams.get('code')
 
   const [form, setForm] = useState({
     first_name: '',
@@ -72,6 +74,8 @@ function ProfileSetupInner() {
       body: JSON.stringify({
         subscriptionId: subId || null,
         plan,
+        slug: slug || null,
+        code: code || null,
         firstName: form.first_name,
         lastName: form.last_name,
         position: form.position,
@@ -95,7 +99,11 @@ function ProfileSetupInner() {
       return
     }
 
-    router.push('/hub')
+    if (slug) {
+      router.push(`/${slug}/hub`)
+    } else {
+      router.push('/hub')
+    }
     setLoading(false)
   }
 

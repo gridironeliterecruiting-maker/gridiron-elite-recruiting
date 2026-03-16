@@ -10,6 +10,8 @@ export async function POST(request: Request) {
     const {
       subscriptionId,
       plan,
+      slug,
+      code,
       firstName,
       lastName,
       position,
@@ -106,12 +108,37 @@ export async function POST(request: Request) {
       twitter_handle: twitterHandle || null,
       ...(stripeCustomerId ? { stripe_customer_id: stripeCustomerId } : {}),
       is_grandfathered: false,
-      registered_via: 'main_site',
+      registered_via: slug ? `slug:${slug}` : 'main_site',
     })
 
     if (profileError) {
       console.error('[complete-profile] Profile upsert failed:', profileError)
       return NextResponse.json({ error: profileError.message }, { status: 500 })
+    }
+
+    // Add to program if coming from a slug invite
+    if (slug && code) {
+      const upperCode = code.toUpperCase()
+      const { data: program } = await admin
+        .from('managed_programs')
+        .select('id, coach_invite_code, player_invite_code')
+        .eq('landing_slug', slug)
+        .maybeSingle()
+
+      if (program) {
+        let memberRole: 'coach' | 'player' | null = null
+        if (upperCode === program.coach_invite_code) memberRole = 'coach'
+        else if (upperCode === program.player_invite_code) memberRole = 'player'
+
+        if (memberRole) {
+          await admin.from('program_members').upsert({
+            program_id: program.id,
+            user_id: userId,
+            role: memberRole,
+            joined_at: new Date().toISOString(),
+          }, { onConflict: 'program_id,user_id' })
+        }
+      }
     }
 
     // Auto-provision Zoho recruiting email
