@@ -11,7 +11,7 @@ const PRIMARY_COLOR = '#1a3a6e' // hsl(224 76% 30%)
 export function AdminLogin() {
   const supabase = createClient()
   const router = useRouter()
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -28,12 +28,27 @@ export function AdminLogin() {
     setLoading(true)
     setError('')
 
-    const email = `${username.trim().toLowerCase()}@jetstreammail.com`
+    const { data: { user }, error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    })
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    if (signInError || !user) {
+      setError('Incorrect email or password.')
+      setLoading(false)
+      return
+    }
 
-    if (signInError) {
-      setError('Incorrect username or password.')
+    // Verify admin role
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.role !== 'admin') {
+      await supabase.auth.signOut()
+      setError('Access denied.')
       setLoading(false)
       return
     }
@@ -84,14 +99,14 @@ export function AdminLogin() {
             )}
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">Username</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Email</label>
               <input
-                type="text"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                placeholder="username"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@email.com"
                 required
-                autoComplete="username"
+                autoComplete="email"
                 className="w-full px-4 py-2.5 border-2 rounded-xl bg-white focus:outline-none text-sm transition-colors"
                 style={{ borderColor: '#e5e7eb' }}
                 onFocus={e => (e.target.style.borderColor = PRIMARY_COLOR)}
