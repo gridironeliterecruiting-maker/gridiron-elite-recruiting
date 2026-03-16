@@ -45,6 +45,23 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
+      // For main site Google OAuth: check if user has a profile. If not → checkout.
+      if (siteSession === 'main') {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, first_name')
+            .eq('id', user.id)
+            .single()
+
+          const isNewUser = !profile || !profile.first_name
+          if (isNewUser) {
+            next = '/checkout'
+          }
+        }
+      }
+
       const redirectUrl = new URL(next, appUrl)
       const response = NextResponse.redirect(redirectUrl.toString())
       for (const { name, value, options } of pendingCookies) {

@@ -1,17 +1,14 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { provisionZohoAccount } from '@/lib/workspace'
 import { getStripe } from '@/lib/stripe'
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
     const {
-      // Stripe session
       subscriptionId,
-      email,       // recovery email (from checkout)
-      plan,        // monthly | annual
-      // Profile fields
+      plan,
       firstName,
       lastName,
       position,
@@ -25,81 +22,74 @@ export async function POST(request: Request) {
       weight,
       hudlUrl,
       twitterHandle,
-      // Workspace auth
-      username,
-      password,
-      recoveryEmail,
     } = body
 
-    if (!subscriptionId || !firstName || !lastName || !username || !password) {
+    if (!firstName || !lastName) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    if (password.length < 8) {
-      return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
+    // Get authenticated user from session
+    const supabase = await createClient()
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
     const admin = createAdminClient()
+    const userId = user.id
 
-    // Verify subscription exists and has a valid payment
-    const stripe = getStripe()
-    let stripeSub
-    try {
-      stripeSub = await stripe.subscriptions.retrieve(subscriptionId)
-    } catch {
-      return NextResponse.json({ error: 'Invalid subscription ID' }, { status: 400 })
+    let stripeCustomerId: string | null = null
+    let currentPeriodEnd: string | null = null
+
+    // Verify subscription if provided
+    if (subscriptionId) {
+      // Check that the subscription hasn't already been used
+      const { data: existingSub } = await admin
+        .from('subscriptions')
+        .select('id')
+        .eq('stripe_subscription_id', subscriptionId)
+        .single()
+
+      if (existingSub) {
+        return NextResponse.json({ error: 'This subscription has already been used' }, { status: 409 })
+      }
+
+      const stripe = getStripe()
+      let stripeSub
+      try {
+        stripeSub = await stripe.subscriptions.retrieve(subscriptionId)
+      } catch {
+        return NextResponse.json({ error: 'Invalid subscription ID' }, { status: 400 })
+      }
+
+      if (!['active', 'trialing', 'incomplete'].includes(stripeSub.status)) {
+        return NextResponse.json({ error: 'Subscription is not active' }, { status: 400 })
+      }
+
+      stripeCustomerId = typeof stripeSub.customer === 'string'
+        ? stripeSub.customer
+        : stripeSub.customer.id
+
+      currentPeriodEnd = stripeSub.current_period_end
+        ? new Date(stripeSub.current_period_end * 1000).toISOString()
+        : null
+
+      // Create subscription row
+      await admin.from('subscriptions').insert({
+        user_id: userId,
+        stripe_customer_id: stripeCustomerId,
+        stripe_subscription_id: subscriptionId,
+        status: stripeSub.status === 'active' ? 'active' : 'incomplete',
+        plan: plan || 'monthly',
+        current_period_end: currentPeriodEnd,
+      })
     }
-
-    if (!['active', 'trialing', 'incomplete'].includes(stripeSub.status)) {
-      return NextResponse.json({ error: 'Subscription is not active' }, { status: 400 })
-    }
-
-    // Check that the subscription hasn't already been used to create an account
-    const { data: existingSub } = await admin
-      .from('subscriptions')
-      .select('id')
-      .eq('stripe_subscription_id', subscriptionId)
-      .single()
-
-    if (existingSub) {
-      return NextResponse.json({ error: 'This subscription has already been used to create an account' }, { status: 409 })
-    }
-
-    const workspaceEmail = `${username}@${process.env.ZOHO_DOMAIN || 'jetstreammail.com'}`
-
-    // Provision Zoho Mail360 account — returns account_key for per-mailbox API calls
-    const zohoAccountKey = await provisionZohoAccount(username, firstName, lastName)
-
-    // Create Supabase auth user with the workspace email
-    const { data: authData, error: authError } = await admin.auth.admin.createUser({
-      email: workspaceEmail,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: `${firstName} ${lastName}`,
-        first_name: firstName,
-        last_name: lastName,
-      },
-    })
-
-    if (authError || !authData.user) {
-      console.error('[complete-profile] Auth user creation failed:', authError)
-      return NextResponse.json({ error: authError?.message || 'Failed to create account' }, { status: 500 })
-    }
-
-    const userId = authData.user.id
-    const stripeCustomerId = typeof stripeSub.customer === 'string'
-      ? stripeSub.customer
-      : stripeSub.customer.id
 
     // Upsert profile row
     const { error: profileError } = await admin.from('profiles').upsert({
       id: userId,
-      username,
-      workspace_email: workspaceEmail,
-      zoho_account_key: zohoAccountKey,
-      recovery_email: recoveryEmail || email,
-      email: workspaceEmail,
+      email: user.email,
       first_name: firstName,
       last_name: lastName,
       position,
@@ -113,7 +103,7 @@ export async function POST(request: Request) {
       weight: weight ? parseInt(weight) : null,
       hudl_url: hudlUrl || null,
       twitter_handle: twitterHandle || null,
-      stripe_customer_id: stripeCustomerId,
+      ...(stripeCustomerId ? { stripe_customer_id: stripeCustomerId } : {}),
       is_grandfathered: false,
       registered_via: 'main_site',
     })
@@ -123,23 +113,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: profileError.message }, { status: 500 })
     }
 
-    // Create subscription row
-    const currentPeriodEnd = stripeSub.current_period_end
-      ? new Date(stripeSub.current_period_end * 1000).toISOString()
-      : null
-
-    await admin.from('subscriptions').insert({
-      user_id: userId,
-      stripe_customer_id: stripeCustomerId,
-      stripe_subscription_id: subscriptionId,
-      status: stripeSub.status === 'active' ? 'active' : 'incomplete',
-      plan,
-      current_period_end: currentPeriodEnd,
-    })
-
-    return NextResponse.json({ success: true, workspaceEmail, username })
-  } catch (error: any) {
+    return NextResponse.json({ success: true })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal server error'
     console.error('[complete-profile] Unexpected error:', error)
-    return NextResponse.json({ error: error?.message || 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

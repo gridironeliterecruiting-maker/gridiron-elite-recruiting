@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getStripe, findOrCreateCustomer, getPriceId } from '@/lib/stripe'
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: Request) {
   try {
-    const { plan, email } = await request.json()
+    const { plan } = await request.json()
 
     if (!plan) {
       return NextResponse.json({ error: 'plan is required' }, { status: 400 })
@@ -13,8 +14,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
     }
 
+    // Get the authenticated user's email from their session
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const userEmail = user?.email ?? null
+
     const stripe = getStripe()
-    const customer = await findOrCreateCustomer(stripe, email || null)
+    const customer = await findOrCreateCustomer(stripe, userEmail)
     const priceId = getPriceId(plan as 'monthly' | 'annual')
 
     // Create a subscription with payment_behavior='default_incomplete' so Stripe

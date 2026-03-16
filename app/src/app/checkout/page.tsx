@@ -41,7 +41,7 @@ function CheckoutForm({ plan }: { plan: Plan }) {
       return
     }
 
-    // Step 2: Create the subscription server-side
+    // Step 2: Create the subscription server-side (user is always logged in now)
     let clientSecret: string
     let subscriptionId: string
     try {

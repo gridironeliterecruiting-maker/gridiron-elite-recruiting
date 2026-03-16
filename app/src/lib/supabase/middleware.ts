@@ -5,10 +5,10 @@ import { NextResponse, type NextRequest } from 'next/server'
 const programRoutes = ['hub', 'coaches', 'pipeline', 'outreach', 'profile', 'email']
 
 // All known top-level routes (not program slugs)
-const knownTopLevel = ['hub', 'coaches', 'pipeline', 'outreach', 'profile', 'email', 'profile-setup', 'login', 'signup', 'auth', 'api', 'recruit', 'admin', 'checkout', 'welcome', 'forgot-password']
+const knownTopLevel = ['hub', 'coaches', 'pipeline', 'outreach', 'profile', 'email', 'profile-setup', 'login', 'signup', 'register', 'auth', 'api', 'recruit', 'admin', 'checkout', 'welcome', 'forgot-password']
 
 // Routes the middleware never blocks (no auth or site_session check)
-const alwaysPublic = ['/auth/callback', '/auth/reset-password', '/api/track', '/api/unsubscribe', '/api/email/process-queue', '/api/email/check-replies', '/api/gmail/oauth-callback', '/api/gmail/authorize', '/api/twitter/oauth-callback', '/api/access-request', '/recruit', '/checkout', '/api/stripe', '/api/auth/check-username', '/api/auth/check-main-site-user', '/api/auth/complete-profile', '/api/auth/forgot-password', '/forgot-password', '/api/auth/validate-invite', '/api/auth/register-slug', '/api/auth/lookup-profile']
+const alwaysPublic = ['/auth/callback', '/auth/reset-password', '/api/track', '/api/unsubscribe', '/api/email/process-queue', '/api/email/check-replies', '/api/gmail/oauth-callback', '/api/gmail/authorize', '/api/twitter/oauth-callback', '/api/access-request', '/recruit', '/checkout', '/api/stripe', '/api/auth/check-username', '/api/auth/check-main-site-user', '/api/auth/complete-profile', '/api/auth/register', '/api/auth/forgot-password', '/forgot-password', '/api/auth/validate-invite', '/api/auth/register-slug', '/api/auth/lookup-profile', '/register']
 
 export async function updateSession(request: NextRequest) {
   // Serve static public files without auth
@@ -99,8 +99,8 @@ export async function updateSession(request: NextRequest) {
   // /admin — admin site
   const isAdminRoute = firstSegment === 'admin'
 
-  // /login, /signup — generic login pages
-  const isGenericLoginRoute = request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup'
+  // /login, /signup, /register — generic login/register pages
+  const isGenericLoginRoute = request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup' || request.nextUrl.pathname === '/register'
 
   // ─── PROGRAM-SCOPED ROUTES: /{slug}/dashboard etc. ─────────
   if (isProgramRoute) {
@@ -225,9 +225,8 @@ export async function updateSession(request: NextRequest) {
 
   // ─── PROFILE SETUP ─────────────────────────────────────────
   if (request.nextUrl.pathname.startsWith('/profile-setup')) {
-    // Allow through when coming from checkout (has sub_id param = new user, not yet in auth)
-    const subId = request.nextUrl.searchParams.get('sub_id')
-    if (!user && !subId) return redirectTo('/login')
+    // User must always be logged in to access profile setup
+    if (!user) return redirectTo('/login')
     return passThrough()
   }
 
