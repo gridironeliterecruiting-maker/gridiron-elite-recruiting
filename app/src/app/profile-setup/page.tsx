@@ -453,20 +453,6 @@ function ProfileSetupInner() {
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">Twitter / X Handle</label>
-              <input
-                type="text"
-                value={form.twitter_handle}
-                onChange={e => update('twitter_handle', e.target.value)}
-                placeholder="@yourhandle"
-                className={inputClass}
-                style={{ borderColor: '#e5e7eb' }}
-                onFocus={handleInputFocus}
-                onBlur={handleInputBlur}
-              />
-            </div>
-
             <button
               type="submit"
               disabled={loading}
