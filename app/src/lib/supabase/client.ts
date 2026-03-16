@@ -8,7 +8,6 @@ export function createClient() {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        storageKey: 'rr-auth',
       },
     }
   )
