@@ -7,119 +7,6 @@ import Image from 'next/image'
 
 export const dynamic = 'force-dynamic'
 
-// ─── You're In Overlay ────────────────────────────────────────────────────────
-
-function YoureInOverlay({
-  loginEmail,
-  provider,
-  onClose,
-}: {
-  loginEmail: string
-  provider: string
-  onClose: () => void
-}) {
-  const [editing, setEditing] = useState(false)
-  const [newEmail, setNewEmail] = useState(loginEmail)
-  const [displayEmail, setDisplayEmail] = useState(loginEmail)
-  const [editLoading, setEditLoading] = useState(false)
-  const [editError, setEditError] = useState('')
-  const supabase = createClient()
-  const isGoogle = provider === 'google'
-
-  const handleSaveEmail = async () => {
-    if (!newEmail.trim() || newEmail === displayEmail) {
-      setEditing(false)
-      return
-    }
-    setEditLoading(true)
-    setEditError('')
-    const { error } = await supabase.auth.updateUser({ email: newEmail.trim() })
-    if (error) {
-      setEditError(error.message)
-      setEditLoading(false)
-      return
-    }
-    setDisplayEmail(newEmail.trim())
-    setEditing(false)
-    setEditLoading(false)
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
-        {/* Checkmark */}
-        <div className="flex justify-center mb-4">
-          <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center">
-            <svg className="w-8 h-8 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-        </div>
-
-        <h2 className="font-display text-3xl font-bold uppercase tracking-wider text-gray-900 mb-2">
-          You&apos;re in.
-        </h2>
-        <p className="text-gray-500 text-sm mb-6">
-          Welcome to Runway Recruit. Your recruiting journey starts now.
-        </p>
-
-        {/* Login email card */}
-        <div className="bg-secondary rounded-xl p-4 mb-6 text-left">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">
-            You will log in with:
-          </p>
-          {editing ? (
-            <div className="space-y-2">
-              <input
-                type="email"
-                value={newEmail}
-                onChange={e => setNewEmail(e.target.value)}
-                className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary bg-white"
-                autoFocus
-              />
-              {editError && <p className="text-red-500 text-xs">{editError}</p>}
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSaveEmail}
-                  disabled={editLoading}
-                  className="flex-1 py-1.5 bg-primary text-primary-foreground text-xs font-semibold rounded-lg disabled:opacity-50"
-                >
-                  {editLoading ? 'Saving...' : 'Save'}
-                </button>
-                <button
-                  onClick={() => { setEditing(false); setNewEmail(displayEmail); setEditError('') }}
-                  className="flex-1 py-1.5 bg-gray-100 text-gray-600 text-xs font-semibold rounded-lg"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-mono font-semibold text-gray-800 break-all">{displayEmail}</p>
-              {!isGoogle && (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="text-xs text-primary font-semibold hover:underline shrink-0"
-                >
-                  Edit
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        <button
-          onClick={onClose}
-          className="w-full py-4 rounded-xl bg-accent text-accent-foreground font-display font-bold uppercase tracking-widest text-lg transition hover:opacity-90"
-        >
-          LET&apos;S GO
-        </button>
-      </div>
-    </div>
-  )
-}
-
 // ─── Profile Setup Form ───────────────────────────────────────────────────────
 
 function ProfileSetupInner() {
@@ -148,9 +35,6 @@ function ProfileSetupInner() {
 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [showOverlay, setShowOverlay] = useState(false)
-  const [loginEmail, setLoginEmail] = useState('')
-  const [provider, setProvider] = useState('email')
 
   const update = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }))
 
@@ -165,11 +49,6 @@ function ProfileSetupInner() {
           first_name: meta?.first_name || meta?.full_name?.split(' ')[0] || '',
           last_name: meta?.last_name || meta?.full_name?.split(' ').slice(1).join(' ') || '',
         }))
-        setLoginEmail(user.email || '')
-        // Detect provider
-        const identities = user.identities ?? []
-        const isGoogle = identities.some((id: { provider: string }) => id.provider === 'google')
-        setProvider(isGoogle ? 'google' : 'email')
       }
     }
     prefill()
@@ -216,7 +95,7 @@ function ProfileSetupInner() {
       return
     }
 
-    setShowOverlay(true)
+    router.push('/hub')
     setLoading(false)
   }
 
@@ -232,14 +111,6 @@ function ProfileSetupInner() {
 
   return (
     <>
-      {showOverlay && (
-        <YoureInOverlay
-          loginEmail={loginEmail}
-          provider={provider}
-          onClose={() => router.push('/hub')}
-        />
-      )}
-
       <div
         className="relative min-h-screen flex items-start justify-center px-4 py-12"
         style={{
