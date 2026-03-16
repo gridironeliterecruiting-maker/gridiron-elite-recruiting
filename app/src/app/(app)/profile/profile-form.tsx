@@ -152,7 +152,7 @@ export function ProfileForm({
           {/* Login Email — plain text, not editable inline */}
           <div className="col-span-2">
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Login Email</label>
-            <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center justify-between rounded-lg border border-transparent px-3 py-2">
               <span className="text-sm text-foreground">{loginEmail || "—"}</span>
               {!isGoogleUser && (
                 <button
