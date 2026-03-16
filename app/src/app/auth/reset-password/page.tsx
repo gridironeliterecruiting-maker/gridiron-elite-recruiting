@@ -52,7 +52,7 @@ function ResetPasswordInner() {
     }
 
     // Set session cookie and redirect
-    document.cookie = `site_session=main;path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
+    document.cookie = `site_session=main;path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`
     router.push('/hub')
   }
 

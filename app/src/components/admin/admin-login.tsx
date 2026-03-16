@@ -38,7 +38,7 @@ export function AdminLogin() {
       return
     }
 
-    document.cookie = `site_session=admin;path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
+    document.cookie = `site_session=admin;path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`
     router.push('/admin')
     router.refresh()
   }

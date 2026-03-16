@@ -212,7 +212,7 @@ export function SlugLanding({
       return
     }
 
-    document.cookie = `site_session=${slug};path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
+    document.cookie = `site_session=${slug};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`
     setCreatedEmail(data.workspaceEmail)
     setCreatedRole(validatedRole)
     setView('success')
@@ -248,7 +248,7 @@ export function SlugLanding({
       return
     }
 
-    document.cookie = `site_session=${slug};path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
+    document.cookie = `site_session=${slug};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`
     router.push(`/${slug}/hub`)
   }
 
