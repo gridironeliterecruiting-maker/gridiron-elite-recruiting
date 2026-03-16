@@ -10,6 +10,7 @@
 - Be direct. Do the work yourself — don't deflect to the user.
 - User always tests in a fresh incognito browser. Never suggest clearing cookies or cache — it's never the issue.
 - Vercel CLI: always run from `app/` directory (linked to the `app` project).
+- Vercel CLI for **prep**: deploy from repo root with `.vercel/project.json` swapped to `prj_cQLopEt9te38YmhKw6AC8ewGuOJI`, then restore. See prep deployment mechanics below.
 
 ## Tech Stack
 Next.js 16 App Router · TypeScript · Tailwind CSS · shadcn/ui · Supabase (PostgreSQL + Auth + RLS) · Vercel
@@ -33,6 +34,22 @@ Full stack/directory/component reference: `docs/codebase.md`
 - To push prod: `git checkout main && git merge staging && git push origin main`
 - Staging and prod are **intentionally diverged**. Do not sync without explicit user approval.
 - If a staging push fails → stop and fix it. NEVER fall back to pushing main.
+
+---
+
+## Runway Prep — Deployment
+
+- **Staging**: https://staging.runwayprep.com
+- **Production**: https://runwayprep.com
+- Vercel project: `runway-elite-prep` (`prj_cQLopEt9te38YmhKw6AC8ewGuOJI`)
+- Supabase project: `runway-elite-prep` (`ugkqwmlvntwkjkgdjrxf`)
+- Code lives at `prep/` in this repo, deploys from `staging` branch
+
+### Prep Branch Strategy — NON-NEGOTIABLE
+- `staging` branch → staging.runwayprep.com. ALL prep work goes here.
+- ⚠️ **PROD PUSH RULE**: NEVER deploy prep to production unless user says "push to prod" or "push to production".
+- To deploy prep staging: swap root `.vercel/project.json` to prep project ID, run `npx vercel deploy --yes`, restore.
+- To deploy prep prod: same swap, run `npx vercel deploy --prod --yes`, restore.
 
 ---
 
