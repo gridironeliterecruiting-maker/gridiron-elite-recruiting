@@ -29,6 +29,13 @@ export default async function ProfilePage() {
       (profile as any)?.grad_year,
     ).catch(() => null)
   }
+  // Detect Google-only auth (no password identity)
+  const isGoogleUser = !!(
+    user?.identities &&
+    user.identities.length > 0 &&
+    user.identities.every((i: any) => i.provider === 'google')
+  )
+
   const { data: twitterToken } = await admin
     .from('twitter_tokens')
     .select('twitter_handle')
@@ -156,7 +163,7 @@ export default async function ProfilePage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           {/* Left: Profile form */}
           <div className="lg:col-span-5">
-            <ProfileForm profile={profile} twitterConnectedHandle={twitterToken?.twitter_handle || null} workspaceEmail={recruitingEmail} />
+            <ProfileForm profile={profile} twitterConnectedHandle={twitterToken?.twitter_handle || null} workspaceEmail={recruitingEmail} loginEmail={user?.email || null} isGoogleUser={isGoogleUser} />
           </div>
 
           {/* Right: Recruiting Drive */}

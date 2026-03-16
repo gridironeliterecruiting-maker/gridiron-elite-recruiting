@@ -4,7 +4,7 @@ import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Save, Check, Link2, Unlink } from "lucide-react"
+import { Save, Check, Link2, Unlink, X, Loader2 } from "lucide-react"
 
 interface Profile {
   id: string
@@ -39,11 +39,22 @@ function Field({ label, value, onChange, placeholder, type = "text" }: {
   )
 }
 
-export function ProfileForm({ profile, twitterConnectedHandle, workspaceEmail }: { profile: Profile | null; twitterConnectedHandle: string | null; workspaceEmail?: string | null }) {
+export function ProfileForm({
+  profile,
+  twitterConnectedHandle,
+  workspaceEmail,
+  loginEmail,
+  isGoogleUser,
+}: {
+  profile: Profile | null
+  twitterConnectedHandle: string | null
+  workspaceEmail?: string | null
+  loginEmail?: string | null
+  isGoogleUser?: boolean
+}) {
   const [form, setForm] = useState({
     first_name: profile?.first_name || "",
     last_name: profile?.last_name || "",
-    email: profile?.email || "",
     phone: profile?.phone || "",
     grad_year: profile?.grad_year?.toString() || "",
     position: profile?.position || "",
@@ -60,6 +71,13 @@ export function ProfileForm({ profile, twitterConnectedHandle, workspaceEmail }:
   const [saved, setSaved] = useState(false)
   const [xHandle, setXHandle] = useState<string | null>(twitterConnectedHandle)
   const [disconnecting, setDisconnecting] = useState(false)
+
+  // Email change overlay
+  const [showEmailOverlay, setShowEmailOverlay] = useState(false)
+  const [newEmail, setNewEmail] = useState("")
+  const [emailChanging, setEmailChanging] = useState(false)
+  const [emailChangeError, setEmailChangeError] = useState("")
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null)
 
   const update = (key: string, val: string) => {
     setForm((f) => ({ ...f, [key]: val }))
@@ -103,6 +121,23 @@ export function ProfileForm({ profile, twitterConnectedHandle, workspaceEmail }:
     window.location.href = `/api/twitter/authorize?returnTo=/profile`
   }
 
+  const handleEmailChange = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setEmailChanging(true)
+    setEmailChangeError("")
+    const supabase = createClient()
+    const { error } = await supabase.auth.updateUser({ email: newEmail.trim().toLowerCase() })
+    if (error) {
+      setEmailChangeError(error.message)
+      setEmailChanging(false)
+      return
+    }
+    setPendingEmail(newEmail.trim().toLowerCase())
+    setShowEmailOverlay(false)
+    setNewEmail("")
+    setEmailChanging(false)
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {/* Personal Info */}
@@ -113,15 +148,31 @@ export function ProfileForm({ profile, twitterConnectedHandle, workspaceEmail }:
         <CardContent className="grid grid-cols-2 gap-3">
           <Field label="First Name" value={form.first_name} onChange={(v) => update("first_name", v)} />
           <Field label="Last Name" value={form.last_name} onChange={(v) => update("last_name", v)} />
+
+          {/* Login Email — plain text, not editable inline */}
           <div className="col-span-2">
-            <Field label="Email" value={form.email} onChange={() => {}} placeholder="Cannot change email" type="email" />
-          </div>
-          {workspaceEmail && (
-            <div className="col-span-2">
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recruiting Email</label>
-              <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-foreground">{workspaceEmail}</div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Login Email</label>
+              {!isGoogleUser && (
+                <button
+                  type="button"
+                  onClick={() => { setShowEmailOverlay(true); setEmailChangeError("") }}
+                  className="text-xs font-semibold text-primary hover:underline"
+                >
+                  Edit
+                </button>
+              )}
             </div>
-          )}
+            <div className="px-3 py-2 text-sm text-foreground">
+              {loginEmail || "—"}
+            </div>
+            {pendingEmail && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Confirmation sent to <span className="font-semibold">{pendingEmail}</span> — check your inbox to complete the change.
+              </p>
+            )}
+          </div>
+
           <Field label="Phone" value={form.phone} onChange={(v) => update("phone", v)} placeholder="(555) 123-4567" />
           <div />
           <Field label="City" value={form.city} onChange={(v) => update("city", v)} placeholder="Cedar Rapids" />
@@ -147,15 +198,15 @@ export function ProfileForm({ profile, twitterConnectedHandle, workspaceEmail }:
         </CardContent>
       </Card>
 
-      {/* Links & Social */}
+      {/* Recruiting Profiles & Email */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Links & Social</CardTitle>
+          <CardTitle className="text-base">Recruiting Profiles & Email</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <Field label="Hudl Profile URL" value={form.hudl_url} onChange={(v) => update("hudl_url", v)} placeholder="https://www.hudl.com/profile/..." />
 
-          {/* X / Twitter — OAuth managed, not free-text */}
+          {/* X / Twitter — OAuth managed */}
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">X (Twitter) Account</label>
             {xHandle ? (
@@ -182,6 +233,16 @@ export function ProfileForm({ profile, twitterConnectedHandle, workspaceEmail }:
               </button>
             )}
           </div>
+
+          {/* Recruiting Email — display only */}
+          {workspaceEmail && (
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recruiting Email</label>
+              <div className="px-3 py-2 text-sm text-foreground">
+                {workspaceEmail}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -191,6 +252,53 @@ export function ProfileForm({ profile, twitterConnectedHandle, workspaceEmail }:
           {saving ? "Saving..." : saved ? <><Check className="mr-2 h-4 w-4" /> Saved</> : <><Save className="mr-2 h-4 w-4" /> Save Profile</>}
         </Button>
       </div>
+
+      {/* Email Change Overlay */}
+      {showEmailOverlay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-card shadow-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-base font-bold uppercase tracking-wider text-foreground">Change Login Email</h2>
+              <button
+                type="button"
+                onClick={() => { setShowEmailOverlay(false); setNewEmail(""); setEmailChangeError("") }}
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              A confirmation link will be sent to your new email address. Your login email won&apos;t change until you click it.
+            </p>
+            {emailChangeError && (
+              <div className="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                {emailChangeError}
+              </div>
+            )}
+            <form onSubmit={handleEmailChange} className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">New Email Address</label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={e => setNewEmail(e.target.value)}
+                  placeholder="you@email.com"
+                  required
+                  autoFocus
+                  className={inputClass}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={emailChanging || !newEmail.trim()}
+                className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+              >
+                {emailChanging ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending...</> : 'Send Confirmation'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
