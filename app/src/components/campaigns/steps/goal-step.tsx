@@ -62,10 +62,16 @@ export function GoalStep({ onSelect, selected, channelFilter, recruitingEmail }:
   const channelLabel = isDm ? 'X DM campaign' : 'email campaign'
   return (
     <div>
-      <div className="mb-2">
+      <div className="mb-2 flex items-start justify-between gap-4">
         <h2 className="font-display text-base font-bold uppercase tracking-wider text-foreground">
           What&apos;s your goal?
         </h2>
+        {recruitingEmail && !isDm && (
+          <div className="hidden sm:flex shrink-0 items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Recruiting Email</span>
+            <span className="text-sm font-semibold text-foreground">{recruitingEmail}</span>
+          </div>
+        )}
       </div>
       <p className="mb-8 text-sm text-muted-foreground">
         Choose the objective for this {channelLabel}. This determines your templates and strategy.

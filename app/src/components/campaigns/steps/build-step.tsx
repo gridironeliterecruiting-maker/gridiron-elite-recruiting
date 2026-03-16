@@ -26,6 +26,7 @@ import type { CampaignGoal, EmailTemplate } from "../types"
 interface BuildStepProps {
   goal: CampaignGoal
   templates: EmailTemplate[]
+  recruitingEmail?: string | null
   onTemplatesChange: (templates: EmailTemplate[]) => void
   onNext: () => void
   onBack: () => void
@@ -187,7 +188,7 @@ const COACH_MERGE_TAGS = [
   "My Last Name",
 ]
 
-export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }: BuildStepProps) {
+export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange, onNext, onBack }: BuildStepProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [showAddOverlay, setShowAddOverlay] = useState(false)
   const [availableTemplates, setAvailableTemplates] = useState<DatabaseTemplate[]>([])
@@ -297,12 +298,22 @@ export function BuildStep({ goal, templates, onTemplatesChange, onNext, onBack }
 
   return (
     <div className="px-5 pb-5">
-      <h3 className="mb-2 font-display text-lg font-bold uppercase tracking-tight text-foreground">
-        Build Your Email Sequence
-      </h3>
-      <p className="mb-6 text-sm text-muted-foreground">
-        Create the emails that will be sent to coaches. Click to edit, drag to reorder.
-      </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h3 className="mb-2 font-display text-lg font-bold uppercase tracking-tight text-foreground">
+            Build Your Email Sequence
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Create the emails that will be sent to coaches. Click to edit, drag to reorder.
+          </p>
+        </div>
+        {recruitingEmail && (
+          <div className="hidden sm:flex shrink-0 items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Recruiting Email</span>
+            <span className="text-sm font-semibold text-foreground">{recruitingEmail}</span>
+          </div>
+        )}
+      </div>
 
       {/* Template Cards */}
       <div className="mb-4 flex flex-col gap-3">

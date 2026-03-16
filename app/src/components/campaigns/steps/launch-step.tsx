@@ -41,6 +41,7 @@ interface LaunchStepProps {
   hasGmailToken: boolean
   gmailTokenExpired: boolean
   activePlayerId?: string | null
+  recruitingEmail?: string | null
   onEditTarget: () => void
   onEditBuild: () => void
   onBack: () => void
@@ -59,6 +60,7 @@ export function LaunchStep({
   hasGmailToken,
   gmailTokenExpired,
   activePlayerId,
+  recruitingEmail,
   onEditTarget,
   onEditBuild,
   onBack,
@@ -150,13 +152,21 @@ export function LaunchStep({
 
   return (
     <div className="relative">
-      <div className="mb-6">
-        <h2 className="mb-2 font-display text-base font-bold uppercase tracking-wider text-foreground">
-          Review & Launch
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Review your campaign details before launching.
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="mb-2 font-display text-base font-bold uppercase tracking-wider text-foreground">
+            Review & Launch
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Review your campaign details before launching.
+          </p>
+        </div>
+        {recruitingEmail && (
+          <div className="hidden sm:flex shrink-0 items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Recruiting Email</span>
+            <span className="text-sm font-semibold text-foreground">{recruitingEmail}</span>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-4">

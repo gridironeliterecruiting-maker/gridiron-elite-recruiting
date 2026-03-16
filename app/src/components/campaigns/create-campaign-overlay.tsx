@@ -311,12 +311,6 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
             </h1>
           </div>
 
-          {recruitingEmail && campaignType === 'email' && (
-            <div className="hidden sm:flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-1.5 shrink-0">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Recruiting Email</span>
-              <span className="text-sm font-semibold text-foreground">{recruitingEmail}</span>
-            </div>
-          )}
         </div>
 
         {/* Progress Tracker */}
@@ -397,6 +391,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
           <BuildStep
             goal={draft.goal}
             templates={draft.templates}
+            recruitingEmail={recruitingEmail}
             onTemplatesChange={(templates: EmailTemplate[]) => {
               setDraft((prev) => ({ ...prev, templates }))
               if (templateAutoLoadRef.current) {
@@ -421,6 +416,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
             hasGmailToken={hasGmailToken}
             gmailTokenExpired={gmailTokenExpired}
             activePlayerId={activePlayerId}
+            recruitingEmail={recruitingEmail}
             onEditTarget={() => goToStep(2)}
             onEditBuild={() => goToStep(3)}
             onBack={() => goToStep(3)}
