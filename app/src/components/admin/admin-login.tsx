@@ -39,14 +39,9 @@ export function AdminLogin() {
       return
     }
 
-    // Verify admin role
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role !== 'admin') {
+    // Verify admin role via server route (bypasses RLS)
+    const res = await fetch('/api/auth/admin-check')
+    if (!res.ok) {
       await supabase.auth.signOut()
       setError('Access denied.')
       setLoading(false)
