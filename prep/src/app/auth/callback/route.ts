@@ -1,12 +1,80 @@
 import { NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { getAppUrl } from '@/lib/app-url'
 
-// Pass all params to the client-side exchange page.
-// The browser client has the PKCE code_verifier in its own cookie storage;
-// the server-side client can't reliably read it across the OAuth redirect chain.
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
+  const code = searchParams.get('code')
   const appUrl = getAppUrl(request)
-  const params = searchParams.toString()
-  return NextResponse.redirect(`${appUrl}/auth/exchange${params ? '?' + params : ''}`)
+  const cookieStore = await cookies()
+
+  // site_session tells us which site the user logged in from
+  const siteSession = cookieStore.get('site_session')?.value
+
+  let next = '/hub'
+  if (siteSession && siteSession !== 'main') {
+    if (siteSession === 'admin') {
+      next = '/admin'
+    } else {
+      next = `/${siteSession}/hub`
+    }
+  }
+
+  if (code) {
+    const pendingCookies: { name: string; value: string; options: Record<string, unknown> }[] = []
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookies) {
+            pendingCookies.push(...cookies)
+            cookies.forEach(({ name, value, options }) => {
+              try { cookieStore.set(name, value, options) } catch {}
+            })
+          },
+        },
+      }
+    )
+
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (!error) {
+      // For main site Google OAuth: check if user has a profile. If not → checkout.
+      if (siteSession === 'main') {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, first_name')
+            .eq('id', user.id)
+            .single()
+
+          const isNewUser = !profile || !profile.first_name
+          if (isNewUser) {
+            next = '/checkout'
+          }
+        }
+      }
+
+      const redirectUrl = new URL(next, appUrl)
+      const response = NextResponse.redirect(redirectUrl.toString())
+      for (const { name, value, options } of pendingCookies) {
+        response.cookies.set(name, value, options as Record<string, unknown>)
+      }
+      return response
+    }
+  }
+
+  // On error, redirect to the appropriate login page for the site
+  let loginPath = '/login'
+  if (siteSession && siteSession !== 'main') {
+    loginPath = siteSession === 'admin' ? '/admin' : `/${siteSession}`
+  }
+  return NextResponse.redirect(new URL(loginPath, appUrl).toString())
 }

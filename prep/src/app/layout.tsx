@@ -7,15 +7,16 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 const oswald = Oswald({ subsets: ["latin"], variable: "--font-oswald" })
 
 export const metadata: Metadata = {
-  title: "Runway Elite Prep",
-  description: "The athlete development platform for 6th–8th grade student-athletes — exposure, training, and academics in one place.",
+  title: "Runway Prep",
+  description: "Your athletic development command center — build your brand, track camps, and get exposure.",
+  icons: { icon: "/logo.png", apple: "/logo.png" },
 }
 
 export const viewport: Viewport = {
-  themeColor: "#1a3a6e",
+  themeColor: "#cc2222",
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body className={`${inter.variable} ${oswald.variable} font-sans antialiased`}>

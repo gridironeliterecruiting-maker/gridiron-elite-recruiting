@@ -1,6 +1,6 @@
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { AppShell } from '@/components/app-shell'
+import { redirect } from 'next/navigation'
+import NavBar from '@/components/NavBar'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -10,24 +10,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, first_name, last_name, role')
+    .select('first_name, last_name, position, grad_year')
     .eq('id', user.id)
     .single()
 
-  if (!profile?.first_name) redirect('/profile-setup')
-
-  const { data: athletes } = await supabase
-    .from('athletes')
-    .select('id, first_name, last_name, sport, grad_year')
-    .eq('parent_id', user.id)
-    .order('created_at')
-
   return (
-    <AppShell
-      profile={profile}
-      athletes={athletes ?? []}
-    >
-      {children}
-    </AppShell>
+    <div className="min-h-screen bg-background">
+      <NavBar profile={profile} />
+      <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
+        {children}
+      </main>
+      <footer className="border-t border-border bg-card">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 lg:px-8">
+          <p className="text-xs text-muted-foreground">Runway Prep</p>
+          <p className="text-xs text-muted-foreground">Built for tomorrow&apos;s athletes.</p>
+        </div>
+      </footer>
+    </div>
   )
 }

@@ -1,23 +1,39 @@
 -- ============================================================
--- Runway Elite Prep — Database Schema
--- New Supabase project (separate from recruiting DB)
+-- Runway Prep — Database Schema
+-- Supabase project: runway-elite-prep (ugkqwmlvntwkjkgdjrxf)
+-- Single-user model: each auth.users row IS the athlete
 -- ============================================================
 
--- Enable UUID extension
 create extension if not exists "uuid-ossp";
 
 -- ──────────────────────────────────────────────────────────────
--- PROFILES (parent accounts — extends auth.users)
+-- PROFILES
 -- ──────────────────────────────────────────────────────────────
 create table profiles (
-  id           uuid primary key references auth.users(id) on delete cascade,
-  email        text,
-  first_name   text,
-  last_name    text,
-  phone        text,
-  role         text not null default 'parent' check (role in ('parent', 'athlete', 'admin')),
-  created_at   timestamptz not null default now(),
-  updated_at   timestamptz not null default now()
+  id                  uuid primary key references auth.users(id) on delete cascade,
+  email               text,
+  first_name          text,
+  last_name           text,
+  position            text,
+  grad_year           int,
+  jersey_number       text,
+  high_school         text,
+  city                text,
+  state               text,
+  gpa                 numeric(3,2),
+  height              text,
+  weight              int,
+  role                text not null default 'athlete' check (role in ('athlete', 'admin')),
+  twitter_handle      text,
+  hudl_url            text,
+  readiness_score_open boolean not null default true,
+  workspace_email     text,
+  zoho_account_key    text,
+  stripe_customer_id  text,
+  can_send_emails     boolean not null default false,
+  is_grandfathered    boolean not null default false,
+  created_at          timestamptz not null default now(),
+  updated_at          timestamptz not null default now()
 );
 
 alter table profiles enable row level security;
@@ -25,47 +41,21 @@ alter table profiles enable row level security;
 create policy "Users can read own profile"
   on profiles for select using (auth.uid() = id);
 
-create policy "Users can upsert own profile"
-  on profiles for all using (auth.uid() = id);
+create policy "Users can update own profile"
+  on profiles for update using (auth.uid() = id);
+
+create policy "Users can insert own profile"
+  on profiles for insert with check (auth.uid() = id);
 
 -- ──────────────────────────────────────────────────────────────
--- ATHLETES (linked to parent)
--- ──────────────────────────────────────────────────────────────
-create table athletes (
-  id           uuid primary key default uuid_generate_v4(),
-  parent_id    uuid not null references profiles(id) on delete cascade,
-  auth_user_id uuid references auth.users(id) on delete set null, -- set when athlete creates own login
-  first_name   text not null,
-  last_name    text not null,
-  sport        text not null default 'football',
-  position     text,
-  grad_year    int,
-  gpa          numeric(3,2),
-  bio          text,
-  twitter_handle text,
-  instagram_handle text,
-  created_at   timestamptz not null default now(),
-  updated_at   timestamptz not null default now()
-);
-
-alter table athletes enable row level security;
-
-create policy "Parents can manage their athletes"
-  on athletes for all using (parent_id = auth.uid());
-
-create policy "Athletes can read their own record"
-  on athletes for select using (auth_user_id = auth.uid());
-
--- ──────────────────────────────────────────────────────────────
--- SUBSCRIPTIONS (Stripe state per family)
+-- SUBSCRIPTIONS
 -- ──────────────────────────────────────────────────────────────
 create table subscriptions (
   id                     uuid primary key default uuid_generate_v4(),
   user_id                uuid not null references profiles(id) on delete cascade,
   stripe_customer_id     text,
-  stripe_subscription_id text,
-  plan                   text not null default 'free' check (plan in ('free', 'starter', 'pro', 'elite')),
-  status                 text not null default 'inactive' check (status in ('active', 'inactive', 'canceled', 'past_due')),
+  stripe_subscription_id text unique,
+  status                 text not null default 'inactive',
   current_period_end     timestamptz,
   created_at             timestamptz not null default now(),
   updated_at             timestamptz not null default now(),
@@ -78,175 +68,93 @@ create policy "Users can read own subscription"
   on subscriptions for select using (user_id = auth.uid());
 
 -- ──────────────────────────────────────────────────────────────
--- CONNECTIONS (exposure pipeline entries)
+-- TWITTER TOKENS
 -- ──────────────────────────────────────────────────────────────
-create table connections (
-  id              uuid primary key default uuid_generate_v4(),
-  parent_id       uuid not null references profiles(id) on delete cascade,
-  type            text not null check (type in ('hs_coach', 'camp', 'travel_team', 'other')),
-  name            text not null,
-  organization    text,
-  title           text,
-  email           text,
-  phone           text,
-  location        text,
-  notes           text,
-  status          text not null default 'identified'
-                    check (status in ('identified', 'contacted', 'connected', 'visited', 'committed')),
-  last_contact_at timestamptz,
-  created_at      timestamptz not null default now(),
-  updated_at      timestamptz not null default now()
-);
-
-alter table connections enable row level security;
-
-create policy "Parents can manage their connections"
-  on connections for all using (parent_id = auth.uid());
-
-create index connections_parent_id_idx on connections(parent_id);
-create index connections_status_idx on connections(status);
-
--- ──────────────────────────────────────────────────────────────
--- CONNECTION INTERACTIONS (touchpoints per connection)
--- ──────────────────────────────────────────────────────────────
-create table connection_interactions (
+create table twitter_tokens (
   id             uuid primary key default uuid_generate_v4(),
-  connection_id  uuid not null references connections(id) on delete cascade,
-  type           text not null check (type in ('email', 'call', 'meeting', 'visit', 'social', 'note')),
-  notes          text,
-  occurred_at    timestamptz not null default now(),
-  created_at     timestamptz not null default now()
+  user_id        uuid not null references profiles(id) on delete cascade,
+  twitter_handle text,
+  access_token   text,
+  refresh_token  text,
+  token_secret   text,
+  expires_at     timestamptz,
+  created_at     timestamptz not null default now(),
+  unique (user_id)
 );
 
-alter table connection_interactions enable row level security;
+alter table twitter_tokens enable row level security;
 
-create policy "Parents can manage interactions via connection ownership"
-  on connection_interactions for all
-  using (
-    exists (
-      select 1 from connections c
-      where c.id = connection_id and c.parent_id = auth.uid()
-    )
-  );
-
-create index connection_interactions_connection_id_idx on connection_interactions(connection_id);
+create policy "Users can manage own twitter token"
+  on twitter_tokens for all using (user_id = auth.uid());
 
 -- ──────────────────────────────────────────────────────────────
--- MEASURABLES (athletic benchmarks over time)
+-- X PARTNER PROFILES (Twitter accounts athlete follows/tracks)
 -- ──────────────────────────────────────────────────────────────
-create table measurables (
-  id           uuid primary key default uuid_generate_v4(),
-  athlete_id   uuid not null references athletes(id) on delete cascade,
-  metric       text not null, -- '40_time', 'vertical', 'bench', 'height', 'weight', etc.
-  value        numeric not null,
-  unit         text,          -- 'seconds', 'inches', 'lbs', etc.
-  recorded_at  timestamptz not null default now(),
-  notes        text,
-  created_at   timestamptz not null default now()
+create table x_partner_profiles (
+  id                uuid primary key default uuid_generate_v4(),
+  athlete_id        uuid not null references profiles(id) on delete cascade,
+  twitter_handle    text not null,
+  display_name      text,
+  profile_image_url text,
+  created_at        timestamptz not null default now(),
+  unique (athlete_id, twitter_handle)
 );
 
-alter table measurables enable row level security;
+alter table x_partner_profiles enable row level security;
 
-create policy "Parents can manage athlete measurables"
-  on measurables for all
-  using (
-    exists (
-      select 1 from athletes a
-      where a.id = athlete_id and a.parent_id = auth.uid()
-    )
-  );
+create policy "Users can manage own x partner profiles"
+  on x_partner_profiles for all using (athlete_id = auth.uid());
 
 -- ──────────────────────────────────────────────────────────────
--- SOCIAL GOALS (brand building milestones)
+-- FILED EMAILS (inbox emails organized into folders)
 -- ──────────────────────────────────────────────────────────────
-create table social_goals (
-  id           uuid primary key default uuid_generate_v4(),
-  athlete_id   uuid not null references athletes(id) on delete cascade,
-  platform     text not null check (platform in ('twitter', 'instagram', 'tiktok', 'hudl', 'other')),
-  goal_type    text not null, -- 'followers', 'posts', 'highlight_views', etc.
-  target       int,
-  current      int default 0,
-  due_date     date,
-  completed    boolean default false,
-  notes        text,
-  created_at   timestamptz not null default now()
+create table filed_emails (
+  id               uuid primary key default uuid_generate_v4(),
+  user_id          uuid not null references profiles(id) on delete cascade,
+  gmail_message_id text,
+  thread_id        text,
+  from_name        text,
+  from_email       text,
+  coach_name       text,
+  coach_id         uuid,
+  program_name     text,
+  program_id       uuid,
+  subject          text,
+  snippet          text,
+  received_at      timestamptz,
+  filed_at         timestamptz not null default now(),
+  division         text,
+  conference       text
 );
 
-alter table social_goals enable row level security;
+alter table filed_emails enable row level security;
 
-create policy "Parents can manage social goals"
-  on social_goals for all
-  using (
-    exists (
-      select 1 from athletes a
-      where a.id = athlete_id and a.parent_id = auth.uid()
-    )
-  );
+create policy "Users can manage own filed emails"
+  on filed_emails for all using (user_id = auth.uid());
+
+create index filed_emails_user_id_idx on filed_emails(user_id);
 
 -- ──────────────────────────────────────────────────────────────
--- TASKS (task library — sport-specific)
+-- SYSTEM SETTINGS (key-value store for admin toggles)
 -- ──────────────────────────────────────────────────────────────
-create table tasks (
-  id           uuid primary key default uuid_generate_v4(),
-  title        text not null,
-  description  text,
-  category     text not null check (category in ('training', 'academic', 'exposure', 'mindset')),
-  sport        text default 'all', -- 'all', 'football', 'baseball', etc.
-  duration_min int,               -- estimated minutes
-  is_library   boolean default true, -- library tasks vs custom
-  created_by   uuid references profiles(id),
-  created_at   timestamptz not null default now()
+create table system_settings (
+  key        text primary key,
+  value      text,
+  updated_at timestamptz not null default now()
 );
 
+-- Insert defaults
+insert into system_settings (key, value) values
+  ('email_sending_enabled', 'false');
+
 -- ──────────────────────────────────────────────────────────────
--- ATHLETE TASKS (assigned tasks per athlete)
+-- EMAIL ALLOWLIST (safeguard: only these senders can send)
 -- ──────────────────────────────────────────────────────────────
-create table athlete_tasks (
-  id           uuid primary key default uuid_generate_v4(),
-  athlete_id   uuid not null references athletes(id) on delete cascade,
-  task_id      uuid references tasks(id) on delete set null,
-  title        text not null, -- denormalized in case task is deleted
-  category     text not null,
-  due_date     date,
-  recurrence   text check (recurrence in ('once', 'daily', 'weekly')),
-  assigned_by  uuid references profiles(id),
-  created_at   timestamptz not null default now()
+create table email_allowlist (
+  id         uuid primary key default uuid_generate_v4(),
+  email      text not null unique,
+  created_at timestamptz not null default now()
 );
-
-alter table athlete_tasks enable row level security;
-
-create policy "Parents can manage athlete tasks"
-  on athlete_tasks for all
-  using (
-    exists (
-      select 1 from athletes a
-      where a.id = athlete_id and a.parent_id = auth.uid()
-    )
-  );
-
--- ──────────────────────────────────────────────────────────────
--- TASK COMPLETIONS (athlete check-in responses)
--- ──────────────────────────────────────────────────────────────
-create table task_completions (
-  id              uuid primary key default uuid_generate_v4(),
-  athlete_task_id uuid not null references athlete_tasks(id) on delete cascade,
-  completed_at    timestamptz not null default now(),
-  notes           text,
-  effort_rating   int check (effort_rating between 1 and 5)
-);
-
-alter table task_completions enable row level security;
-
-create policy "Parents and athletes can manage completions"
-  on task_completions for all
-  using (
-    exists (
-      select 1 from athlete_tasks at2
-      join athletes a on a.id = at2.athlete_id
-      where at2.id = athlete_task_id
-        and (a.parent_id = auth.uid() or a.auth_user_id = auth.uid())
-    )
-  );
 
 -- ──────────────────────────────────────────────────────────────
 -- AUTO-UPDATE updated_at
@@ -262,11 +170,5 @@ $$;
 create trigger profiles_updated_at before update on profiles
   for each row execute function update_updated_at();
 
-create trigger athletes_updated_at before update on athletes
-  for each row execute function update_updated_at();
-
 create trigger subscriptions_updated_at before update on subscriptions
-  for each row execute function update_updated_at();
-
-create trigger connections_updated_at before update on connections
   for each row execute function update_updated_at();
