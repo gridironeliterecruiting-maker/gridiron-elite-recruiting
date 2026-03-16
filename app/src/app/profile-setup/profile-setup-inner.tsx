@@ -232,19 +232,21 @@ function ProfileSetupForm({ branding }: { branding?: Branding }) {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">High School</label>
-            <input
-              type="text"
-              value={form.high_school}
-              onChange={e => update('high_school', e.target.value)}
-              required
-              className={inputClass}
-              style={{ borderColor: '#e5e7eb' }}
-              onFocus={handleInputFocus}
-              onBlur={handleInputBlur}
-            />
-          </div>
+          {!branding && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">High School</label>
+              <input
+                type="text"
+                value={form.high_school}
+                onChange={e => update('high_school', e.target.value)}
+                required
+                className={inputClass}
+                style={{ borderColor: '#e5e7eb' }}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+              />
+            </div>
+          )}
 
           {!branding && (
             <div className="grid grid-cols-2 gap-3">
