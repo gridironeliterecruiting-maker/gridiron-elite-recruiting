@@ -5,13 +5,15 @@ import { createClient } from '@/lib/supabase/client'
 import { getAppUrl } from '@/lib/app-url'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
 export default function RegisterPage() {
   const supabase = createClient()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const plan = searchParams.get('plan')
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -62,7 +64,7 @@ export default function RegisterPage() {
     }
 
     document.cookie = `site_session=main;path=/;max-age=${60 * 60 * 24 * 30};samesite=lax`
-    router.push('/checkout')
+    router.push(plan ? `/checkout?plan=${plan}` : '/checkout')
   }
 
   const handleGoogleSignIn = async () => {
