@@ -228,26 +228,26 @@ export function HubClient({
 
               {/* Recruiting Email CTA — shown until created */}
               {!workspaceEmailCreated && proposedEmail && (
-                <div className="rounded-xl border bg-card p-6">
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                <div className="rounded-xl border bg-card p-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                     Recruiting Email
                   </p>
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent/10">
-                      <Mail className="h-6 w-6 text-accent" />
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/10">
+                      <Mail className="h-5 w-5 text-accent" />
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <p className="font-semibold text-foreground">Set up your recruiting email</p>
-                      <p className="mt-0.5 text-sm text-muted-foreground">
-                        Get a dedicated address to send coach campaigns from.
+                      <p className="text-sm text-muted-foreground">
+                        Get a dedicated address for your outreach.
                       </p>
-                      <button
-                        onClick={() => setShowEmailOverlay(true)}
-                        className="mt-3 rounded-lg bg-accent px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:opacity-90"
-                      >
-                        Create Recruiting Email
-                      </button>
                     </div>
+                    <button
+                      onClick={() => setShowEmailOverlay(true)}
+                      className="shrink-0 rounded-lg bg-accent px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:opacity-90"
+                    >
+                      Create
+                    </button>
                   </div>
                 </div>
               )}
