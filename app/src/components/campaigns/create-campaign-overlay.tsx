@@ -310,6 +310,13 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
               {headerTitle}
             </h1>
           </div>
+
+          {recruitingEmail && campaignType === 'email' && (
+            <div className="hidden sm:flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-1.5 shrink-0">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Recruiting Email</span>
+              <span className="text-sm font-semibold text-foreground">{recruitingEmail}</span>
+            </div>
+          )}
         </div>
 
         {/* Progress Tracker */}

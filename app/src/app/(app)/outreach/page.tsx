@@ -68,7 +68,7 @@ export default async function OutreachPage({
 
   // Compute proposed email for athletes without a workspace email
   const hasWorkspaceEmail = !!(zohoProfile as any)?.workspace_email
-  let proposedEmail: string | null = null
+  let proposedEmail: string | null = (zohoProfile as any)?.workspace_email || null
   if (!isCoach && !hasWorkspaceEmail && userProfile?.position !== undefined) {
     const { data: fullProfile } = await admin
       .from('profiles')
