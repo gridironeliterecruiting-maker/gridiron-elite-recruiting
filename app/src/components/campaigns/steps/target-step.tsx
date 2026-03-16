@@ -109,6 +109,7 @@ interface TargetStepProps {
   playerPosition: string
   selectedCoaches: SelectedCoach[]
   channelFilter?: 'email' | 'dm'
+  recruitingEmail?: string | null
   onCoachesChange: (coaches: SelectedCoach[]) => void
   onNext: () => void
   onBack: () => void
@@ -121,6 +122,7 @@ export function TargetStep({
   playerPosition,
   selectedCoaches,
   channelFilter,
+  recruitingEmail,
   onCoachesChange,
   onNext,
   onBack,
@@ -332,13 +334,21 @@ export function TargetStep({
   return (
     <div className="relative">
       {/* Header */}
-      <div className="mb-6">
-        <h2 className="mb-2 font-display text-base font-bold uppercase tracking-wider text-foreground">
-          Select Recipients
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Choose programs and coaches to include in this campaign.
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="mb-2 font-display text-base font-bold uppercase tracking-wider text-foreground">
+            Select Recipients
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Choose programs and coaches to include in this campaign.
+          </p>
+        </div>
+        {recruitingEmail && channelFilter !== 'dm' && (
+          <div className="hidden sm:flex shrink-0 items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Recruiting Email</span>
+            <span className="text-sm font-semibold text-foreground">{recruitingEmail}</span>
+          </div>
+        )}
       </div>
 
       {/* Division pills + Search + Coaches Selected */}

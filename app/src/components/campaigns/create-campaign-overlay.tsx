@@ -380,6 +380,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
             playerPosition={playerPosition}
             selectedCoaches={draft.selectedCoaches}
             channelFilter={campaignType}
+            recruitingEmail={recruitingEmail}
             onCoachesChange={(coaches) => {
               setDraft((prev) => ({ ...prev, selectedCoaches: coaches }))
               setHasUnsavedChanges(true)
