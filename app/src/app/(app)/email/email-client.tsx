@@ -23,7 +23,7 @@ import {
   Plus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { RecruitingEmailOverlay } from "@/components/recruiting-email-overlay"
+import { RecruitingEmailBadge } from "@/components/recruiting-email-badge"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -662,11 +662,9 @@ function FoldersView() {
 
 // ─── Main EmailClient ─────────────────────────────────────────────────────────
 
-export function EmailClient({ hasWorkspaceEmail = true, proposedEmail }: { hasWorkspaceEmail?: boolean; proposedEmail?: string | null }) {
+export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | null }) {
   const [tab, setTab] = useState<Tab>("inbox")
   const [unreadCount, setUnreadCount] = useState(0)
-  const [workspaceReady, setWorkspaceReady] = useState(hasWorkspaceEmail)
-  const [showEmailOverlay, setShowEmailOverlay] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -690,25 +688,9 @@ export function EmailClient({ hasWorkspaceEmail = true, proposedEmail }: { hasWo
 
   return (
     <div className="flex flex-col gap-0 -mx-4 -my-6 lg:-mx-8 lg:-my-8 h-[calc(100vh-5rem)]">
-      {showEmailOverlay && proposedEmail && (
-        <RecruitingEmailOverlay
-          proposedEmail={proposedEmail}
-          onComplete={() => {
-            setWorkspaceReady(true)
-            setShowEmailOverlay(false)
-            // Navigate to outreach after creating workspace email
-            const segs = window.location.pathname.split('/').filter(Boolean)
-            const appRoutes = ['hub','coaches','pipeline','outreach','profile','email']
-            const base = segs.length >= 2 && appRoutes.includes(segs[1]) ? `/${segs[0]}` : ''
-            window.location.href = `${base}/outreach`
-          }}
-          onClose={() => setShowEmailOverlay(false)}
-        />
-      )}
-
       {/* Page header */}
       <div className="border-b border-border bg-card px-4 pb-4 pt-6 lg:px-8 lg:pt-8">
-        <div className="flex items-end justify-between">
+        <div className="flex items-end justify-between gap-4">
           <div>
             <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
               Email
@@ -718,22 +700,21 @@ export function EmailClient({ hasWorkspaceEmail = true, proposedEmail }: { hasWo
               FOLLOW UP. BUILD RELATIONSHIPS.
             </p>
           </div>
-          <Button
-            onClick={() => {
-              if (!workspaceReady && proposedEmail) {
-                setShowEmailOverlay(true)
-              } else {
+          <div className="flex items-center gap-3 shrink-0">
+            {recruitingEmail && <RecruitingEmailBadge email={recruitingEmail} />}
+            <Button
+              onClick={() => {
                 const segs = window.location.pathname.split('/').filter(Boolean)
                 const appRoutes = ['hub','coaches','pipeline','outreach','profile','email']
                 const base = segs.length >= 2 && appRoutes.includes(segs[1]) ? `/${segs[0]}` : ''
                 window.location.href = `${base}/outreach`
-              }
-            }}
-            className="bg-accent text-accent-foreground hover:bg-accent/90"
-          >
-            <Plus className="h-4 w-4" />
-            Create Campaign
-          </Button>
+              }}
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
+            >
+              <Plus className="h-4 w-4" />
+              Create Campaign
+            </Button>
+          </div>
         </div>
       </div>
 

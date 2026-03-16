@@ -395,6 +395,7 @@ export function OutreachClient({
           followupData={followupData}
           initialCampaignType={showCreateCampaign}
           activePlayerId={activePlayerId}
+          recruitingEmail={proposedEmail || undefined}
           onClose={() => {
             setShowCreateCampaign(null)
             setQuickEmailData(null)

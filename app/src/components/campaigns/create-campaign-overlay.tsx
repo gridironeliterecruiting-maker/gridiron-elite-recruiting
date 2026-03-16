@@ -62,6 +62,7 @@ interface CreateCampaignOverlayProps {
   } | null
   initialCampaignType?: CampaignType
   activePlayerId?: string | null
+  recruitingEmail?: string | null
   onClose: () => void
   onCampaignLaunched?: (campaignData: {
     name: string
@@ -70,7 +71,7 @@ interface CreateCampaignOverlayProps {
   }) => void
 }
 
-export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, hasGmailToken, gmailTokenExpired, quickEmailData, quickDmData, followupData, initialCampaignType = 'email', activePlayerId, onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
+export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, hasGmailToken, gmailTokenExpired, quickEmailData, quickDmData, followupData, initialCampaignType = 'email', activePlayerId, recruitingEmail, onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
   const router = useRouter()
   const campaignType = initialCampaignType
   // Quick email/DM skips goal and target, goes straight to build/compose (step 3)
@@ -363,7 +364,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
       {/* Step Content */}
       <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
         {currentStep === 1 && (
-          <GoalStep onSelect={handleGoalSelect} selected={draft.goal} channelFilter={campaignType} />
+          <GoalStep onSelect={handleGoalSelect} selected={draft.goal} channelFilter={campaignType} recruitingEmail={recruitingEmail} />
         )}
 
         {currentStep === 2 && (

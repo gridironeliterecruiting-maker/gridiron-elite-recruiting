@@ -16,10 +16,10 @@ export default async function EmailPage() {
     .eq('id', user.id)
     .single()
 
-  const hasWorkspaceEmail = !!(profile as any)?.workspace_email
-  let proposedEmail: string | null = null
-  if (!hasWorkspaceEmail && profile?.first_name && profile?.last_name) {
-    proposedEmail = await computeProposedEmail(
+  const workspaceEmail = (profile as any)?.workspace_email || null
+  let recruitingEmail: string | null = workspaceEmail
+  if (!recruitingEmail && profile?.first_name && profile?.last_name) {
+    recruitingEmail = await computeProposedEmail(
       profile.first_name,
       profile.last_name,
       (profile as any).jersey_number,
@@ -27,5 +27,5 @@ export default async function EmailPage() {
     )
   }
 
-  return <EmailClient hasWorkspaceEmail={hasWorkspaceEmail} proposedEmail={proposedEmail} />
+  return <EmailClient recruitingEmail={recruitingEmail} />
 }

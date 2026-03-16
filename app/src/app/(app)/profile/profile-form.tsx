@@ -39,7 +39,7 @@ function Field({ label, value, onChange, placeholder, type = "text" }: {
   )
 }
 
-export function ProfileForm({ profile, twitterConnectedHandle }: { profile: Profile | null; twitterConnectedHandle: string | null }) {
+export function ProfileForm({ profile, twitterConnectedHandle, workspaceEmail }: { profile: Profile | null; twitterConnectedHandle: string | null; workspaceEmail?: string | null }) {
   const [form, setForm] = useState({
     first_name: profile?.first_name || "",
     last_name: profile?.last_name || "",
@@ -116,6 +116,12 @@ export function ProfileForm({ profile, twitterConnectedHandle }: { profile: Prof
           <div className="col-span-2">
             <Field label="Email" value={form.email} onChange={() => {}} placeholder="Cannot change email" type="email" />
           </div>
+          {workspaceEmail && (
+            <div className="col-span-2">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recruiting Email</label>
+              <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-foreground">{workspaceEmail}</div>
+            </div>
+          )}
           <Field label="Phone" value={form.phone} onChange={(v) => update("phone", v)} placeholder="(555) 123-4567" />
           <div />
           <Field label="City" value={form.city} onChange={(v) => update("city", v)} placeholder="Cedar Rapids" />

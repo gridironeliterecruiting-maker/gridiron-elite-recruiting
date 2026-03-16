@@ -2,6 +2,7 @@
 
 import { Mail, Film, Heart, MapPin, MessageSquare } from "lucide-react"
 import type { CampaignGoal } from "../types"
+import { RecruitingEmailBadge } from "@/components/recruiting-email-badge"
 
 const GOALS: {
   id: CampaignGoal
@@ -54,16 +55,20 @@ interface GoalStepProps {
   onSelect: (goal: CampaignGoal) => void
   selected: CampaignGoal | null
   channelFilter?: 'email' | 'dm'
+  recruitingEmail?: string | null
 }
 
-export function GoalStep({ onSelect, selected, channelFilter }: GoalStepProps) {
+export function GoalStep({ onSelect, selected, channelFilter, recruitingEmail }: GoalStepProps) {
   const isDm = channelFilter === 'dm'
   const channelLabel = isDm ? 'X DM campaign' : 'email campaign'
   return (
     <div>
-      <h2 className="mb-2 font-display text-base font-bold uppercase tracking-wider text-foreground">
-        What&apos;s your goal?
-      </h2>
+      <div className="mb-2 flex items-start justify-between gap-4">
+        <h2 className="font-display text-base font-bold uppercase tracking-wider text-foreground">
+          What&apos;s your goal?
+        </h2>
+        {recruitingEmail && !isDm && <RecruitingEmailBadge email={recruitingEmail} />}
+      </div>
       <p className="mb-8 text-sm text-muted-foreground">
         Choose the objective for this {channelLabel}. This determines your templates and strategy.
       </p>

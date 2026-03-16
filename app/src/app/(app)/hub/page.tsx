@@ -191,7 +191,7 @@ export default async function HubPage() {
     }
   }
 
-  // Compute proposed recruiting email for athletes without one
+  // Compute recruiting email: use workspace_email if set, else propose one
   let workspaceEmail: string | null = userProfile?.workspace_email || null
   let proposedEmail: string | null = null
   if (!isCoach && !workspaceEmail && userProfile?.first_name && userProfile?.last_name) {
@@ -202,6 +202,7 @@ export default async function HubPage() {
       userProfile.grad_year,
     )
   }
+  const recruitingEmail = workspaceEmail || proposedEmail
 
   // Fetch pending access requests for coaches on managed programs
   let pendingAccessRequests: { id: string; user_email: string; user_name: string | null }[] = []
@@ -284,8 +285,7 @@ export default async function HubPage() {
       managedProgramId={managedProgramId}
       programTwitterHandle={programTwitterHandle}
       readinessScoreOpen={userProfile?.readiness_score_open ?? true}
-      hasWorkspaceEmail={!!workspaceEmail}
-      proposedEmail={proposedEmail}
+      recruitingEmail={isCoach ? null : recruitingEmail}
     />
   )
 }

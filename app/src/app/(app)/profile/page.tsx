@@ -145,7 +145,7 @@ export default async function ProfilePage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           {/* Left: Profile form */}
           <div className="lg:col-span-5">
-            <ProfileForm profile={profile} twitterConnectedHandle={twitterToken?.twitter_handle || null} />
+            <ProfileForm profile={profile} twitterConnectedHandle={twitterToken?.twitter_handle || null} workspaceEmail={profile?.workspace_email || null} />
           </div>
 
           {/* Right: Recruiting Drive */}
