@@ -153,7 +153,7 @@ export function RegisterForm({ branding }: { branding?: Branding }) {
                 autoComplete="email"
                 className="w-full px-4 py-2.5 border-2 rounded-xl bg-white focus:outline-none text-sm transition-colors"
                 style={{ borderColor: '#e5e7eb' }}
-                onFocus={e => (e.target.style.borderColor = 'hsl(var(--primary))')}
+                onFocus={e => (e.target.style.borderColor = color)}
                 onBlur={e => (e.target.style.borderColor = '#e5e7eb')}
               />
             </div>
@@ -172,7 +172,7 @@ export function RegisterForm({ branding }: { branding?: Branding }) {
                 autoComplete="new-password"
                 className="w-full px-4 py-2.5 border-2 rounded-xl bg-white focus:outline-none text-sm transition-colors"
                 style={{ borderColor: '#e5e7eb' }}
-                onFocus={e => (e.target.style.borderColor = 'hsl(var(--primary))')}
+                onFocus={e => (e.target.style.borderColor = color)}
                 onBlur={e => (e.target.style.borderColor = '#e5e7eb')}
               />
             </div>
@@ -190,7 +190,7 @@ export function RegisterForm({ branding }: { branding?: Branding }) {
                 style={{
                   borderColor: confirmPassword && password !== confirmPassword ? '#fca5a5' : '#e5e7eb',
                 }}
-                onFocus={e => (e.target.style.borderColor = password !== confirmPassword ? '#fca5a5' : 'hsl(var(--primary))')}
+                onFocus={e => (e.target.style.borderColor = password !== confirmPassword ? '#fca5a5' : color)}
                 onBlur={e => (e.target.style.borderColor = confirmPassword && password !== confirmPassword ? '#fca5a5' : '#e5e7eb')}
               />
               {confirmPassword && password !== confirmPassword && (
@@ -201,7 +201,8 @@ export function RegisterForm({ branding }: { branding?: Branding }) {
             <button
               type="submit"
               disabled={loading || googleLoading || (!!confirmPassword && password !== confirmPassword)}
-              className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold transition hover:bg-primary/90 disabled:opacity-50"
+              className="w-full py-3.5 rounded-xl text-white font-semibold transition disabled:opacity-50"
+              style={{ background: color }}
             >
               {loading ? 'Creating account...' : 'Create Account'}
             </button>

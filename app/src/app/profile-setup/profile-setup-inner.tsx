@@ -25,6 +25,7 @@ function ProfileSetupForm({ branding }: { branding?: Branding }) {
   const logoSrc = branding?.logo || '/logo.png'
   const siteName = branding?.name || 'Runway Recruit'
   const bgImage = branding?.bg || '/locker-room-bg.png'
+  const color = branding?.color || 'hsl(var(--primary))'
 
   const [form, setForm] = useState({
     first_name: '',
@@ -117,7 +118,7 @@ function ProfileSetupForm({ branding }: { branding?: Branding }) {
     'w-full px-4 py-2.5 border-2 rounded-xl bg-white focus:outline-none text-sm transition-colors'
 
   const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.target.style.borderColor = 'hsl(var(--primary))'
+    e.target.style.borderColor = color
   }
   const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     e.target.style.borderColor = '#e5e7eb'
@@ -144,7 +145,7 @@ function ProfileSetupForm({ branding }: { branding?: Branding }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3 bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-white">
-          <h1 className="text-2xl font-display font-bold text-center text-primary mb-1 uppercase">
+          <h1 className="text-2xl font-display font-bold text-center mb-1 uppercase" style={{ color: branding ? '#111' : 'hsl(var(--primary))' }}>
             Complete Your Profile
           </h1>
           <p className="text-center text-gray-500 mb-6 text-sm">
@@ -245,36 +246,38 @@ function ProfileSetupForm({ branding }: { branding?: Branding }) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">City</label>
-              <input
-                type="text"
-                value={form.city}
-                onChange={e => update('city', e.target.value)}
-                required
-                className={inputClass}
-                style={{ borderColor: '#e5e7eb' }}
-                onFocus={handleInputFocus}
-                onBlur={handleInputBlur}
-              />
+          {!branding && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">City</label>
+                <input
+                  type="text"
+                  value={form.city}
+                  onChange={e => update('city', e.target.value)}
+                  required
+                  className={inputClass}
+                  style={{ borderColor: '#e5e7eb' }}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">State</label>
+                <input
+                  type="text"
+                  value={form.state}
+                  onChange={e => update('state', e.target.value)}
+                  placeholder="IA"
+                  required
+                  maxLength={2}
+                  className={inputClass}
+                  style={{ borderColor: '#e5e7eb' }}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">State</label>
-              <input
-                type="text"
-                value={form.state}
-                onChange={e => update('state', e.target.value)}
-                placeholder="IA"
-                required
-                maxLength={2}
-                className={inputClass}
-                style={{ borderColor: '#e5e7eb' }}
-                onFocus={handleInputFocus}
-                onBlur={handleInputBlur}
-              />
-            </div>
-          </div>
+          )}
 
           <div className="border-t border-gray-100 pt-3 mt-1">
             <p className="text-xs text-gray-400 mb-3">These help personalize your emails to coaches</p>
@@ -340,7 +343,8 @@ function ProfileSetupForm({ branding }: { branding?: Branding }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-display font-bold uppercase tracking-wider transition hover:bg-primary/90 disabled:opacity-50 mt-2"
+            className="w-full py-3.5 rounded-xl text-white font-display font-bold uppercase tracking-wider transition disabled:opacity-50 mt-2"
+            style={{ background: color }}
           >
             {loading ? 'Saving...' : 'LAUNCH MY RECRUITING'}
           </button>
