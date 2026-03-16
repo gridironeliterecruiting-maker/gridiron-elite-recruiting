@@ -231,6 +231,37 @@ export async function sendZohoEmail(
 }
 
 /**
+ * Given a profile, determine the proposed workspace email by checking
+ * availability in the profiles table. Returns the first available address.
+ * Used server-side to pre-populate the RecruitingEmailOverlay.
+ */
+export async function computeProposedEmail(
+  firstName: string,
+  lastName: string,
+  jerseyNumber: string | null | undefined,
+  gradYear: number | null | undefined,
+): Promise<string> {
+  const { createAdminClient } = await import('@/lib/supabase/admin')
+  const admin = createAdminClient()
+  const domain = DOMAIN()
+  const candidates = generateUsernameOptions(firstName, lastName, jerseyNumber || undefined)
+
+  for (const candidate of candidates) {
+    const email = `${candidate}@${domain}`
+    const { count } = await admin
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('workspace_email', email)
+    if (!count) return email
+  }
+
+  // Last resort: append grad year
+  const base = candidates[0]
+  const fallback = gradYear ? `${base}${gradYear}` : `${base}x`
+  return `${fallback}@${domain}`
+}
+
+/**
  * Generate a unique username using collision chain:
  * ryansmith → ryansmith33 → ryansmith-33 → ryansmith.33 → ryansmith.33x
  * Caller is responsible for checking availability against the DB.

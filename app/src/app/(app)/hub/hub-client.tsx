@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { Suspense } from "react"
+import { Mail } from "lucide-react"
 import { GmailTokenCaptureWrapper } from "@/components/gmail-token-capture-wrapper"
+import { RecruitingEmailOverlay } from "@/components/recruiting-email-overlay"
 import { HubHeader } from "@/components/hub/hub-header"
 import { TwitterProfileCard } from "@/components/hub/twitter-profile-card"
 import { ReadinessScore } from "@/components/hub/readiness-score"
@@ -72,6 +74,8 @@ interface HubClientProps {
   managedProgramId: string | null
   programTwitterHandle: string | null
   readinessScoreOpen: boolean
+  hasWorkspaceEmail: boolean
+  proposedEmail: string | null
 }
 
 export function HubClient({
@@ -95,11 +99,15 @@ export function HubClient({
   managedProgramId,
   programTwitterHandle,
   readinessScoreOpen,
+  hasWorkspaceEmail,
+  proposedEmail,
 }: HubClientProps) {
   const [twitterProfile, setTwitterProfile] = useState<TwitterProfile | null>(null)
   const [twitterLoading, setTwitterLoading] = useState(hasTwitterToken)
   const [twitterLoadFailed, setTwitterLoadFailed] = useState(false)
   const [effectiveHandle, setEffectiveHandle] = useState<string | null>(twitterHandle)
+  const [showEmailOverlay, setShowEmailOverlay] = useState(false)
+  const [workspaceEmailCreated, setWorkspaceEmailCreated] = useState(hasWorkspaceEmail)
 
   // Fetch full Twitter profile data client-side (enrichment from Twitter API)
   useEffect(() => {
@@ -155,6 +163,17 @@ export function HubClient({
 
   return (
     <div className="flex flex-col gap-6">
+      {showEmailOverlay && proposedEmail && (
+        <RecruitingEmailOverlay
+          proposedEmail={proposedEmail}
+          onComplete={() => {
+            setWorkspaceEmailCreated(true)
+            setShowEmailOverlay(false)
+          }}
+          onClose={() => setShowEmailOverlay(false)}
+        />
+      )}
+
       {/* First-time welcome overlay */}
       <WelcomeOverlay />
 
@@ -206,6 +225,32 @@ export function HubClient({
                   defaultOpen={readinessScoreOpen}
                 />
               ) : null}
+
+              {/* Recruiting Email CTA — shown until created */}
+              {!workspaceEmailCreated && proposedEmail && (
+                <div className="rounded-xl border bg-card p-6">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Recruiting Email
+                  </p>
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent/10">
+                      <Mail className="h-6 w-6 text-accent" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-foreground">Set up your recruiting email</p>
+                      <p className="mt-0.5 text-sm text-muted-foreground">
+                        Get a dedicated address to send coach campaigns from.
+                      </p>
+                      <button
+                        onClick={() => setShowEmailOverlay(true)}
+                        className="mt-3 rounded-lg bg-accent px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:opacity-90"
+                      >
+                        Create Recruiting Email
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Engage Target Schools on X */}
               <TargetSchoolsX programs={pipelinePrograms} />

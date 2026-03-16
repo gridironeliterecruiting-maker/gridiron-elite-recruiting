@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getActivePlayerId } from "@/lib/active-player"
 import { getCoachContext } from "@/lib/coach-context"
+import { computeProposedEmail } from "@/lib/workspace"
 import { OutreachClient } from "./outreach-client"
 
 export default async function OutreachPage({
@@ -64,6 +65,25 @@ export default async function OutreachPage({
     supabase.from("campaigns").select("*").eq("user_id", user!.id).order("created_at", { ascending: false }),
     admin.from("profiles").select("zoho_account_key, workspace_email").eq("id", user!.id).single(),
   ])
+
+  // Compute proposed email for athletes without a workspace email
+  const hasWorkspaceEmail = !!(zohoProfile as any)?.workspace_email
+  let proposedEmail: string | null = null
+  if (!isCoach && !hasWorkspaceEmail && userProfile?.position !== undefined) {
+    const { data: fullProfile } = await admin
+      .from('profiles')
+      .select('first_name, last_name, jersey_number, grad_year')
+      .eq('id', user!.id)
+      .single()
+    if (fullProfile?.first_name && fullProfile?.last_name) {
+      proposedEmail = await computeProposedEmail(
+        fullProfile.first_name,
+        fullProfile.last_name,
+        fullProfile.jersey_number,
+        fullProfile.grad_year,
+      )
+    }
+  }
 
   // Zoho users don't need Gmail — treat them as having a valid connected account
   const isZohoUser = !!(zohoProfile as any)?.zoho_account_key
@@ -184,6 +204,8 @@ export default async function OutreachPage({
       resumeStep={searchParams.resume}
       gmailStatus={searchParams.gmail}
       twitterStatus={searchParams.twitter}
+      hasWorkspaceEmail={hasWorkspaceEmail}
+      proposedEmail={proposedEmail}
     />
   )
 }

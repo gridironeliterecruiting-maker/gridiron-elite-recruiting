@@ -20,8 +20,10 @@ import {
   ArrowLeft,
   Building2,
   Trash2,
+  Plus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { RecruitingEmailOverlay } from "@/components/recruiting-email-overlay"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -660,9 +662,11 @@ function FoldersView() {
 
 // ─── Main EmailClient ─────────────────────────────────────────────────────────
 
-export function EmailClient() {
+export function EmailClient({ hasWorkspaceEmail = true, proposedEmail }: { hasWorkspaceEmail?: boolean; proposedEmail?: string | null }) {
   const [tab, setTab] = useState<Tab>("inbox")
   const [unreadCount, setUnreadCount] = useState(0)
+  const [workspaceReady, setWorkspaceReady] = useState(hasWorkspaceEmail)
+  const [showEmailOverlay, setShowEmailOverlay] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -686,16 +690,50 @@ export function EmailClient() {
 
   return (
     <div className="flex flex-col gap-0 -mx-4 -my-6 lg:-mx-8 lg:-my-8 h-[calc(100vh-5rem)]">
+      {showEmailOverlay && proposedEmail && (
+        <RecruitingEmailOverlay
+          proposedEmail={proposedEmail}
+          onComplete={() => {
+            setWorkspaceReady(true)
+            setShowEmailOverlay(false)
+            // Navigate to outreach after creating workspace email
+            const segs = window.location.pathname.split('/').filter(Boolean)
+            const appRoutes = ['hub','coaches','pipeline','outreach','profile','email']
+            const base = segs.length >= 2 && appRoutes.includes(segs[1]) ? `/${segs[0]}` : ''
+            window.location.href = `${base}/outreach`
+          }}
+          onClose={() => setShowEmailOverlay(false)}
+        />
+      )}
+
       {/* Page header */}
       <div className="border-b border-border bg-card px-4 pb-4 pt-6 lg:px-8 lg:pt-8">
-        <div>
-          <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
-            Email
-          </h1>
-          <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Mail className="h-3.5 w-3.5 text-accent" />
-            FOLLOW UP. BUILD RELATIONSHIPS.
-          </p>
+        <div className="flex items-end justify-between">
+          <div>
+            <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
+              Email
+            </h1>
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Mail className="h-3.5 w-3.5 text-accent" />
+              FOLLOW UP. BUILD RELATIONSHIPS.
+            </p>
+          </div>
+          <Button
+            onClick={() => {
+              if (!workspaceReady && proposedEmail) {
+                setShowEmailOverlay(true)
+              } else {
+                const segs = window.location.pathname.split('/').filter(Boolean)
+                const appRoutes = ['hub','coaches','pipeline','outreach','profile','email']
+                const base = segs.length >= 2 && appRoutes.includes(segs[1]) ? `/${segs[0]}` : ''
+                window.location.href = `${base}/outreach`
+              }
+            }}
+            className="bg-accent text-accent-foreground hover:bg-accent/90"
+          >
+            <Plus className="h-4 w-4" />
+            Create Campaign
+          </Button>
         </div>
       </div>
 

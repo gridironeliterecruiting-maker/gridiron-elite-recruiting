@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getActivePlayerId } from "@/lib/active-player"
 import { getCoachContext } from "@/lib/coach-context"
+import { computeProposedEmail } from "@/lib/workspace"
 import { HubClient } from "./hub-client"
 
 export default async function HubPage() {
@@ -13,7 +14,7 @@ export default async function HubPage() {
   const { data: userProfile } = user
     ? await supabase
         .from("profiles")
-        .select("first_name, last_name, position, grad_year, high_school, hudl_url, city, state, twitter_handle, role, readiness_score_open")
+        .select("first_name, last_name, position, grad_year, high_school, hudl_url, city, state, twitter_handle, role, readiness_score_open, workspace_email, jersey_number")
         .eq("id", user.id)
         .single()
     : { data: null }
@@ -190,6 +191,18 @@ export default async function HubPage() {
     }
   }
 
+  // Compute proposed recruiting email for athletes without one
+  let workspaceEmail: string | null = userProfile?.workspace_email || null
+  let proposedEmail: string | null = null
+  if (!isCoach && !workspaceEmail && userProfile?.first_name && userProfile?.last_name) {
+    proposedEmail = await computeProposedEmail(
+      userProfile.first_name,
+      userProfile.last_name,
+      userProfile.jersey_number,
+      userProfile.grad_year,
+    )
+  }
+
   // Fetch pending access requests for coaches on managed programs
   let pendingAccessRequests: { id: string; user_email: string; user_name: string | null }[] = []
   if (isCoach && managedProgramId) {
@@ -271,6 +284,8 @@ export default async function HubPage() {
       managedProgramId={managedProgramId}
       programTwitterHandle={programTwitterHandle}
       readinessScoreOpen={userProfile?.readiness_score_open ?? true}
+      hasWorkspaceEmail={!!workspaceEmail}
+      proposedEmail={proposedEmail}
     />
   )
 }
