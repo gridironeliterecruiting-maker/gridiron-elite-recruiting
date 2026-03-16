@@ -134,9 +134,9 @@ export async function POST(request: Request) {
           await admin.from('program_members').upsert({
             program_id: program.id,
             user_id: userId,
+            email: user.email,
             role: memberRole,
-            joined_at: new Date().toISOString(),
-          }, { onConflict: 'program_id,user_id' })
+          }, { onConflict: 'program_id,email' })
         }
       }
     }
