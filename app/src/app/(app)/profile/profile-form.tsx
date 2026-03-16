@@ -151,8 +151,9 @@ export function ProfileForm({
 
           {/* Login Email — plain text, not editable inline */}
           <div className="col-span-2">
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Login Email</label>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Login Email</label>
+            <div className="flex items-center gap-2 px-3 py-2">
+              <span className="text-sm text-foreground">{loginEmail || "—"}</span>
               {!isGoogleUser && (
                 <button
                   type="button"
@@ -162,9 +163,6 @@ export function ProfileForm({
                   Edit
                 </button>
               )}
-            </div>
-            <div className="px-3 py-2 text-sm text-foreground">
-              {loginEmail || "—"}
             </div>
             {pendingEmail && (
               <p className="mt-1 text-xs text-muted-foreground">
