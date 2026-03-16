@@ -185,8 +185,8 @@ export function SlugLanding({
             {loginError && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">{loginError}</div>
             )}
-            <FocusInput label="Email" type="text" value={loginInput} onChange={setLoginInput} placeholder="you@email.com" autoComplete="username" color={color} />
-            <FocusInput label="Password" type="password" value={loginPassword} onChange={setLoginPassword} placeholder="Your password" autoComplete="current-password" color={color} />
+            <FocusInput label="Email" type="email" value={loginInput} onChange={setLoginInput} placeholder="you@email.com" autoComplete="email" color={color} />
+            <FocusInput label="Password" type="password" value={loginPassword} onChange={setLoginPassword} placeholder="password" autoComplete="current-password" color={color} />
             <div className="text-right -mt-2">
               <Link href="/forgot-password" className="text-xs hover:underline" style={{ color }}>Forgot password?</Link>
             </div>
