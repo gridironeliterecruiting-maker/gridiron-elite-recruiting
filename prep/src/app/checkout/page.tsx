@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { loadStripe } from '@stripe/stripe-js'
@@ -11,19 +11,17 @@ import {
   useElements,
 } from '@stripe/react-stripe-js'
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
-
 const PRIMARY_COLOR = '#cc2222'
 const ACCENT_COLOR = '#1a3a6e'
 
 type Plan = 'monthly' | 'annual'
 
 const PLAN_AMOUNTS: Record<Plan, number> = {
-  monthly: 2999,  // $29.99 in cents
-  annual: 24900,  // $249.00 in cents
+  monthly: 1000,  // $10.00
+  annual: 9000,   // $90.00
 }
 
-function CheckoutForm({ plan }: { plan: Plan }) {
+function CheckoutForm({ clientSecret, plan }: { clientSecret: string; plan: Plan }) {
   const stripe = useStripe()
   const elements = useElements()
   const [error, setError] = useState('')
@@ -43,37 +41,16 @@ function CheckoutForm({ plan }: { plan: Plan }) {
       return
     }
 
-    let clientSecret: string
-    let subscriptionId: string
-    try {
-      const res = await fetch('/api/stripe/create-payment-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error || 'Failed to initialize payment')
-        setLoading(false)
-        return
-      }
-      clientSecret = data.clientSecret
-      subscriptionId = data.subscriptionId
-    } catch {
-      setError('Something went wrong. Please try again.')
-      setLoading(false)
-      return
-    }
-
-    const returnUrl = `${window.location.origin}/profile-setup?sub_id=${subscriptionId}&plan=${plan}`
-    const { error: stripeError } = await stripe.confirmPayment({
+    const { error: confirmError } = await stripe.confirmPayment({
       elements,
       clientSecret,
-      confirmParams: { return_url: returnUrl },
+      confirmParams: {
+        return_url: `${window.location.origin}/profile-setup?plan=${plan}`,
+      },
     })
 
-    if (stripeError) {
-      setError(stripeError.message || 'Payment failed. Please try again.')
+    if (confirmError) {
+      setError(confirmError.message || 'Payment failed. Please try again.')
       setLoading(false)
     }
   }
@@ -105,8 +82,30 @@ function CheckoutInner() {
   const searchParams = useSearchParams()
   const initialPlan = (searchParams.get('plan') as Plan) || 'monthly'
   const [plan, setPlan] = useState<Plan>(initialPlan)
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [stripePromise] = useState(() => loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!))
+  const [initError, setInitError] = useState('')
 
-  const price = plan === 'annual' ? '$249/year' : '$29.99/month'
+  const price = plan === 'annual' ? '$90/year' : '$10/month'
+
+  useEffect(() => {
+    setClientSecret(null)
+    setInitError('')
+    fetch('/api/stripe/create-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.clientSecret) {
+          setClientSecret(data.clientSecret)
+        } else {
+          setInitError(data.error || 'Failed to initialize payment.')
+        }
+      })
+      .catch(() => setInitError('Failed to initialize payment.'))
+  }, [plan])
 
   return (
     <div
@@ -144,7 +143,7 @@ function CheckoutInner() {
               className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition ${plan === 'monthly' ? 'bg-white shadow' : 'text-gray-500 hover:text-gray-700'}`}
               style={plan === 'monthly' ? { color: ACCENT_COLOR } : {}}
             >
-              Monthly · $29.99
+              Monthly · $10
             </button>
             <button
               type="button"
@@ -152,9 +151,9 @@ function CheckoutInner() {
               className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition ${plan === 'annual' ? 'bg-white shadow' : 'text-gray-500 hover:text-gray-700'}`}
               style={plan === 'annual' ? { color: ACCENT_COLOR } : {}}
             >
-              Annual · $249
+              Annual · $90
               <span className="ml-1.5 inline-block text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide" style={{ background: PRIMARY_COLOR }}>
-                Save 30%
+                Save 25%
               </span>
             </button>
           </div>
@@ -163,22 +162,30 @@ function CheckoutInner() {
             <span className="text-3xl font-black" style={{ color: ACCENT_COLOR }}>{price}</span>
           </div>
 
-          <Elements
-            key={plan}
-            stripe={stripePromise}
-            options={{
-              mode: 'subscription',
-              amount: PLAN_AMOUNTS[plan],
-              currency: 'usd',
-              paymentMethodTypes: ['card'],
-              appearance: {
-                theme: 'stripe',
-                variables: { colorPrimary: ACCENT_COLOR, borderRadius: '8px' },
-              },
-            }}
-          >
-            <CheckoutForm plan={plan} />
-          </Elements>
+          {initError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
+              {initError}
+            </div>
+          )}
+
+          {clientSecret ? (
+            <Elements
+              stripe={stripePromise}
+              options={{
+                clientSecret,
+                appearance: {
+                  theme: 'stripe',
+                  variables: { colorPrimary: ACCENT_COLOR, borderRadius: '8px' },
+                },
+              }}
+            >
+              <CheckoutForm clientSecret={clientSecret} plan={plan} />
+            </Elements>
+          ) : !initError ? (
+            <div className="flex justify-center py-8">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-gray-600" />
+            </div>
+          ) : null}
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-4">
