@@ -15,7 +15,6 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { QuickEmailModal } from "@/components/campaigns/quick-email-modal"
-import { RecruitingEmailOverlay } from "@/components/recruiting-email-overlay"
 import type { CampaignGoal } from "@/components/campaigns/types"
 
 interface Program {
@@ -41,8 +40,6 @@ interface CoachDetailProps {
   coach: Coach
   program: Program
   onClose: () => void
-  hasWorkspaceEmail?: boolean
-  proposedEmail?: string | null
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -66,13 +63,10 @@ function CopyButton({ text }: { text: string }) {
   )
 }
 
-export function CoachDetail({ coach, program, onClose, hasWorkspaceEmail = true, proposedEmail }: CoachDetailProps) {
+export function CoachDetail({ coach, program, onClose }: CoachDetailProps) {
   const router = useRouter()
   const [showQuickEmail, setShowQuickEmail] = useState(false)
   const [showQuickDm, setShowQuickDm] = useState(false)
-  const [workspaceReady, setWorkspaceReady] = useState(hasWorkspaceEmail)
-  const [showEmailOverlay, setShowEmailOverlay] = useState(false)
-  const [pendingEmailAction, setPendingEmailAction] = useState(false)
 
   const handleEmailGoalSelected = (goal: CampaignGoal) => {
     // Navigate to outreach page with pre-filled values
@@ -245,14 +239,7 @@ export function CoachDetail({ coach, program, onClose, hasWorkspaceEmail = true,
             <Button
               variant="outline"
               className="flex-1"
-              onClick={() => {
-                if (!workspaceReady && proposedEmail) {
-                  setPendingEmailAction(true)
-                  setShowEmailOverlay(true)
-                } else {
-                  setShowQuickEmail(true)
-                }
-              }}
+              onClick={() => setShowQuickEmail(true)}
             >
               <Mail className="mr-2 h-4 w-4" />
               Send Email
@@ -282,25 +269,6 @@ export function CoachDetail({ coach, program, onClose, hasWorkspaceEmail = true,
           }}
           onContinue={handleEmailGoalSelected}
           onClose={() => setShowQuickEmail(false)}
-        />
-      )}
-
-      {/* Recruiting Email Overlay */}
-      {showEmailOverlay && proposedEmail && (
-        <RecruitingEmailOverlay
-          proposedEmail={proposedEmail}
-          onComplete={() => {
-            setWorkspaceReady(true)
-            setShowEmailOverlay(false)
-            if (pendingEmailAction) {
-              setPendingEmailAction(false)
-              setShowQuickEmail(true)
-            }
-          }}
-          onClose={() => {
-            setShowEmailOverlay(false)
-            setPendingEmailAction(false)
-          }}
         />
       )}
 

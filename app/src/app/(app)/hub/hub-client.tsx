@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Suspense } from "react"
-import { X } from "lucide-react"
+import { X, Mail } from "lucide-react"
 import { GmailTokenCaptureWrapper } from "@/components/gmail-token-capture-wrapper"
 import { RecruitingEmailBadge } from "@/components/recruiting-email-badge"
 import { HubHeader } from "@/components/hub/hub-header"
@@ -200,18 +200,41 @@ export function HubClient({
             <>
               {/* Recruiting email banner — dismissible */}
               {recruitingEmail && !emailBannerDismissed && (
-                <div className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Recruiting Email</p>
-                    <p className="text-sm font-semibold text-foreground truncate">{recruitingEmail}</p>
+                <div className="overflow-hidden rounded-xl border bg-card">
+                  <div className="flex items-center justify-between bg-gradient-to-r from-accent/20 to-accent/10 px-5 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
+                      Recruiting Email
+                    </p>
+                    <button
+                      onClick={dismissEmailBanner}
+                      className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                      aria-label="Dismiss"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
-                  <button
-                    onClick={dismissEmailBanner}
-                    className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-                    aria-label="Dismiss"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                  <div className="flex flex-col items-center gap-4 p-6 text-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 ring-2 ring-accent/20">
+                      <Mail className="h-8 w-8 text-accent" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                        Your Recruiting Email Is:
+                      </p>
+                      <p className="mt-1 font-display text-xl font-bold text-foreground">
+                        {recruitingEmail}
+                      </p>
+                      <p className="mt-3 max-w-sm text-sm text-muted-foreground">
+                        All email communications to and from coaches on Runway Recruit will use this custom recruiting email address.
+                      </p>
+                    </div>
+                    <button
+                      onClick={dismissEmailBanner}
+                      className="rounded-lg border border-border px-6 py-2 text-xs font-bold uppercase tracking-wider text-foreground transition hover:bg-secondary"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
                 </div>
               )}
 

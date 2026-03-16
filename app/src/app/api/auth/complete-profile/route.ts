@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getStripe } from '@/lib/stripe'
+import { computeProposedEmail, provisionZohoAccount } from '@/lib/workspace'
 
 export async function POST(request: Request) {
   try {
@@ -111,6 +112,24 @@ export async function POST(request: Request) {
     if (profileError) {
       console.error('[complete-profile] Profile upsert failed:', profileError)
       return NextResponse.json({ error: profileError.message }, { status: 500 })
+    }
+
+    // Auto-provision Zoho recruiting email
+    try {
+      const workspaceEmail = await computeProposedEmail(
+        firstName,
+        lastName,
+        jerseyNumber || undefined,
+        gradYear ? parseInt(gradYear) : null,
+      )
+      const username = workspaceEmail.split('@')[0]
+      const accountKey = await provisionZohoAccount(username, firstName, lastName)
+      await admin.from('profiles').update({
+        workspace_email: workspaceEmail,
+        zoho_account_key: accountKey,
+      }).eq('id', userId)
+    } catch (err) {
+      console.error('[complete-profile] Zoho provisioning failed (non-fatal):', err)
     }
 
     return NextResponse.json({ success: true })

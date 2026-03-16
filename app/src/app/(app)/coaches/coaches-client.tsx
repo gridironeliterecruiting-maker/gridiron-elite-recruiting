@@ -85,7 +85,7 @@ function SchoolLogo({ school, logoUrl }: { school: string; logoUrl: string | nul
   )
 }
 
-export function CoachesClient({ programs, hasWorkspaceEmail, proposedEmail }: { programs: Program[]; hasWorkspaceEmail?: boolean; proposedEmail?: string | null }) {
+export function CoachesClient({ programs }: { programs: Program[] }) {
   const [activeDivision, setActiveDivision] = useState<Division>("ALL")
   const [searchQuery, setSearchQuery] = useState("")
   const [viewMode, setViewMode] = useState<"programs" | "coaches">("programs")
@@ -593,8 +593,6 @@ export function CoachesClient({ programs, hasWorkspaceEmail, proposedEmail }: { 
           coach={selectedCoach}
           program={coachProgram}
           onClose={closeCoach}
-          hasWorkspaceEmail={hasWorkspaceEmail}
-          proposedEmail={proposedEmail}
         />
       )}
 

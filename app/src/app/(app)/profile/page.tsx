@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { formatGPA } from "@/lib/utils"
+import { computeProposedEmail } from "@/lib/workspace"
 import { ProfileForm } from "./profile-form"
 import { RecruitingDrive } from "@/components/profile/recruiting-drive"
 import { getActivePlayerId } from "@/lib/active-player"
@@ -8,6 +10,7 @@ import { ProfileHeader } from "./profile-header"
 
 export default async function ProfilePage() {
   const supabase = await createClient()
+  const admin = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   const { data: profile } = await supabase
@@ -16,8 +19,16 @@ export default async function ProfilePage() {
     .eq("id", user?.id)
     .single()
 
-  const { createAdminClient } = await import('@/lib/supabase/admin')
-  const admin = createAdminClient()
+  // Compute recruiting email for athletes
+  let recruitingEmail: string | null = (profile as any)?.workspace_email || null
+  if (!recruitingEmail && !((profile as any)?.role === 'admin') && profile?.first_name && profile?.last_name) {
+    recruitingEmail = await computeProposedEmail(
+      profile.first_name,
+      profile.last_name,
+      (profile as any)?.jersey_number,
+      (profile as any)?.grad_year,
+    ).catch(() => null)
+  }
   const { data: twitterToken } = await admin
     .from('twitter_tokens')
     .select('twitter_handle')
@@ -145,7 +156,7 @@ export default async function ProfilePage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           {/* Left: Profile form */}
           <div className="lg:col-span-5">
-            <ProfileForm profile={profile} twitterConnectedHandle={twitterToken?.twitter_handle || null} workspaceEmail={profile?.workspace_email || null} />
+            <ProfileForm profile={profile} twitterConnectedHandle={twitterToken?.twitter_handle || null} workspaceEmail={recruitingEmail} />
           </div>
 
           {/* Right: Recruiting Drive */}

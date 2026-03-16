@@ -28,7 +28,6 @@ import {
   MousePointerClick,
 } from "lucide-react"
 import { CreateCampaignOverlay } from "@/components/campaigns/create-campaign-overlay"
-import { RecruitingEmailOverlay } from "@/components/recruiting-email-overlay"
 import { CampaignLaunchedOverlay } from "@/components/campaigns/campaign-launched-overlay"
 import { CampaignDetailsOverlay } from "@/components/campaigns/campaign-details-overlay"
 import { DmCampaignOverlay } from "@/components/campaigns/dm-campaign-overlay"
@@ -144,9 +143,6 @@ export function OutreachClient({
   const router = useRouter()
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [showCreateCampaign, setShowCreateCampaign] = useState<'email' | 'dm' | null>(null)
-  const [workspaceReady, setWorkspaceReady] = useState(hasWorkspaceEmail)
-  const [showEmailOverlay, setShowEmailOverlay] = useState(false)
-  const [pendingCampaignType, setPendingCampaignType] = useState<'email' | 'dm' | null>(null)
   const [quickEmailData, setQuickEmailData] = useState<{
     goal: string | null
     coachId: string | null
@@ -298,15 +294,6 @@ export function OutreachClient({
     }
   }, [searchParams])
 
-  const openCampaign = (type: 'email' | 'dm') => {
-    if (!workspaceReady && proposedEmail) {
-      setPendingCampaignType(type)
-      setShowEmailOverlay(true)
-    } else {
-      setShowCreateCampaign(type)
-    }
-  }
-
   const handleToggleCampaign = async (campaignId: string, newStatus: string) => {
     setTogglingCampaign(campaignId)
     try {
@@ -336,24 +323,6 @@ export function OutreachClient({
 
   return (
     <div className="flex flex-col gap-6">
-      {showEmailOverlay && proposedEmail && (
-        <RecruitingEmailOverlay
-          proposedEmail={proposedEmail}
-          onComplete={() => {
-            setWorkspaceReady(true)
-            setShowEmailOverlay(false)
-            if (pendingCampaignType) {
-              setShowCreateCampaign(pendingCampaignType)
-              setPendingCampaignType(null)
-            }
-          }}
-          onClose={() => {
-            setShowEmailOverlay(false)
-            setPendingCampaignType(null)
-          }}
-        />
-      )}
-
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -367,14 +336,14 @@ export function OutreachClient({
         </div>
         <div className="flex items-center gap-2">
           <Button
-            onClick={() => openCampaign('dm')}
+            onClick={() => setShowCreateCampaign('dm')}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />
             X DM Assist
           </Button>
           <Button
-            onClick={() => openCampaign('email')}
+            onClick={() => setShowCreateCampaign('email')}
             className="bg-accent text-accent-foreground hover:bg-accent/90"
           >
             <Plus className="h-4 w-4" />
@@ -456,7 +425,7 @@ export function OutreachClient({
                 Create your first email campaign to start reaching out to college coaches.
               </p>
               <Button
-                onClick={() => openCampaign('email')}
+                onClick={() => setShowCreateCampaign('email')}
                 className="mt-4 bg-accent text-accent-foreground hover:bg-accent/90"
                 size="sm"
               >
