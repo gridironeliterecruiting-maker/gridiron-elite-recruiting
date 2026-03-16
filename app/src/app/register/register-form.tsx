@@ -123,11 +123,9 @@ export function RegisterForm({ branding }: { branding?: Branding }) {
           <h2 className="mt-3 font-display text-2xl font-bold uppercase tracking-widest" style={{ color }}>
             {siteName}
           </h2>
-          {!isSlug && (
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gray-400 mt-0.5">
-              Take Flight
-            </p>
-          )}
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gray-400 mt-0.5">
+            {isSlug ? 'Recruiting Hub' : 'Take Flight'}
+          </p>
         </div>
 
         {/* Register box */}
