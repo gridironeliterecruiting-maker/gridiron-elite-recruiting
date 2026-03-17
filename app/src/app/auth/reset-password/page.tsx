@@ -17,7 +17,6 @@ function ResetPasswordInner() {
   const [exchanging, setExchanging] = useState(true)
 
   useEffect(() => {
-    // Exchange the code from Supabase's email link for a session
     const code = searchParams.get('code')
     if (code) {
       supabase.auth.exchangeCodeForSession(code).then(({ error }) => {

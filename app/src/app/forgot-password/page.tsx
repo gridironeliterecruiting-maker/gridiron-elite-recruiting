@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 function ForgotPasswordForm() {
   const searchParams = useSearchParams()
@@ -14,6 +15,7 @@ function ForgotPasswordForm() {
   const [isGoogleUser, setIsGoogleUser] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -21,6 +23,7 @@ function ForgotPasswordForm() {
     setError('')
 
     try {
+      // Check if Google-only account server-side
       const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -29,7 +32,14 @@ function ForgotPasswordForm() {
       const data = await res.json()
       if (data.googleUser) {
         setIsGoogleUser(true)
+        setSubmitted(true)
+        return
       }
+
+      // Send reset email client-side so PKCE code verifier is stored in browser
+      await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      })
       setSubmitted(true)
     } catch {
       setError('Something went wrong. Please try again.')
