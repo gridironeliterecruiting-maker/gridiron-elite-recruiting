@@ -21,34 +21,19 @@ export function AdminLogin() {
     setLoading(true)
     setError('')
 
-    try {
-      const { data: { user }, error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
-      })
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    })
 
-      if (signInError || !user) {
-        setError('Incorrect email or password.')
-        setLoading(false)
-        return
-      }
-
-      // Verify admin role via server route (bypasses RLS)
-      const res = await fetch('/api/auth/admin-check')
-      if (!res.ok) {
-        await supabase.auth.signOut()
-        setError('Access denied.')
-        setLoading(false)
-        return
-      }
-
-      document.cookie = `site_session=admin;path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`
-      router.push('/admin')
-      router.refresh()
-    } catch {
-      setError('Something went wrong. Please try again.')
+    if (signInError) {
+      setError('Incorrect email or password.')
       setLoading(false)
+      return
     }
+
+    document.cookie = `site_session=admin;path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`
+    router.push('/admin')
   }
 
   return (
