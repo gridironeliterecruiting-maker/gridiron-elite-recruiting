@@ -126,7 +126,7 @@ export function AdminLogin() {
             </div>
 
             <div className="text-right -mt-2">
-              <Link href="/forgot-password" className="text-xs hover:underline" style={{ color: PRIMARY_COLOR }}>
+              <Link href="/forgot-password?returnTo=/admin" className="text-xs hover:underline" style={{ color: PRIMARY_COLOR }}>
                 Forgot password?
               </Link>
             </div>

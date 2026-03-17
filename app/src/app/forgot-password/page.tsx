@@ -3,8 +3,12 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordForm() {
+  const searchParams = useSearchParams()
+  const returnTo = searchParams.get('returnTo') || '/login'
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [isGoogleUser, setIsGoogleUser] = useState(false)
@@ -93,7 +97,7 @@ export default function ForgotPasswordPage() {
                 </>
               )}
 
-              <Link href="/login" className="text-sm text-[#0047AB] hover:underline">
+              <Link href={returnTo} className="text-sm text-[#0047AB] hover:underline">
                 Back to login
               </Link>
             </div>
@@ -143,5 +147,13 @@ export default function ForgotPasswordPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense>
+      <ForgotPasswordForm />
+    </Suspense>
   )
 }
