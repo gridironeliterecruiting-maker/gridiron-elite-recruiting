@@ -5,7 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { LayoutDashboard, Tent, Newspaper, Inbox, User, LogOut, Menu, X, ChevronDown } from "lucide-react"
+import { LayoutDashboard, Dumbbell, Newspaper, Inbox, User, LogOut, Menu, X, ChevronDown } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -14,7 +14,7 @@ import {
 
 const navRoutes = [
   { label: "Hub", icon: LayoutDashboard, path: "/hub", showUnreadBadge: false },
-  { label: "Camps", icon: Tent, path: "/camps", showUnreadBadge: false },
+  { label: "Camps", icon: Dumbbell, path: "/camps", showUnreadBadge: false },
   { label: "Media", icon: Newspaper, path: "/media", showUnreadBadge: false },
   { label: "Email", icon: Inbox, path: "/email", showUnreadBadge: true },
   { label: "Profile", icon: User, path: "/profile", showUnreadBadge: false },
