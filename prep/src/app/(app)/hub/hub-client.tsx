@@ -9,6 +9,7 @@ import { ReadinessScore } from "@/components/hub/readiness-score"
 import { ContentCalendar } from "@/components/hub/content-calendar"
 import { InstagramPlaceholder } from "@/components/hub/instagram-placeholder"
 import { XPartnerProfiles } from "@/components/hub/x-partner-profiles"
+import { TargetSchoolsSection } from "@/components/hub/target-schools-section"
 import { WelcomeOverlay } from "@/components/welcome-overlay"
 
 interface AthleteProfile {
@@ -149,6 +150,7 @@ export function HubClient({
           )}
 
           <XPartnerProfiles />
+          <TargetSchoolsSection />
           <InstagramPlaceholder />
         </div>
 
