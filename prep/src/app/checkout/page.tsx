@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { loadStripe } from '@stripe/stripe-js'
@@ -14,6 +14,8 @@ import {
 const PRIMARY_COLOR = '#cc2222'
 const ACCENT_COLOR = '#1a3a6e'
 
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+
 type Plan = 'monthly' | 'annual'
 
 const PLAN_AMOUNTS: Record<Plan, number> = {
@@ -21,7 +23,7 @@ const PLAN_AMOUNTS: Record<Plan, number> = {
   annual: 9000,   // $90.00
 }
 
-function CheckoutForm({ clientSecret, plan }: { clientSecret: string; plan: Plan }) {
+function CheckoutForm({ plan }: { plan: Plan }) {
   const stripe = useStripe()
   const elements = useElements()
   const [error, setError] = useState('')
@@ -34,6 +36,7 @@ function CheckoutForm({ clientSecret, plan }: { clientSecret: string; plan: Plan
     setLoading(true)
     setError('')
 
+    // Step 1: Validate card fields
     const { error: submitError } = await elements.submit()
     if (submitError) {
       setError(submitError.message || 'Please check your card details.')
@@ -41,16 +44,39 @@ function CheckoutForm({ clientSecret, plan }: { clientSecret: string; plan: Plan
       return
     }
 
-    const { error: confirmError } = await stripe.confirmPayment({
+    // Step 2: Create subscription server-side
+    let clientSecret: string
+    let subscriptionId: string
+    try {
+      const res = await fetch('/api/stripe/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Failed to initialize payment')
+        setLoading(false)
+        return
+      }
+      clientSecret = data.clientSecret
+      subscriptionId = data.subscriptionId
+    } catch {
+      setError('Something went wrong. Please try again.')
+      setLoading(false)
+      return
+    }
+
+    // Step 3: Confirm payment
+    const returnUrl = `${window.location.origin}/profile-setup?sub_id=${subscriptionId}&plan=${plan}`
+    const { error: stripeError } = await stripe.confirmPayment({
       elements,
       clientSecret,
-      confirmParams: {
-        return_url: `${window.location.origin}/profile-setup?plan=${plan}`,
-      },
+      confirmParams: { return_url: returnUrl },
     })
 
-    if (confirmError) {
-      setError(confirmError.message || 'Payment failed. Please try again.')
+    if (stripeError) {
+      setError(stripeError.message || 'Payment failed. Please try again.')
       setLoading(false)
     }
   }
@@ -82,30 +108,8 @@ function CheckoutInner() {
   const searchParams = useSearchParams()
   const initialPlan = (searchParams.get('plan') as Plan) || 'monthly'
   const [plan, setPlan] = useState<Plan>(initialPlan)
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
-  const [stripePromise] = useState(() => loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!))
-  const [initError, setInitError] = useState('')
 
   const price = plan === 'annual' ? '$90/year' : '$10/month'
-
-  useEffect(() => {
-    setClientSecret(null)
-    setInitError('')
-    fetch('/api/stripe/create-payment-intent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan }),
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.clientSecret) {
-          setClientSecret(data.clientSecret)
-        } else {
-          setInitError(data.error || 'Failed to initialize payment.')
-        }
-      })
-      .catch(() => setInitError('Failed to initialize payment.'))
-  }, [plan])
 
   return (
     <div
@@ -162,30 +166,22 @@ function CheckoutInner() {
             <span className="text-3xl font-black" style={{ color: ACCENT_COLOR }}>{price}</span>
           </div>
 
-          {initError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
-              {initError}
-            </div>
-          )}
-
-          {clientSecret ? (
-            <Elements
-              stripe={stripePromise}
-              options={{
-                clientSecret,
-                appearance: {
-                  theme: 'stripe',
-                  variables: { colorPrimary: ACCENT_COLOR, borderRadius: '8px' },
-                },
-              }}
-            >
-              <CheckoutForm clientSecret={clientSecret} plan={plan} />
-            </Elements>
-          ) : !initError ? (
-            <div className="flex justify-center py-8">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-gray-600" />
-            </div>
-          ) : null}
+          <Elements
+            key={plan}
+            stripe={stripePromise}
+            options={{
+              mode: 'subscription',
+              amount: PLAN_AMOUNTS[plan],
+              currency: 'usd',
+              paymentMethodTypes: ['card'],
+              appearance: {
+                theme: 'stripe',
+                variables: { colorPrimary: ACCENT_COLOR, borderRadius: '8px' },
+              },
+            }}
+          >
+            <CheckoutForm plan={plan} />
+          </Elements>
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-4">
