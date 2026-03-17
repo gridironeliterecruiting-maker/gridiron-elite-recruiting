@@ -4,8 +4,11 @@ export default function MediaPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-display text-2xl font-bold uppercase tracking-wide text-foreground">Media</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Get listed in rankings, connect with media outlets, and build your reputation.</p>
+        <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">Media</h1>
+        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Newspaper className="h-3.5 w-3.5 text-accent" />
+          GET RANKED, GET FEATURED, BUILD YOUR REPUTATION.
+        </p>
       </div>
       <div className="rounded-2xl border-2 border-dashed border-border bg-card p-12 text-center">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">

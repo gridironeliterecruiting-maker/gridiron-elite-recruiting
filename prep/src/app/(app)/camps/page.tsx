@@ -1,15 +1,18 @@
-import { Tent, Calendar, MapPin, Trophy } from 'lucide-react'
+import { Dumbbell, Calendar, MapPin, Trophy } from 'lucide-react'
 
 export default function CampsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-display text-2xl font-bold uppercase tracking-wide text-foreground">Camps</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Track camp registrations, log performances, and find your next opportunity.</p>
+        <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">Camps</h1>
+        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Dumbbell className="h-3.5 w-3.5 text-accent" />
+          REGISTER, PERFORM, AND TRACK YOUR RESULTS.
+        </p>
       </div>
       <div className="rounded-2xl border-2 border-dashed border-border bg-card p-12 text-center">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-          <Tent className="h-8 w-8 text-primary" />
+          <Dumbbell className="h-8 w-8 text-primary" />
         </div>
         <h2 className="font-display text-xl font-bold uppercase tracking-wide text-foreground">Coming Soon</h2>
         <p className="mt-2 max-w-md mx-auto text-sm text-muted-foreground">
