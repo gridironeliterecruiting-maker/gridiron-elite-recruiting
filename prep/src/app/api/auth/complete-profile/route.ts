@@ -66,13 +66,24 @@ export async function POST(request: Request) {
           ? new Date(stripeSub.current_period_end * 1000).toISOString()
           : null
 
-        await admin.from('subscriptions').insert({
+        // Map Stripe statuses to our schema's allowed values: active, inactive, canceled, past_due
+        const dbStatus = ['active', 'trialing', 'incomplete'].includes(stripeSub.status)
+          ? 'active'
+          : stripeSub.status === 'past_due' ? 'past_due'
+          : stripeSub.status === 'canceled' ? 'canceled'
+          : 'inactive'
+
+        const { error: subInsertError } = await admin.from('subscriptions').insert({
           user_id: userId,
           stripe_customer_id: stripeCustomerId,
           stripe_subscription_id: subscriptionId,
-          status: stripeSub.status === 'active' ? 'active' : 'incomplete',
+          status: dbStatus,
           current_period_end: currentPeriodEnd,
         })
+        if (subInsertError) {
+          console.error('[complete-profile] Subscription insert failed:', subInsertError)
+          return NextResponse.json({ error: 'Failed to record subscription' }, { status: 500 })
+        }
       }
     }
 
