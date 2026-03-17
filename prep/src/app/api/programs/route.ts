@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// Reads programs from the recruit Supabase (publicly readable reference data)
-const recruitSupabase = createClient(
-  process.env.RECRUIT_SUPABASE_URL!,
-  process.env.RECRUIT_SUPABASE_ANON_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-)
-
 const LOGO_BASE = 'https://runwayrecruit.com'
 
 export async function GET() {
+  const recruitSupabase = createClient(
+    process.env.RECRUIT_SUPABASE_URL!,
+    process.env.RECRUIT_SUPABASE_ANON_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
   const { data, error } = await recruitSupabase
     .from('programs')
     .select('id, school_name, division, logo_url, twitter_handle')
