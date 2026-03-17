@@ -41,15 +41,11 @@ export async function POST(request: Request) {
 
   // Send password reset email
   try {
-    await admin.auth.admin.generateLink({
-      type: 'recovery',
-      email: email.toLowerCase().trim(),
-      options: {
-        redirectTo: `${getAppUrl()}/auth/reset-password`,
-      },
+    await admin.auth.resetPasswordForEmail(email.toLowerCase().trim(), {
+      redirectTo: `${getAppUrl()}/auth/reset-password`,
     })
   } catch (error) {
-    console.error('[forgot-password] Failed to generate reset link:', error)
+    console.error('[forgot-password] Failed to send reset email:', error)
   }
 
   return NextResponse.json({ success: true })
