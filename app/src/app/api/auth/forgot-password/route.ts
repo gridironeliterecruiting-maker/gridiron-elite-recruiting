@@ -4,6 +4,7 @@ import { getAppUrl } from '@/lib/app-url'
 
 export async function POST(request: Request) {
   const { email } = await request.json()
+  const appUrl = getAppUrl(request)
 
   if (!email) {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 })
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
   // Send password reset email
   try {
     await admin.auth.resetPasswordForEmail(email.toLowerCase().trim(), {
-      redirectTo: `${getAppUrl()}/auth/reset-password`,
+      redirectTo: `${appUrl}/auth/reset-password`,
     })
   } catch (error) {
     console.error('[forgot-password] Failed to send reset email:', error)
