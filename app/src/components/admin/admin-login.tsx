@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -16,41 +16,39 @@ export function AdminLogin() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // Sign out any existing session silently on mount
-  useEffect(() => {
-    supabase.auth.signOut()
-    document.cookie = 'site_session=;path=/;max-age=0'
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const { data: { user }, error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
-    })
+    try {
+      const { data: { user }, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      })
 
-    if (signInError || !user) {
-      setError('Incorrect email or password.')
+      if (signInError || !user) {
+        setError('Incorrect email or password.')
+        setLoading(false)
+        return
+      }
+
+      // Verify admin role via server route (bypasses RLS)
+      const res = await fetch('/api/auth/admin-check')
+      if (!res.ok) {
+        await supabase.auth.signOut()
+        setError('Access denied.')
+        setLoading(false)
+        return
+      }
+
+      document.cookie = `site_session=admin;path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`
+      router.push('/admin')
+      router.refresh()
+    } catch {
+      setError('Something went wrong. Please try again.')
       setLoading(false)
-      return
     }
-
-    // Verify admin role via server route (bypasses RLS)
-    const res = await fetch('/api/auth/admin-check')
-    if (!res.ok) {
-      await supabase.auth.signOut()
-      setError('Access denied.')
-      setLoading(false)
-      return
-    }
-
-    document.cookie = `site_session=admin;path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`
-    router.push('/admin')
-    router.refresh()
   }
 
   return (
