@@ -18,14 +18,29 @@ function ResetPasswordInner() {
 
   useEffect(() => {
     const code = searchParams.get('code')
+
     if (code) {
+      // PKCE flow
       supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
         if (error) setError('This reset link is invalid or has expired.')
         setExchanging(false)
       })
     } else {
-      setExchanging(false)
-      setError('No reset code found. Please request a new link.')
+      // Implicit flow — token is in the URL hash, Supabase client fires PASSWORD_RECOVERY
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          setExchanging(false)
+        }
+      })
+      // Timeout fallback if no event fires
+      const timer = setTimeout(() => {
+        setExchanging(false)
+        setError('No reset code found. Please request a new link.')
+      }, 5000)
+      return () => {
+        subscription.unsubscribe()
+        clearTimeout(timer)
+      }
     }
   }, [searchParams, supabase])
 
