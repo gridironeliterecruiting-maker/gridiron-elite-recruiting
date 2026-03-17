@@ -37,7 +37,8 @@ export async function POST(request: Request) {
     let stripeCustomerId: string | null = null
     let currentPeriodEnd: string | null = null
 
-    // Verify and record subscription if provided (comes from Stripe redirect after checkout)
+    // Resolve Stripe subscription details first (before any DB writes)
+    let dbStatus: string | null = null
     if (subscriptionId) {
       const { data: existingSub } = await admin
         .from('subscriptions')
@@ -67,27 +68,15 @@ export async function POST(request: Request) {
           : null
 
         // Map Stripe statuses to our schema's allowed values: active, inactive, canceled, past_due
-        const dbStatus = ['active', 'trialing', 'incomplete'].includes(stripeSub.status)
+        dbStatus = ['active', 'trialing', 'incomplete'].includes(stripeSub.status)
           ? 'active'
           : stripeSub.status === 'past_due' ? 'past_due'
           : stripeSub.status === 'canceled' ? 'canceled'
           : 'inactive'
-
-        const { error: subInsertError } = await admin.from('subscriptions').insert({
-          user_id: userId,
-          stripe_customer_id: stripeCustomerId,
-          stripe_subscription_id: subscriptionId,
-          status: dbStatus,
-          current_period_end: currentPeriodEnd,
-        })
-        if (subInsertError) {
-          console.error('[complete-profile] Subscription insert failed:', subInsertError)
-          return NextResponse.json({ error: `Sub insert failed: ${subInsertError.message} | code: ${subInsertError.code}` }, { status: 500 })
-        }
       }
     }
 
-    // Upsert profile
+    // Upsert profile FIRST (subscriptions FK references profiles)
     const { error: profileError } = await admin.from('profiles').upsert({
       id: userId,
       email: user.email,
@@ -108,6 +97,21 @@ export async function POST(request: Request) {
     if (profileError) {
       console.error('[complete-profile] Profile upsert failed:', profileError)
       return NextResponse.json({ error: profileError.message }, { status: 500 })
+    }
+
+    // Now insert subscription (profile row exists)
+    if (dbStatus && subscriptionId) {
+      const { error: subInsertError } = await admin.from('subscriptions').insert({
+        user_id: userId,
+        stripe_customer_id: stripeCustomerId,
+        stripe_subscription_id: subscriptionId,
+        status: dbStatus,
+        current_period_end: currentPeriodEnd,
+      })
+      if (subInsertError) {
+        console.error('[complete-profile] Subscription insert failed:', subInsertError)
+        return NextResponse.json({ error: 'Failed to record subscription' }, { status: 500 })
+      }
     }
 
     // Auto-provision Zoho prep email
