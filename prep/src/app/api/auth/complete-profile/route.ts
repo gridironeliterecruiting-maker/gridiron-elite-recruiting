@@ -82,7 +82,7 @@ export async function POST(request: Request) {
         })
         if (subInsertError) {
           console.error('[complete-profile] Subscription insert failed:', subInsertError)
-          return NextResponse.json({ error: 'Failed to record subscription' }, { status: 500 })
+          return NextResponse.json({ error: `Sub insert failed: ${subInsertError.message} | code: ${subInsertError.code}` }, { status: 500 })
         }
       }
     }
