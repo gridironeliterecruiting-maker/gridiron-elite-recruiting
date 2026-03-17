@@ -71,7 +71,7 @@ export function AdminLogin() {
         {/* Logo + branding */}
         <div className="flex flex-col items-center mb-8">
           <div className="relative h-[160px] w-[160px] drop-shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
-            <Image src="/RR_jet.png" alt="Runway Recruit" fill className="object-contain" priority />
+            <Image src="/RR_jet_trans.png" alt="Runway Recruit" fill className="object-contain" priority />
           </div>
           <h2 className="mt-3 font-display text-2xl font-bold uppercase tracking-widest" style={{ color: PRIMARY_COLOR }}>
             Runway Recruit
