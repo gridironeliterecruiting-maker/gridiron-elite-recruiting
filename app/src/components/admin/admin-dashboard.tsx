@@ -303,6 +303,7 @@ function DashboardTab() {
                 </div>
                 <button
                   type="button"
+                  onClick={() => { window.location.href = `/api/twitter/authorize?returnTo=${encodeURIComponent('/admin')}` }}
                   className="flex items-center gap-2 rounded-lg bg-primary px-8 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
                 >
                   <Link2 className="h-4 w-4" />
