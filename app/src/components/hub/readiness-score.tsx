@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
-import { Check, X as XIcon, AlertCircle, ChevronDown, Trash2 } from "lucide-react"
+import { Check, X as XIcon, AlertCircle, ChevronDown, Trash2, RefreshCw } from "lucide-react"
 
 const DISMISSED_KEY = "readiness_score_dismissed"
 
@@ -36,6 +36,7 @@ interface ReadinessScoreProps {
   twitterProfile: TwitterProfile | null
   athleteProfile: AthleteProfile
   defaultOpen: boolean
+  onRefresh?: () => void
 }
 
 interface CheckItem {
@@ -45,9 +46,17 @@ interface CheckItem {
   fix: string
 }
 
-export function ReadinessScore({ twitterProfile, athleteProfile, defaultOpen }: ReadinessScoreProps) {
+export function ReadinessScore({ twitterProfile, athleteProfile, defaultOpen, onRefresh }: ReadinessScoreProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
   const [dismissed, setDismissed] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const handleRefresh = async () => {
+    if (!onRefresh || refreshing) return
+    setRefreshing(true)
+    await onRefresh()
+    setRefreshing(false)
+  }
 
   useEffect(() => {
     setDismissed(localStorage.getItem(DISMISSED_KEY) === "true")
@@ -297,9 +306,16 @@ export function ReadinessScore({ twitterProfile, athleteProfile, defaultOpen }: 
           </div>
         </div>
 
-        {/* Dismiss — only available once score is coach-ready */}
-        {score >= 70 && (
-          <div className="mt-4 flex justify-end border-t border-border pt-4">
+        <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Re-evaluating...' : 'Re-evaluate'}
+          </button>
+          {score >= 70 && (
             <button
               onClick={handleDismiss}
               className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
@@ -307,8 +323,8 @@ export function ReadinessScore({ twitterProfile, athleteProfile, defaultOpen }: 
               <Trash2 className="h-3.5 w-3.5" />
               Dismiss this card
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       )}
     </Card>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Suspense } from "react"
 import { X, Mail } from "lucide-react"
 import { GmailTokenCaptureWrapper } from "@/components/gmail-token-capture-wrapper"
@@ -116,49 +116,40 @@ export function HubClient({
   }
 
   // Fetch full Twitter profile data client-side (enrichment from Twitter API)
-  useEffect(() => {
-    if (!hasTwitterToken) return
+  const fetchTwitterProfile = useCallback(async () => {
+    setTwitterLoading(true)
+    setTwitterLoadFailed(false)
+    let lastData: any = null
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await fetch("/api/twitter/profile")
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        lastData = data
 
-    let cancelled = false
-
-    async function fetchWithRetry() {
-      let lastData: any = null
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          const res = await fetch("/api/twitter/profile")
-          if (!res.ok) throw new Error(`HTTP ${res.status}`)
-          const data = await res.json()
-          lastData = data
-
-          if (cancelled) return
-
-          // Token was removed — clear handle so "Connect" prompt shows
-          if (data.connected === false) {
-            setEffectiveHandle(null)
-            setTwitterLoading(false)
-            return
-          }
-
-          if (data.profile) {
-            setTwitterProfile(data.profile)
-            setTwitterLoading(false)
-            return
-          }
-        } catch {
-          if (attempt === 0) await new Promise(r => setTimeout(r, 2000))
+        if (data.connected === false) {
+          setEffectiveHandle(null)
+          setTwitterLoading(false)
+          return
         }
-      }
-      // Both attempts done, no profile loaded
-      if (!cancelled) {
-        setTwitterLoading(false)
-        // If we got a response but no profile (expired/broken token), mark as failed
-        if (!lastData?.profile) setTwitterLoadFailed(true)
+
+        if (data.profile) {
+          setTwitterProfile(data.profile)
+          setTwitterLoading(false)
+          return
+        }
+      } catch {
+        if (attempt === 0) await new Promise(r => setTimeout(r, 2000))
       }
     }
+    setTwitterLoading(false)
+    if (!lastData?.profile) setTwitterLoadFailed(true)
+  }, [])
 
-    fetchWithRetry()
-    return () => { cancelled = true }
-  }, [hasTwitterToken])
+  useEffect(() => {
+    if (!hasTwitterToken) return
+    fetchTwitterProfile()
+  }, [hasTwitterToken, fetchTwitterProfile])
 
   const handleConnectTwitter = () => {
     const basePath = window.location.pathname.split('/').slice(0, -1).join('/') || ''
@@ -258,6 +249,7 @@ export function HubClient({
                   twitterProfile={twitterProfile}
                   athleteProfile={profile}
                   defaultOpen={readinessScoreOpen}
+                  onRefresh={fetchTwitterProfile}
                 />
               ) : null}
 
