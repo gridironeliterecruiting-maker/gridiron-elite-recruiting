@@ -284,6 +284,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <p className="text-xs text-muted-foreground">
               {programBranding?.program_name || 'Runway Recruit'}
             </p>
+            {!isProgramUser && (
+              <p className="text-xs text-muted-foreground">
+                Support:{' '}
+                <a href="mailto:support@runwayrecruit.com" className="hover:underline">support@runwayrecruit.com</a>
+                {' · '}
+                <a href="tel:3193825629" className="hover:underline">319-382-5629</a>
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">
               {isProgramUser ? 'Powered by Runway Recruit' : 'Built for athletes, by athletes.'}
             </p>
