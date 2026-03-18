@@ -104,9 +104,28 @@ export function ReadinessScore({ twitterProfile, athleteProfile, defaultOpen, on
       ? bio.includes(String(athleteProfile.grad_year)) || bio.includes(`'${String(athleteProfile.grad_year).slice(2)}`)
       : false
 
-    const schoolInBio = athleteProfile.high_school
-      ? bio.toLowerCase().includes(athleteProfile.high_school.toLowerCase())
-      : false
+    const schoolInBio = (() => {
+      if (!athleteProfile.high_school) return false
+      const bioLower = bio.toLowerCase()
+      const school = athleteProfile.high_school.toLowerCase().trim()
+
+      // 1. Direct match
+      if (bioLower.includes(school)) return true
+
+      // 2. Normalize "high school" ↔ "hs" and retry
+      const withHs = school.replace(/\bhigh\s+school\b/g, 'hs')
+      const withFull = school.replace(/\bhs\b/g, 'high school')
+      if (bioLower.includes(withHs) || bioLower.includes(withFull)) return true
+
+      // 3. Keyword match — strip generic school suffixes and check if the
+      //    meaningful words all appear in the bio (handles abbreviations like
+      //    "Prairie HS, IA" matching profile value "Prairie High School")
+      const genericWords = new Set(['high', 'school', 'hs', 'academy', 'the', 'of', 'and'])
+      const keywords = school.split(/[\s,]+/).filter(w => w.length >= 3 && !genericWords.has(w))
+      if (keywords.length > 0 && keywords.every(kw => bioLower.includes(kw))) return true
+
+      return false
+    })();
 
     const hasLinkInBio =
       bio.match(/hudl|highlight|film|youtube|youtu\.be|bit\.ly|linktr/i) !== null ||
