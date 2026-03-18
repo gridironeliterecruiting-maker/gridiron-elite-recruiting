@@ -33,6 +33,13 @@ export default async function AdminPage() {
     )
   }
 
+  // Fetch admin's twitter token
+  const { data: twitterToken } = await adminClient
+    .from('twitter_tokens')
+    .select('twitter_handle')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
   // Admin — show dashboard
-  return <AdminDashboard />
+  return <AdminDashboard twitterHandle={twitterToken?.twitter_handle ?? null} />
 }

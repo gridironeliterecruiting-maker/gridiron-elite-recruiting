@@ -94,7 +94,7 @@ const emptyForm: ProgramForm = {
 
 type Tab = 'dashboard' | 'teams' | 'promos'
 
-export function AdminDashboard() {
+export function AdminDashboard({ twitterHandle }: { twitterHandle: string | null }) {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [adminName, setAdminName] = useState<{ first: string; last: string } | null>(null)
   const router = useRouter()
@@ -193,7 +193,7 @@ export function AdminDashboard() {
 
       {/* Tab Content — single main wrapper matches app layout exactly */}
       <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
-        {activeTab === 'dashboard' && <DashboardTab />}
+        {activeTab === 'dashboard' && <DashboardTab twitterHandle={twitterHandle} />}
         {activeTab === 'teams' && <TeamsTab />}
         {activeTab === 'promos' && <PromosTab />}
       </main>
@@ -250,7 +250,7 @@ interface DashboardStats {
   offers: number
 }
 
-function DashboardTab() {
+function DashboardTab({ twitterHandle }: { twitterHandle: string | null }) {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -293,22 +293,36 @@ function DashboardTab() {
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 ring-2 ring-primary/20">
                   <MessageCircle className="h-10 w-10 text-primary" />
                 </div>
-                <div>
-                  <h3 className="font-display text-xl font-bold uppercase tracking-tight text-foreground">
-                    Connect X / Twitter
-                  </h3>
-                  <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                    Connect the platform&apos;s X account to enable DM tracking, engagement analytics, and automated outreach features.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => { window.location.href = `/api/twitter/authorize?returnTo=${encodeURIComponent('/admin')}` }}
-                  className="flex items-center gap-2 rounded-lg bg-primary px-8 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  <Link2 className="h-4 w-4" />
-                  Connect X Account
-                </button>
+                {twitterHandle ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <h3 className="font-display text-xl font-bold uppercase tracking-tight text-foreground">
+                      X / Twitter Connected
+                    </h3>
+                    <p className="text-sm font-semibold text-primary">@{twitterHandle}</p>
+                    <p className="max-w-md text-sm text-muted-foreground">
+                      Platform X account is connected. DM tracking and engagement features are active.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <h3 className="font-display text-xl font-bold uppercase tracking-tight text-foreground">
+                        Connect X / Twitter
+                      </h3>
+                      <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                        Connect the platform&apos;s X account to enable DM tracking, engagement analytics, and automated outreach features.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { window.location.href = `/api/twitter/authorize?returnTo=${encodeURIComponent('/admin')}` }}
+                      className="flex items-center gap-2 rounded-lg bg-primary px-8 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+                    >
+                      <Link2 className="h-4 w-4" />
+                      Connect X Account
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
