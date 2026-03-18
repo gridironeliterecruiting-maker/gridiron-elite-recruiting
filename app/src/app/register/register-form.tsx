@@ -86,11 +86,15 @@ export function RegisterForm({ branding }: { branding?: Branding }) {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true)
     setError('')
-    document.cookie = `site_session=main;path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`
+    const sessionValue = slug || 'main'
+    document.cookie = `site_session=${sessionValue};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`
+    const callbackUrl = slug && code
+      ? `${getAppUrl()}/auth/callback?slug=${encodeURIComponent(slug)}&invite_code=${encodeURIComponent(code)}`
+      : `${getAppUrl()}/auth/callback`
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${getAppUrl()}/auth/callback`,
+        redirectTo: callbackUrl,
         queryParams: { prompt: 'select_account' },
       },
     })
@@ -206,8 +210,7 @@ export function RegisterForm({ branding }: { branding?: Branding }) {
             </button>
           </form>
 
-          {!slug && (
-            <>
+          <>
               <div className="flex items-center gap-3 mt-5">
                 <div className="flex-1 h-px bg-gray-100" />
                 <span className="text-xs text-gray-300 font-medium">or</span>
@@ -230,8 +233,7 @@ export function RegisterForm({ branding }: { branding?: Branding }) {
                   {googleLoading ? 'Connecting...' : 'Continue with Google'}
                 </span>
               </button>
-            </>
-          )}
+          </>
         </div>
 
         {/* Below box */}

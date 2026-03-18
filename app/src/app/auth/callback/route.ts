@@ -6,6 +6,8 @@ import { getAppUrl } from '@/lib/app-url'
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
+  const slugParam = searchParams.get('slug')
+  const inviteCode = searchParams.get('invite_code')
   const appUrl = getAppUrl(request)
   const cookieStore = await cookies()
 
@@ -45,6 +47,11 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
+      // For slug Google OAuth: new users go to profile-setup with slug + invite code
+      if (slugParam && inviteCode) {
+        next = `/profile-setup?slug=${encodeURIComponent(slugParam)}&code=${encodeURIComponent(inviteCode)}`
+      }
+
       // For main site Google OAuth: check if user has a profile. If not → checkout.
       if (siteSession === 'main') {
         const { data: { user } } = await supabase.auth.getUser()
