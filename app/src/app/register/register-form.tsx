@@ -239,7 +239,11 @@ export function RegisterForm({ branding }: { branding?: Branding }) {
         {/* Below box */}
         <p className="mt-5 text-center text-sm text-gray-500">
           Already have an account?{' '}
-          <Link href="/login" className="font-semibold hover:underline" style={{ color }}>
+          <Link
+            href={slug && code ? `/register/login-with-code?slug=${encodeURIComponent(slug)}&code=${encodeURIComponent(code)}` : '/login'}
+            className="font-semibold hover:underline"
+            style={{ color }}
+          >
             Sign in
           </Link>
         </p>
