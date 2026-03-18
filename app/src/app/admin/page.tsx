@@ -41,5 +41,5 @@ export default async function AdminPage() {
     .maybeSingle()
 
   // Admin — show dashboard
-  return <AdminDashboard twitterHandle={twitterToken?.twitter_handle ?? null} />
+  return <AdminDashboard twitterHandle={twitterToken?.twitter_handle ?? null} hasTwitterToken={!!twitterToken} />
 }

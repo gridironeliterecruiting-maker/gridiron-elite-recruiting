@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Plus, X, Trash2, Upload, Users, Globe, Palette, Copy, Check, Tag, LayoutDashboard, TrendingUp, TrendingDown, Building2, UserCheck, Send, Target, Instagram, Youtube, Link2, MessageCircle, ChevronDown, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { TwitterProfileCard } from '@/components/hub/twitter-profile-card'
 /* eslint-disable @next/next/no-img-element */
 
 const US_STATES = [
@@ -94,7 +95,7 @@ const emptyForm: ProgramForm = {
 
 type Tab = 'dashboard' | 'teams' | 'promos'
 
-export function AdminDashboard({ twitterHandle }: { twitterHandle: string | null }) {
+export function AdminDashboard({ twitterHandle, hasTwitterToken }: { twitterHandle: string | null; hasTwitterToken: boolean }) {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [adminName, setAdminName] = useState<{ first: string; last: string } | null>(null)
   const router = useRouter()
@@ -193,7 +194,7 @@ export function AdminDashboard({ twitterHandle }: { twitterHandle: string | null
 
       {/* Tab Content — single main wrapper matches app layout exactly */}
       <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
-        {activeTab === 'dashboard' && <DashboardTab twitterHandle={twitterHandle} />}
+        {activeTab === 'dashboard' && <DashboardTab twitterHandle={twitterHandle} hasTwitterToken={hasTwitterToken} />}
         {activeTab === 'teams' && <TeamsTab />}
         {activeTab === 'promos' && <PromosTab />}
       </main>
@@ -250,9 +251,64 @@ interface DashboardStats {
   offers: number
 }
 
-function DashboardTab({ twitterHandle }: { twitterHandle: string | null }) {
+interface TwitterProfile {
+  id: string
+  username: string
+  name: string
+  description: string
+  profileImageUrl: string | null
+  followersCount: number
+  followingCount: number
+  tweetCount: number
+  isProtected: boolean
+  pinnedTweet: { text: string; hasMedia: boolean; createdAt: string } | null
+  lastTweetAt: string | null
+}
+
+function DashboardTab({ twitterHandle, hasTwitterToken }: { twitterHandle: string | null; hasTwitterToken: boolean }) {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [twitterProfile, setTwitterProfile] = useState<TwitterProfile | null>(null)
+  const [twitterLoading, setTwitterLoading] = useState(hasTwitterToken)
+  const [twitterLoadFailed, setTwitterLoadFailed] = useState(false)
+  const [effectiveHandle, setEffectiveHandle] = useState<string | null>(twitterHandle)
+
+  const fetchTwitterProfile = useCallback(async () => {
+    setTwitterLoading(true)
+    setTwitterLoadFailed(false)
+    let lastData: any = null
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await fetch('/api/twitter/profile')
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        lastData = data
+        if (data.connected === false) {
+          setEffectiveHandle(null)
+          setTwitterLoading(false)
+          return
+        }
+        if (data.profile) {
+          setTwitterProfile(data.profile)
+          setTwitterLoading(false)
+          return
+        }
+      } catch {
+        if (attempt === 0) await new Promise(r => setTimeout(r, 2000))
+      }
+    }
+    setTwitterLoading(false)
+    if (!lastData?.profile) setTwitterLoadFailed(true)
+  }, [])
+
+  useEffect(() => {
+    if (!hasTwitterToken) return
+    fetchTwitterProfile()
+  }, [hasTwitterToken, fetchTwitterProfile])
+
+  const handleConnectTwitter = () => {
+    window.location.href = `/api/twitter/authorize?returnTo=${encodeURIComponent('/admin')}`
+  }
 
   useEffect(() => {
     fetch('/api/admin/dashboard')
@@ -285,47 +341,18 @@ function DashboardTab({ twitterHandle }: { twitterHandle: string | null }) {
 
       {/* Social connections — X large left, 3 stacked right */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        {/* Connect X — primary feature, large left card */}
+        {/* X profile card — same as hub */}
         <div className="lg:col-span-9">
-          <div className="overflow-hidden rounded-xl border bg-card">
-            <div className="bg-gradient-to-br from-primary/5 to-primary/10 p-8">
-              <div className="flex flex-col items-center gap-5 text-center">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 ring-2 ring-primary/20">
-                  <MessageCircle className="h-10 w-10 text-primary" />
-                </div>
-                {twitterHandle ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <h3 className="font-display text-xl font-bold uppercase tracking-tight text-foreground">
-                      X / Twitter Connected
-                    </h3>
-                    <p className="text-sm font-semibold text-primary">@{twitterHandle}</p>
-                    <p className="max-w-md text-sm text-muted-foreground">
-                      Platform X account is connected. DM tracking and engagement features are active.
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <div>
-                      <h3 className="font-display text-xl font-bold uppercase tracking-tight text-foreground">
-                        Connect X / Twitter
-                      </h3>
-                      <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                        Connect the platform&apos;s X account to enable DM tracking, engagement analytics, and automated outreach features.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => { window.location.href = `/api/twitter/authorize?returnTo=${encodeURIComponent('/admin')}` }}
-                      className="flex items-center gap-2 rounded-lg bg-primary px-8 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
-                    >
-                      <Link2 className="h-4 w-4" />
-                      Connect X Account
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+          {twitterLoading ? (
+            <TwitterProfileSkeleton />
+          ) : (
+            <TwitterProfileCard
+              profile={twitterProfile}
+              handle={effectiveHandle}
+              loadFailed={twitterLoadFailed}
+              onConnect={handleConnectTwitter}
+            />
+          )}
         </div>
 
         {/* 3 stacked social placeholders */}
@@ -1277,6 +1304,27 @@ function MemberRow({ member, onRemove }: { member: Member; onRemove: () => void 
       <button type="button" onClick={onRemove} className="rounded p-1 text-gray-400 transition hover:bg-red-50 hover:text-red-600">
         <Trash2 className="h-3.5 w-3.5" />
       </button>
+    </div>
+  )
+}
+
+function TwitterProfileSkeleton() {
+  return (
+    <div className="animate-pulse rounded-xl border bg-card p-6">
+      <div className="mb-4 h-3 w-48 rounded bg-secondary" />
+      <div className="flex items-start gap-4">
+        <div className="h-16 w-16 rounded-full bg-secondary" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 w-32 rounded bg-secondary" />
+          <div className="h-3 w-24 rounded bg-secondary" />
+          <div className="h-3 w-full rounded bg-secondary" />
+          <div className="flex gap-4">
+            <div className="h-3 w-20 rounded bg-secondary" />
+            <div className="h-3 w-20 rounded bg-secondary" />
+            <div className="h-3 w-20 rounded bg-secondary" />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
