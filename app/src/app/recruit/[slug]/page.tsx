@@ -25,21 +25,21 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
     notFound()
   }
 
-  // Look up program branding only if the athlete registered via a program slug
-  // (not for main site users who may also be members of programs)
+  // Use program branding if the athlete is a PLAYER in a managed program.
+  // Coaches who are also program members should not get program branding on their recruit page.
   let programBranding: { logo_url: string | null; primary_color: string | null; accent_color: string | null; school_name: string | null; mascot: string | null } | null = null
-  const { data: fullProfile } = await admin
-    .from("profiles")
-    .select("registered_via")
-    .eq("id", profile.id)
-    .single()
+  const { data: playerMembership } = await admin
+    .from("program_members")
+    .select("program_id")
+    .eq("user_id", profile.id)
+    .eq("role", "player")
+    .maybeSingle()
 
-  if (fullProfile?.registered_via?.startsWith("slug:")) {
-    const slugName = fullProfile.registered_via.replace("slug:", "")
+  if (playerMembership?.program_id) {
     const { data: prog } = await admin
       .from("managed_programs")
       .select("logo_url, primary_color, accent_color, school_name, mascot")
-      .eq("landing_slug", slugName)
+      .eq("id", playerMembership.program_id)
       .maybeSingle()
     programBranding = prog
   }
