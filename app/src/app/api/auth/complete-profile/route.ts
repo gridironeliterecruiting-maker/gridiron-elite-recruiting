@@ -74,8 +74,9 @@ export async function POST(request: Request) {
         ? stripeSub.customer
         : stripeSub.customer.id
 
-      currentPeriodEnd = stripeSub.current_period_end
-        ? new Date(stripeSub.current_period_end * 1000).toISOString()
+      const stripeSubAny = stripeSub as any
+      currentPeriodEnd = stripeSubAny.current_period_end
+        ? new Date(stripeSubAny.current_period_end * 1000).toISOString()
         : null
 
       // Create subscription row
