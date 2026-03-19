@@ -10,6 +10,7 @@ import {
   Users,
   GitBranch,
   Mail,
+  Inbox,
   User,
   LogOut,
   Menu,
@@ -31,6 +32,7 @@ const athleteRoutes = [
   { label: "Programs", icon: Users, path: "/coaches" },
   { label: "Pipeline", icon: GitBranch, path: "/pipeline" },
   { label: "Outreach", icon: Mail, path: "/outreach" },
+  { label: "Email", icon: Inbox, path: "/email" },
   { label: "Profile", icon: User, path: "/profile" },
 ]
 
