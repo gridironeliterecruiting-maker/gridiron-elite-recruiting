@@ -74,9 +74,10 @@ export async function POST(request: Request) {
     }
     const coupon = await stripe.coupons.create(couponParams)
 
-    // Create the promotion code
-    const promoCode = await stripe.promotionCodes.create({
-      promotion: { type: 'coupon', coupon: coupon.id },
+    // Create the promotion code (cast as any — SDK 2026 types removed top-level `coupon`,
+    // but the REST API still requires it)
+    const promoCode = await (stripe.promotionCodes.create as (params: Record<string, unknown>) => Promise<Stripe.PromotionCode>)({
+      coupon: coupon.id,
       code,
       ...(maxRedemptions ? { max_redemptions: maxRedemptions } : {}),
     })
