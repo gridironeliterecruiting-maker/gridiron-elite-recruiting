@@ -24,8 +24,9 @@ export async function POST(request: Request) {
     switch (event.type) {
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription
-        const currentPeriodEnd = sub.current_period_end
-          ? new Date(sub.current_period_end * 1000).toISOString()
+        const subAny = sub as any
+        const currentPeriodEnd = subAny.current_period_end
+          ? new Date(subAny.current_period_end * 1000).toISOString()
           : null
 
         await admin.from('subscriptions')
@@ -64,9 +65,10 @@ export async function POST(request: Request) {
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice
-        const subId = typeof invoice.subscription === 'string'
-          ? invoice.subscription
-          : invoice.subscription?.id
+        const invoiceAny = invoice as any
+        const subId = typeof invoiceAny.subscription === 'string'
+          ? invoiceAny.subscription
+          : invoiceAny.subscription?.id
 
         if (subId) {
           await admin.from('subscriptions')

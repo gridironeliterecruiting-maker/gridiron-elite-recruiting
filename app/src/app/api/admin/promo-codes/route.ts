@@ -25,23 +25,25 @@ export async function GET() {
 
   try {
     const stripe = getStripe()
-    const codes = await stripe.promotionCodes.list({ limit: 100, expand: ['data.coupon'] })
+    const codes = await stripe.promotionCodes.list({ limit: 100, expand: ['data.promotion.coupon'] })
 
     const formatted = codes.data.map(pc => {
-      const coupon = (pc as unknown as { coupon: Stripe.Coupon }).coupon
+      const promo = pc.promotion as { coupon: Stripe.Coupon; type: string }
+      const coupon = promo.coupon
       return {
-      id: pc.id,
-      code: pc.code,
-      percent_off: coupon.percent_off ?? null,
-      amount_off: coupon.amount_off ?? null,
-      currency: coupon.currency ?? null,
-      duration: coupon.duration,
-      duration_in_months: coupon.duration_in_months ?? null,
-      max_redemptions: pc.max_redemptions ?? null,
-      times_redeemed: pc.times_redeemed,
-      valid: pc.active,
-      created: pc.created,
-    }})
+        id: pc.id,
+        code: pc.code,
+        percent_off: coupon?.percent_off ?? null,
+        amount_off: coupon?.amount_off ?? null,
+        currency: coupon?.currency ?? null,
+        duration: coupon?.duration ?? null,
+        duration_in_months: coupon?.duration_in_months ?? null,
+        max_redemptions: pc.max_redemptions ?? null,
+        times_redeemed: pc.times_redeemed,
+        valid: pc.active,
+        created: pc.created,
+      }
+    })
 
     return NextResponse.json({ codes: formatted })
   } catch (err: unknown) {
@@ -73,12 +75,11 @@ export async function POST(request: Request) {
     const coupon = await stripe.coupons.create(couponParams)
 
     // Create the promotion code
-    const promoParams: Stripe.PromotionCodeCreateParams = {
-      coupon: coupon.id,
+    const promoCode = await stripe.promotionCodes.create({
+      promotion: { type: 'coupon', coupon: coupon.id },
       code,
       ...(maxRedemptions ? { max_redemptions: maxRedemptions } : {}),
-    }
-    const promoCode = await stripe.promotionCodes.create(promoParams)
+    })
 
     return NextResponse.json({
       code: {
