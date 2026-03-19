@@ -110,10 +110,10 @@ export async function POST(
       })
       .eq('id', id)
 
-    // Trigger email processing fire-and-forget — don't await so launch returns immediately
+    // Trigger email processing immediately — await so Vercel doesn't kill the fetch before it fires
     if (!launchTime || launchTime <= new Date()) {
       const processUrl = `${getAppUrl()}/api/email/process-queue`
-      fetch(processUrl, {
+      await fetch(processUrl, {
         headers: { 'Authorization': `Bearer ${process.env.CRON_SECRET}` },
       }).catch(err => console.error('Error triggering email queue:', err))
     }
