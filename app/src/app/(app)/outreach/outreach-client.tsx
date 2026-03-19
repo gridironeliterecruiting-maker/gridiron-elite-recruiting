@@ -116,6 +116,8 @@ interface OutreachClientProps {
   resumeStep?: string
   gmailStatus?: string
   twitterStatus?: string
+  hasWorkspaceEmail?: boolean
+  proposedEmail?: string | null
 }
 
 export function OutreachClient({
@@ -133,6 +135,8 @@ export function OutreachClient({
   resumeStep,
   gmailStatus,
   twitterStatus,
+  hasWorkspaceEmail = true,
+  proposedEmail,
 }: OutreachClientProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -358,6 +362,7 @@ export function OutreachClient({
           followupData={followupData}
           initialCampaignType={showCreateCampaign}
           activePlayerId={activePlayerId}
+          recruitingEmail={proposedEmail || undefined}
           onClose={() => {
             setShowCreateCampaign(null)
             setQuickEmailData(null)
@@ -440,6 +445,7 @@ export function OutreachClient({
                     }
                   }}
                   onStatusChange={() => window.location.reload()}
+                  onDelete={() => window.location.reload()}
                 />
               ))}
             </div>

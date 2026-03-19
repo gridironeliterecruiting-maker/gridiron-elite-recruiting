@@ -358,7 +358,7 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-border hover:text-foreground"
                   aria-label="Go back"
                 >
                   <ArrowLeft className="h-4 w-4" />

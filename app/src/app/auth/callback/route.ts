@@ -2,10 +2,14 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { getAppUrl } from '@/lib/app-url'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
+  const slugParam = searchParams.get('slug')
+  const inviteCode = searchParams.get('invite_code')
+  const existingUser = searchParams.get('existing') === '1'
   const appUrl = getAppUrl(request)
   const cookieStore = await cookies()
 
@@ -45,6 +49,95 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
+      // Existing user joining a program via invite code (Google OAuth from login-with-code page)
+      if (slugParam && inviteCode && existingUser) {
+        const { data: { user: authedUser } } = await supabase.auth.getUser()
+        if (authedUser) {
+          const admin = createAdminClient()
+          const upperCode = inviteCode.trim().toUpperCase()
+          const { data: program } = await admin
+            .from('managed_programs')
+            .select('id, coach_invite_code, player_invite_code')
+            .eq('landing_slug', slugParam)
+            .maybeSingle()
+          if (program) {
+            let memberRole: 'coach' | 'player' | null = null
+            if (upperCode === program.coach_invite_code) memberRole = 'coach'
+            else if (upperCode === program.player_invite_code) memberRole = 'player'
+            if (memberRole) {
+              await admin.from('program_members').upsert({
+                program_id: program.id,
+                user_id: authedUser.id,
+                email: authedUser.email,
+                role: memberRole,
+                registered_via: 'existing_user_invite',
+              }, { onConflict: 'program_id,email' })
+            }
+          }
+        }
+        next = `/${slugParam}/hub`
+      }
+      // For slug Google OAuth: check if user already has a profile
+      else if (slugParam && inviteCode) {
+        const { data: { user: authedUser } } = await supabase.auth.getUser()
+        let hasProfile = false
+        if (authedUser) {
+          const admin = createAdminClient()
+          const { data: profile } = await admin
+            .from('profiles')
+            .select('first_name')
+            .eq('id', authedUser.id)
+            .maybeSingle()
+          hasProfile = !!(profile?.first_name)
+
+          if (hasProfile) {
+            // Existing user — add to program_members and go straight to hub
+            const upperCode = inviteCode.trim().toUpperCase()
+            const { data: program } = await admin
+              .from('managed_programs')
+              .select('id, coach_invite_code, player_invite_code')
+              .eq('landing_slug', slugParam)
+              .maybeSingle()
+            if (program) {
+              let memberRole: 'coach' | 'player' | null = null
+              if (upperCode === program.coach_invite_code) memberRole = 'coach'
+              else if (upperCode === program.player_invite_code) memberRole = 'player'
+              if (memberRole) {
+                await admin.from('program_members').upsert({
+                  program_id: program.id,
+                  user_id: authedUser.id,
+                  email: authedUser.email,
+                  role: memberRole,
+                  registered_via: 'existing_user_invite',
+                }, { onConflict: 'program_id,email' })
+              }
+            }
+            next = `/${slugParam}/hub`
+          }
+        }
+        if (!hasProfile) {
+          // New user — send to profile-setup to complete their profile
+          next = `/profile-setup?slug=${encodeURIComponent(slugParam)}&code=${encodeURIComponent(inviteCode)}`
+        }
+      }
+
+      // For main site Google OAuth: check if user has a profile. If not → checkout.
+      if (siteSession === 'main') {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, first_name')
+            .eq('id', user.id)
+            .single()
+
+          const isNewUser = !profile || !profile.first_name
+          if (isNewUser) {
+            next = '/checkout'
+          }
+        }
+      }
+
       const redirectUrl = new URL(next, appUrl)
       const response = NextResponse.redirect(redirectUrl.toString())
       for (const { name, value, options } of pendingCookies) {

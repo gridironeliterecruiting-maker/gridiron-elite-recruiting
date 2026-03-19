@@ -39,11 +39,18 @@ export async function GET(
       .select('id, coach_name, coach_email, program_name, status, current_step')
       .eq('campaign_id', id)
 
-    // Get event counts
+    // Get event counts — deduplicate opens/clicks by recipient
     const { data: events } = await supabase
       .from('email_events')
-      .select('event_type')
+      .select('event_type, recipient_id')
       .eq('campaign_id', id)
+
+    const uniqueOpened = new Set(
+      events?.filter(e => e.event_type === 'opened').map(e => e.recipient_id) || []
+    )
+    const uniqueClicked = new Set(
+      events?.filter(e => e.event_type === 'clicked').map(e => e.recipient_id) || []
+    )
 
     const stats = {
       total: recipients?.length || 0,
@@ -52,13 +59,54 @@ export async function GET(
       sent: recipients?.filter(r => r.status === 'sent').length || 0,
       replied: recipients?.filter(r => r.status === 'replied').length || 0,
       bounced: recipients?.filter(r => r.status === 'bounced').length || 0,
-      opened: events?.filter(e => e.event_type === 'opened').length || 0,
-      clicked: events?.filter(e => e.event_type === 'clicked').length || 0,
+      opened: uniqueOpened.size,
+      clicked: uniqueClicked.size,
     }
 
     return NextResponse.json({ campaign, emails, recipients, stats })
   } catch (error) {
     console.error('Get campaign error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Only allow deleting drafts
+    const { data: campaign } = await supabase
+      .from('campaigns')
+      .select('id, status')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single()
+
+    if (!campaign) {
+      return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
+    }
+
+    if (campaign.status !== 'draft') {
+      return NextResponse.json({ error: 'Only drafts can be deleted' }, { status: 400 })
+    }
+
+    // Delete recipients, emails, then campaign
+    await supabase.from('campaign_recipients').delete().eq('campaign_id', id)
+    await supabase.from('campaign_emails').delete().eq('campaign_id', id)
+    await supabase.from('campaigns').delete().eq('id', id).eq('user_id', user.id)
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Delete campaign error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

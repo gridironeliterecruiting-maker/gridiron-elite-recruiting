@@ -160,7 +160,7 @@ export function DmQueueClient({
       <div className="flex items-start gap-4">
         <Link
           href={programPath("/outreach")}
-          className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+          className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-border hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>

@@ -55,6 +55,7 @@ export async function POST(
         program_id: id,
         email: email.trim().toLowerCase(),
         role,
+        registered_via: 'admin_added',
       })
       .select()
       .single()
@@ -163,6 +164,15 @@ export async function DELETE(
     }
 
     const admin = createAdminClient()
+
+    // Get user_id before deleting so we can revoke auth
+    const { data: member } = await admin
+      .from('program_members')
+      .select('user_id')
+      .eq('id', memberId)
+      .eq('program_id', id)
+      .maybeSingle()
+
     const { error } = await admin
       .from('program_members')
       .delete()
@@ -172,6 +182,11 @@ export async function DELETE(
     if (error) {
       console.error('Error removing member:', error)
       return NextResponse.json({ error: 'Failed to remove member' }, { status: 500 })
+    }
+
+    // Delete auth user → cascades to profiles, preventing future login
+    if (member?.user_id) {
+      await admin.auth.admin.deleteUser(member.user_id)
     }
 
     return NextResponse.json({ success: true })

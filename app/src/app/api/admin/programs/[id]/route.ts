@@ -66,6 +66,7 @@ export async function PUT(
       school_name, mascot, city, state, landing_slug,
       primary_color, secondary_color, accent_color,
       twitter_username, hudl_url, instagram_username,
+      max_coaches, max_players,
     } = body
 
     const admin = createAdminClient()
@@ -83,6 +84,8 @@ export async function PUT(
         twitter_username: twitter_username || null,
         hudl_url: hudl_url || null,
         instagram_username: instagram_username || null,
+        ...(max_coaches != null && { max_coaches }),
+        ...(max_players != null && { max_players }),
       })
       .eq('id', id)
       .select()

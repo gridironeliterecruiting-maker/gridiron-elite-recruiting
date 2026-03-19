@@ -8,11 +8,6 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Block campaign launches on non-production environments (staging/preview)
-    if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production') {
-      return NextResponse.json({ error: 'Campaign launching is disabled in preview/staging environments' }, { status: 403 })
-    }
-
     const { id } = await params
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -44,30 +39,29 @@ export async function POST(
     // ============================================================
     const { data: profile } = await supabase
       .from('profiles')
-      .select('can_send_emails')
+      .select('can_send_emails, zoho_account_key')
       .eq('id', user.id)
       .single()
 
     if (!profile?.can_send_emails) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Email sending is not enabled for your account. Contact support to get approved.',
         safety: 'user_not_approved'
       }, { status: 403 })
     }
 
-    // Check if user has Gmail connected
-    const { data: gmailToken } = await supabase
-      .from('gmail_tokens')
-      .select('token_expiry')
-      .eq('user_id', user.id)
-      .single()
+    // Zoho users don't need Gmail — skip Gmail check if zoho_account_key is set
+    if (!(profile as any).zoho_account_key) {
+      const { data: gmailToken } = await supabase
+        .from('gmail_tokens')
+        .select('token_expiry')
+        .eq('user_id', user.id)
+        .single()
 
-    if (!gmailToken) {
-      return NextResponse.json({ error: 'Gmail not connected. Please connect your Gmail account first.' }, { status: 400 })
+      if (!gmailToken) {
+        return NextResponse.json({ error: 'Gmail not connected. Please connect your Gmail account first.' }, { status: 400 })
+      }
     }
-    
-    // Don't check token expiry - just let it work
-    console.log('[Launch] Gmail token found, proceeding with launch')
 
     // Get recipients
     const { data: recipients } = await supabase
@@ -93,25 +87,18 @@ export async function POST(
 
     const schedule = calculateSendSchedule(recipients.length, launchTime)
 
-    // Update each recipient with their scheduled send time
+    // Batch update all recipients in one query using upsert
     const updates = recipients.map((r, i) => ({
       id: r.id,
+      campaign_id: id,
       status: 'scheduled' as const,
       next_send_at: schedule[i].toISOString(),
       updated_at: new Date().toISOString(),
     }))
 
-    // Batch update recipients
-    for (const update of updates) {
-      await supabase
-        .from('campaign_recipients')
-        .update({
-          status: update.status,
-          next_send_at: update.next_send_at,
-          updated_at: update.updated_at,
-        })
-        .eq('id', update.id)
-    }
+    await supabase
+      .from('campaign_recipients')
+      .upsert(updates, { onConflict: 'id' })
 
     // Activate campaign
     await supabase
@@ -123,25 +110,12 @@ export async function POST(
       })
       .eq('id', id)
 
-    // Trigger immediate email processing for "Launch Now" campaigns
+    // Trigger email processing fire-and-forget — don't await so launch returns immediately
     if (!launchTime || launchTime <= new Date()) {
-      try {
-        const processUrl = `${getAppUrl()}/api/email/process-queue`
-        const processRes = await fetch(processUrl, {
-          headers: {
-            'Authorization': `Bearer ${process.env.CRON_SECRET}`,
-          },
-        })
-        
-        if (!processRes.ok) {
-          console.error('Failed to trigger email processing:', await processRes.text())
-        } else {
-          console.log('Email queue processing triggered successfully')
-        }
-      } catch (processError) {
-        // Don't fail the launch if queue processing fails - cron will pick it up later
-        console.error('Error triggering email queue:', processError)
-      }
+      const processUrl = `${getAppUrl()}/api/email/process-queue`
+      fetch(processUrl, {
+        headers: { 'Authorization': `Bearer ${process.env.CRON_SECRET}` },
+      }).catch(err => console.error('Error triggering email queue:', err))
     }
 
     return NextResponse.json({

@@ -39,10 +39,22 @@ export async function GET() {
       .select('*')
       .in('program_id', programIds.length > 0 ? programIds : ['none'])
 
-    // Attach members to programs
+    // Fetch profiles for registered members
+    const userIds = (members || []).filter((m: { user_id: string | null }) => m.user_id).map((m: { user_id: string }) => m.user_id)
+    const { data: profilesData } = userIds.length > 0
+      ? await admin.from('profiles').select('id, first_name, last_name, username, workspace_email').in('id', userIds)
+      : { data: [] }
+    const profilesById = Object.fromEntries((profilesData || []).map((p: { id: string }) => [p.id, p]))
+
+    // Attach members (with profile) to programs
     const programsWithMembers = programs.map((p: { id: string }) => ({
       ...p,
-      members: (members || []).filter((m: { program_id: string }) => m.program_id === p.id),
+      members: (members || [])
+        .filter((m: { program_id: string }) => m.program_id === p.id)
+        .map((m: { user_id: string | null }) => ({
+          ...m,
+          profile: m.user_id ? (profilesById[m.user_id] ?? null) : null,
+        })),
     }))
 
     return NextResponse.json({ programs: programsWithMembers })
@@ -64,11 +76,15 @@ export async function POST(request: Request) {
       school_name, mascot, city, state, landing_slug,
       primary_color, secondary_color, accent_color,
       twitter_username, hudl_url, instagram_username,
+      max_coaches, max_players,
     } = body
 
     if (!school_name) {
       return NextResponse.json({ error: 'School name is required' }, { status: 400 })
     }
+
+    // Generate unique 8-char invite codes
+    const makeCode = () => Math.random().toString(36).substring(2, 10).toUpperCase()
 
     const admin = createAdminClient()
     const { data: program, error } = await admin
@@ -85,6 +101,10 @@ export async function POST(request: Request) {
         twitter_username: twitter_username || null,
         hudl_url: hudl_url || null,
         instagram_username: instagram_username || null,
+        max_coaches: max_coaches ?? 5,
+        max_players: max_players ?? 30,
+        coach_invite_code: makeCode(),
+        player_invite_code: makeCode(),
       })
       .select()
       .single()

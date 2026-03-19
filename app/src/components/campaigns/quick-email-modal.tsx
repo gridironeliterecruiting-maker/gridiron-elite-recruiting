@@ -86,7 +86,7 @@ export function QuickEmailModal({ coach, title: customTitle, subtitle: customSub
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-border hover:text-foreground"
             aria-label="Close"
           >
             <X className="h-4 w-4" />

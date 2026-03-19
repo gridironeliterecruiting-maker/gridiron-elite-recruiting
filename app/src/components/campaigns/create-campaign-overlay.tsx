@@ -62,6 +62,7 @@ interface CreateCampaignOverlayProps {
   } | null
   initialCampaignType?: CampaignType
   activePlayerId?: string | null
+  recruitingEmail?: string | null
   onClose: () => void
   onCampaignLaunched?: (campaignData: {
     name: string
@@ -70,7 +71,7 @@ interface CreateCampaignOverlayProps {
   }) => void
 }
 
-export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, hasGmailToken, gmailTokenExpired, quickEmailData, quickDmData, followupData, initialCampaignType = 'email', activePlayerId, onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
+export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, hasGmailToken, gmailTokenExpired, quickEmailData, quickDmData, followupData, initialCampaignType = 'email', activePlayerId, recruitingEmail, onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
   const router = useRouter()
   const campaignType = initialCampaignType
   // Quick email/DM skips goal and target, goes straight to build/compose (step 3)
@@ -295,7 +296,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
           <button
             type="button"
             onClick={handleClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-border hover:text-foreground"
             aria-label="Close"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -309,6 +310,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
               {headerTitle}
             </h1>
           </div>
+
         </div>
 
         {/* Progress Tracker */}
@@ -363,7 +365,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
       {/* Step Content */}
       <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
         {currentStep === 1 && (
-          <GoalStep onSelect={handleGoalSelect} selected={draft.goal} channelFilter={campaignType} />
+          <GoalStep onSelect={handleGoalSelect} selected={draft.goal} channelFilter={campaignType} recruitingEmail={recruitingEmail} />
         )}
 
         {currentStep === 2 && (
@@ -372,6 +374,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
             playerPosition={playerPosition}
             selectedCoaches={draft.selectedCoaches}
             channelFilter={campaignType}
+            recruitingEmail={recruitingEmail}
             onCoachesChange={(coaches) => {
               setDraft((prev) => ({ ...prev, selectedCoaches: coaches }))
               setHasUnsavedChanges(true)
@@ -388,6 +391,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
           <BuildStep
             goal={draft.goal}
             templates={draft.templates}
+            recruitingEmail={recruitingEmail}
             onTemplatesChange={(templates: EmailTemplate[]) => {
               setDraft((prev) => ({ ...prev, templates }))
               if (templateAutoLoadRef.current) {
@@ -412,6 +416,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
             hasGmailToken={hasGmailToken}
             gmailTokenExpired={gmailTokenExpired}
             activePlayerId={activePlayerId}
+            recruitingEmail={recruitingEmail}
             onEditTarget={() => goToStep(2)}
             onEditBuild={() => goToStep(3)}
             onBack={() => goToStep(3)}

@@ -141,7 +141,7 @@ export function DmComposeStep({
               key={tag.key}
               type="button"
               onClick={() => insertMergeTag(tag.key)}
-              className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+              className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-primary/10 hover:text-primary"
             >
               {tag.label}
             </button>

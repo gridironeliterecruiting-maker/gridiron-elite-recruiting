@@ -109,6 +109,7 @@ interface TargetStepProps {
   playerPosition: string
   selectedCoaches: SelectedCoach[]
   channelFilter?: 'email' | 'dm'
+  recruitingEmail?: string | null
   onCoachesChange: (coaches: SelectedCoach[]) => void
   onNext: () => void
   onBack: () => void
@@ -121,6 +122,7 @@ export function TargetStep({
   playerPosition,
   selectedCoaches,
   channelFilter,
+  recruitingEmail,
   onCoachesChange,
   onNext,
   onBack,
@@ -331,7 +333,7 @@ export function TargetStep({
 
   return (
     <div className="relative">
-      {/* Header with coach counter */}
+      {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h2 className="mb-2 font-display text-base font-bold uppercase tracking-wider text-foreground">
@@ -341,14 +343,15 @@ export function TargetStep({
             Choose programs and coaches to include in this campaign.
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2">
-          <Users className="h-4 w-4 text-primary" />
-          <span className="text-sm font-bold text-primary">{selectedCoaches.length}</span>
-          <span className="text-xs text-muted-foreground">Coaches Selected</span>
-        </div>
+        {recruitingEmail && channelFilter !== 'dm' && (
+          <div className="hidden sm:flex shrink-0 items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Recruiting Email</span>
+            <span className="text-sm font-semibold text-foreground">{recruitingEmail}</span>
+          </div>
+        )}
       </div>
 
-      {/* Division pills + Search */}
+      {/* Division pills + Search + Coaches Selected */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {DIVISIONS.map((div) => (
           <button
@@ -369,49 +372,58 @@ export function TargetStep({
           </button>
         ))}
 
-        <div className="relative ml-auto flex-1 sm:max-w-[260px]">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search programs..."
-            className="w-full rounded-md border border-border bg-card py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/30"
-          />
-          {/* Search results dropdown */}
-          {searchResults.length > 0 && (
-            <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-lg border border-border bg-card shadow-lg">
-              {searchResults.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={async () => {
-                    await autoSelectProgram(p)
-                    setSearchQuery("")
-                    openCoachOverlay(p)
-                  }}
-                  className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50"
-                >
-                  {p.logo_url ? (
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-white overflow-hidden">
-                      <img src={p.logo_url} alt={p.school_name} width={24} height={24} className="object-contain" onError={(e) => { const el = e.currentTarget.parentElement!; el.className = "flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary"; el.innerHTML = `${p.school_name.slice(0, 3).toUpperCase()}`; }} />
+        <div className="ml-auto flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search programs..."
+              className="w-full rounded-md border border-border bg-card py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/30 sm:w-[220px]"
+            />
+            {/* Search results dropdown */}
+            {searchResults.length > 0 && (
+              <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-lg border border-border bg-card shadow-lg">
+                {searchResults.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={async () => {
+                      await autoSelectProgram(p)
+                      setSearchQuery("")
+                      openCoachOverlay(p)
+                    }}
+                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50"
+                  >
+                    {p.logo_url ? (
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-white overflow-hidden">
+                        <img src={p.logo_url} alt={p.school_name} width={24} height={24} className="object-contain" onError={(e) => { const el = e.currentTarget.parentElement!; el.className = "flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary"; el.innerHTML = `${p.school_name.slice(0, 3).toUpperCase()}`; }} />
+                      </div>
+                    ) : (
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
+                        {p.school_name.slice(0, 3).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-foreground">{p.school_name}</p>
+                      <p className="text-[10px] text-muted-foreground">{p.conference} · {p.division}</p>
                     </div>
-                  ) : (
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
-                      {p.school_name.slice(0, 3).toUpperCase()}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-foreground">{p.school_name}</p>
-                    <p className="text-[10px] text-muted-foreground">{p.conference} · {p.division}</p>
-                  </div>
-                  {programHasSelections(p.id) && (
-                    <Check className="h-4 w-4 text-primary" />
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
+                    {programHasSelections(p.id) && (
+                      <Check className="h-4 w-4 text-primary" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Coaches selected counter — inline with search */}
+          <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 whitespace-nowrap">
+            <Users className="h-4 w-4 text-primary" />
+            <span className="text-sm font-bold text-primary">{selectedCoaches.length}</span>
+            <span className="text-xs text-muted-foreground">Selected</span>
+          </div>
         </div>
       </div>
 

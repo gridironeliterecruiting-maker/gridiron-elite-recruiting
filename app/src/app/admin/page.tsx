@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { cookies } from "next/headers"
-import { LoginUI } from "@/components/login-ui"
-import { UnauthorizedPage } from "@/components/unauthorized-page"
+import { AdminLogin } from "@/components/admin/admin-login"
 import { AdminDashboard } from "@/components/admin/admin-dashboard"
 import { Suspense } from "react"
 
@@ -13,36 +13,33 @@ export default async function AdminPage() {
   const cookieStore = await cookies()
   const siteSession = cookieStore.get('site_session')?.value
 
-  // Not logged in, or logged into a different site — show admin login page
   if (!user || siteSession !== 'admin') {
     return (
       <Suspense>
-        <LoginUI
-          programName="Platform Administration"
-          slug="admin"
-        />
+        <AdminLogin />
       </Suspense>
     )
   }
 
-  // Check if user is admin
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+  // Verify admin role via admin client (bypasses RLS)
+  const adminClient = createAdminClient()
+  const { data: profile } = await adminClient.from('profiles').select('role').eq('id', user.id).single()
 
   if (profile?.role !== 'admin') {
     return (
       <Suspense>
-        <UnauthorizedPage
-          programName="Platform Administration"
-          adminMode
-        />
+        <AdminLogin />
       </Suspense>
     )
   }
 
+  // Fetch admin's twitter token
+  const { data: twitterToken } = await adminClient
+    .from('twitter_tokens')
+    .select('twitter_handle')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
   // Admin — show dashboard
-  return <AdminDashboard />
+  return <AdminDashboard twitterHandle={twitterToken?.twitter_handle ?? null} hasTwitterToken={!!twitterToken} />
 }

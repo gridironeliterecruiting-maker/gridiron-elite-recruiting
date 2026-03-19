@@ -25,6 +25,30 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
     notFound()
   }
 
+  // Look up the athlete's managed program for branding
+  const { data: membership } = await admin
+    .from("program_members")
+    .select("program_id")
+    .eq("user_id", profile.id)
+    .maybeSingle()
+
+  let programBranding: { logo_url: string | null; primary_color: string | null; accent_color: string | null; school_name: string | null; mascot: string | null } | null = null
+  if (membership?.program_id) {
+    const { data: prog } = await admin
+      .from("managed_programs")
+      .select("logo_url, primary_color, accent_color, school_name, mascot")
+      .eq("id", membership.program_id)
+      .maybeSingle()
+    programBranding = prog
+  }
+
+  const logoSrc = programBranding?.logo_url || "/logo.png"
+  const logoAlt = programBranding
+    ? [programBranding.school_name, programBranding.mascot].filter(Boolean).join(" ")
+    : "Runway Recruit"
+  const primaryColor = programBranding?.primary_color || "hsl(224,76%,20%)"
+  const accentColor = programBranding?.accent_color || "hsl(0,72%,51%)"
+
   // Get visible documents (all types including folders)
   const { data: documents } = await admin
     .from("athlete_documents")
@@ -39,19 +63,21 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[hsl(224,76%,20%)] to-[hsl(220,20%,97%)]">
+    <div className="min-h-screen bg-gradient-to-b from-[hsl(220,20%,97%)] to-[hsl(220,20%,97%)]"
+      style={{ background: `linear-gradient(to bottom, ${primaryColor}, hsl(220,20%,97%))` }}
+    >
       {/* Top accent stripe */}
-      <div className="h-1 bg-[hsl(0,72%,51%)]" />
+      <div className="h-1" style={{ backgroundColor: accentColor }} />
 
       {/* Header content box */}
       <header className="px-4 pb-0 pt-3">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto flex max-w-3xl justify-center">
           <div className="flex items-center gap-6 sm:gap-8">
             {/* Logo — left */}
-            <div className="relative h-[160px] w-[160px] shrink-0 drop-shadow-lg sm:h-[200px] sm:w-[200px]">
+            <div className="relative h-[100px] w-[100px] shrink-0 drop-shadow-lg">
               <Image
-                src="/logo.png"
-                alt="Runway Recruit"
+                src={logoSrc}
+                alt={logoAlt}
                 fill
                 className="object-contain"
                 priority
@@ -59,7 +85,7 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
             </div>
 
             {/* Info — right, left-justified */}
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0">
               {/* Row 1: Name */}
               <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-white sm:text-3xl lg:text-4xl">
                 {fullName}
@@ -103,7 +129,8 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
                       href={profile.hudl_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="rounded-lg bg-[hsl(0,72%,51%)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[hsl(0,72%,45%)]"
+                      className="rounded-lg px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-80"
+                      style={{ backgroundColor: accentColor }}
                     >
                       Hudl
                     </a>
