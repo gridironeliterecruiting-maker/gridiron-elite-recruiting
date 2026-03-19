@@ -27,19 +27,21 @@ export async function GET() {
     const stripe = getStripe()
     const codes = await stripe.promotionCodes.list({ limit: 100, expand: ['data.coupon'] })
 
-    const formatted = codes.data.map(pc => ({
+    const formatted = codes.data.map(pc => {
+      const coupon = (pc as unknown as { coupon: Stripe.Coupon }).coupon
+      return {
       id: pc.id,
       code: pc.code,
-      percent_off: (pc.coupon as Stripe.Coupon).percent_off ?? null,
-      amount_off: (pc.coupon as Stripe.Coupon).amount_off ?? null,
-      currency: (pc.coupon as Stripe.Coupon).currency ?? null,
-      duration: (pc.coupon as Stripe.Coupon).duration,
-      duration_in_months: (pc.coupon as Stripe.Coupon).duration_in_months ?? null,
+      percent_off: coupon.percent_off ?? null,
+      amount_off: coupon.amount_off ?? null,
+      currency: coupon.currency ?? null,
+      duration: coupon.duration,
+      duration_in_months: coupon.duration_in_months ?? null,
       max_redemptions: pc.max_redemptions ?? null,
       times_redeemed: pc.times_redeemed,
       valid: pc.active,
       created: pc.created,
-    }))
+    }})
 
     return NextResponse.json({ codes: formatted })
   } catch (err: unknown) {
