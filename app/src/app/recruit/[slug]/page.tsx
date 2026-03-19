@@ -1,5 +1,6 @@
 import Image from "next/image"
 import { notFound } from "next/navigation"
+import { cookies } from "next/headers"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { formatGPA } from "@/lib/utils"
 import { RecruitDocuments } from "./recruit-documents"
@@ -25,21 +26,18 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
     notFound()
   }
 
-  // Use program branding if the athlete is a PLAYER in a managed program.
-  // Coaches who are also program members should not get program branding on their recruit page.
+  // Branding is determined by the VIEWER's site_session cookie, not the athlete's program membership.
+  // Main site viewers (or no cookie) always see Runway Recruit branding.
+  // Prairie-ia / cityhigh-ia viewers see that program's branding.
   let programBranding: { logo_url: string | null; primary_color: string | null; accent_color: string | null; school_name: string | null; mascot: string | null } | null = null
-  const { data: playerMembership } = await admin
-    .from("program_members")
-    .select("program_id")
-    .eq("user_id", profile.id)
-    .eq("role", "player")
-    .maybeSingle()
+  const cookieStore = await cookies()
+  const siteSession = cookieStore.get("site_session")?.value
 
-  if (playerMembership?.program_id) {
+  if (siteSession && siteSession !== "main" && siteSession !== "admin") {
     const { data: prog } = await admin
       .from("managed_programs")
       .select("logo_url, primary_color, accent_color, school_name, mascot")
-      .eq("id", playerMembership.program_id)
+      .eq("slug", siteSession)
       .maybeSingle()
     programBranding = prog
   }
