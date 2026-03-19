@@ -20,7 +20,6 @@ interface Profile {
   height: string | null
   weight: string | null
   gpa: string | null
-  jersey_number: string | null
   hudl_url: string | null
   twitter_handle: string | null
 }
@@ -64,7 +63,6 @@ export function ProfileForm({
     height: profile?.height || "",
     weight: profile?.weight || "",
     gpa: profile?.gpa || "",
-    jersey_number: profile?.jersey_number || "",
     hudl_url: profile?.hudl_url || "",
   })
   const [saving, setSaving] = useState(false)
@@ -102,7 +100,6 @@ export function ProfileForm({
         height: form.height,
         weight: form.weight,
         gpa: form.gpa,
-        jersey_number: form.jersey_number,
         hudl_url: form.hudl_url,
       })
       .eq("id", profile.id)
@@ -192,7 +189,6 @@ export function ProfileForm({
           <Field label="Height" value={form.height} onChange={(v) => update("height", v)} placeholder={`6'2"`} />
           <Field label="Weight" value={form.weight} onChange={(v) => update("weight", v)} placeholder="185 lbs" />
           <Field label="GPA" value={form.gpa} onChange={(v) => update("gpa", v)} placeholder="3.5" />
-          <Field label="Jersey Number" value={form.jersey_number} onChange={(v) => update("jersey_number", v)} placeholder="12" />
         </CardContent>
       </Card>
 

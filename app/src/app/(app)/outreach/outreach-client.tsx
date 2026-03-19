@@ -7,10 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
   Mail,
-  FileText,
-  ChevronRight,
-  Copy,
-  Eye,
   Send,
   Inbox,
   Plus,
@@ -141,7 +137,6 @@ export function OutreachClient({
 }: OutreachClientProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [showCreateCampaign, setShowCreateCampaign] = useState<'email' | 'dm' | null>(null)
   const [quickEmailData, setQuickEmailData] = useState<{
     goal: string | null
@@ -317,8 +312,8 @@ export function OutreachClient({
   const dmCampaigns = campaigns.filter(c => c.type === 'dm')
   const totalSent = emailCampaigns.reduce((sum, c) => sum + c.stats.sent, 0)
   const totalOpened = emailCampaigns.reduce((sum, c) => sum + c.stats.opened, 0)
-  const totalClicked = emailCampaigns.reduce((sum, c) => sum + c.stats.clicked, 0)
   const totalReplied = emailCampaigns.reduce((sum, c) => sum + c.stats.replied, 0)
+  const totalClicked = emailCampaigns.reduce((sum, c) => sum + c.stats.clicked, 0)
   const totalDmSent = dmCampaigns.reduce((sum, c) => sum + c.stats.sent, 0)
 
   return (
@@ -383,8 +378,8 @@ export function OutreachClient({
           { label: "Emails Sent", value: totalSent, icon: Send, color: "accent" },
           { label: "DMs Sent", value: totalDmSent, icon: MessageCircle, color: "primary" },
           { label: "Opened", value: totalOpened, icon: MailOpen, color: "primary" },
-          { label: "Clicked", value: totalClicked, icon: MousePointerClick, color: "primary" },
           { label: "Replied", value: totalReplied, icon: Reply, color: "primary" },
+          { label: "Clicks", value: totalClicked, icon: MousePointerClick, color: "primary" },
         ].map((stat) => (
           <Card key={stat.label} className="relative overflow-hidden">
             <div className={`absolute inset-x-0 top-0 h-0.5 ${stat.color === "accent" ? "bg-accent" : "bg-primary"}`} />
@@ -450,6 +445,33 @@ export function OutreachClient({
                   onDelete={() => window.location.reload()}
                 />
               ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent Activity */}
+      <Card className="flex flex-col">
+        <CardHeader className="flex-row items-center gap-2.5 pb-4">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10">
+            <Send className="h-4 w-4 text-accent" />
+          </div>
+          <CardTitle className="text-base font-bold">Recent Sends</CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 pt-0">
+          {totalSent > 0 ? (
+            <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+              <p>{totalSent} emails sent across {campaigns.filter(c => c.stats.sent > 0).length} campaigns</p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary">
+                <Inbox className="h-7 w-7 text-muted-foreground/40" />
+              </div>
+              <p className="mt-4 text-sm font-semibold text-foreground">No outreach sent yet</p>
+              <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">
+                Create a campaign to start sending outreach.
+              </p>
             </div>
           )}
         </CardContent>
