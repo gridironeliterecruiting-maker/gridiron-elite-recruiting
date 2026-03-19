@@ -25,19 +25,21 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
     notFound()
   }
 
-  // Look up the athlete's managed program for branding
-  const { data: membership } = await admin
-    .from("program_members")
-    .select("program_id")
-    .eq("user_id", profile.id)
-    .maybeSingle()
-
+  // Look up program branding only if the athlete registered via a program slug
+  // (not for main site users who may also be members of programs)
   let programBranding: { logo_url: string | null; primary_color: string | null; accent_color: string | null; school_name: string | null; mascot: string | null } | null = null
-  if (membership?.program_id) {
+  const { data: fullProfile } = await admin
+    .from("profiles")
+    .select("registered_via")
+    .eq("id", profile.id)
+    .single()
+
+  if (fullProfile?.registered_via?.startsWith("slug:")) {
+    const slugName = fullProfile.registered_via.replace("slug:", "")
     const { data: prog } = await admin
       .from("managed_programs")
       .select("logo_url, primary_color, accent_color, school_name, mascot")
-      .eq("id", membership.program_id)
+      .eq("landing_slug", slugName)
       .maybeSingle()
     programBranding = prog
   }

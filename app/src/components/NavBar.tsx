@@ -27,7 +27,7 @@ import {
 import { useActivePlayer } from "@/components/ActivePlayerContext"
 
 const athleteRoutes = [
-  { label: "Hub", icon: LayoutDashboard, path: "/dashboard" },
+  { label: "Hub", icon: LayoutDashboard, path: "/hub" },
   { label: "Programs", icon: Users, path: "/coaches" },
   { label: "Pipeline", icon: GitBranch, path: "/pipeline" },
   { label: "Outreach", icon: Mail, path: "/outreach" },
@@ -35,7 +35,7 @@ const athleteRoutes = [
 ]
 
 const coachRoutes = [
-  { label: "Hub", icon: LayoutDashboard, path: "/dashboard" },
+  { label: "Hub", icon: LayoutDashboard, path: "/hub" },
   { label: "Programs", icon: Users, path: "/coaches" },
   { label: "Outreach", icon: Mail, path: "/outreach" },
   { label: "Profile", icon: User, path: "/profile" },
@@ -112,7 +112,7 @@ export default function NavBar({
           <div className="mx-auto max-w-7xl px-4 lg:px-8">
             <div className="flex h-16 items-center justify-between">
               {/* Logo & Brand */}
-              <Link href={`${basePath}/dashboard`} className="relative flex items-center gap-3">
+              <Link href={`${basePath}/hub`} className="relative flex items-center gap-3">
                 <div className="relative -mb-5 shrink-0 drop-shadow-[0_6px_16px_rgba(0,0,0,0.5)]">
                   <div className="relative h-[72px] w-[72px] lg:h-[80px] lg:w-[80px]">
                     <Image
