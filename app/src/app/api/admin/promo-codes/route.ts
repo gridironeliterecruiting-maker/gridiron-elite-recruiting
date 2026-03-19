@@ -74,13 +74,13 @@ export async function POST(request: Request) {
     }
     const coupon = await stripe.coupons.create(couponParams)
 
-    // Create the promotion code (cast as any — SDK 2026 types removed top-level `coupon`,
-    // but the REST API still requires it)
-    const promoCode = await (stripe.promotionCodes.create as (params: Record<string, unknown>) => Promise<Stripe.PromotionCode>)({
+    // Create the promotion code — SDK 2026 types require `promotion` but REST API uses `coupon`
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const promoCode = await (stripe.promotionCodes.create as any)({
       coupon: coupon.id,
       code,
       ...(maxRedemptions ? { max_redemptions: maxRedemptions } : {}),
-    })
+    }) as Stripe.PromotionCode
 
     return NextResponse.json({
       code: {
