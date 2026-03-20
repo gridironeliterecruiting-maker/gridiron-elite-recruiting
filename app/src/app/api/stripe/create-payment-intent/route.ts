@@ -45,16 +45,20 @@ export async function POST(request: Request) {
     const invoiceRef = subscription.latest_invoice as any
     const invoiceId = typeof invoiceRef === 'string' ? invoiceRef : invoiceRef?.id
 
-    // Retrieve the invoice directly and dump its full structure for debugging
-    const invoice = await stripe.invoices.retrieve(invoiceId) as any
-    const invoiceKeys = Object.keys(invoice)
-    const piField = invoice.payment_intent
-    const piListRaw = await stripe.paymentIntents.list({ customer: customer.id, limit: 10 }) as any
-    const piSummary = piListRaw.data.map((pi: any) => `id=${pi.id} invoice=${pi.invoice} status=${pi.status}`).join(' | ')
+    // pi.invoice is not populated in list responses for this API version —
+    // find the active PI by status instead (we just canceled all stale ones above)
+    const piList = await stripe.paymentIntents.list({ customer: customer.id, limit: 10 }) as any
+    const paymentIntent = piList.data.find((pi: any) => pi.status === 'requires_payment_method')
+
+    if (!paymentIntent?.client_secret) {
+      return NextResponse.json({ error: `No active payment intent found. sub=${subscription.id}` }, { status: 500 })
+    }
 
     return NextResponse.json({
-      error: `inv_keys=${invoiceKeys.join(',')} | pi_field=${JSON.stringify(piField)?.slice(0,100)} | pis=${piSummary}`
-    }, { status: 500 })
+      clientSecret: paymentIntent.client_secret,
+      subscriptionId: subscription.id,
+      customerId: customer.id,
+    })
 
   } catch (error: any) {
     console.error('[create-payment-intent] type:', error?.constructor?.name, 'message:', error?.message, 'code:', error?.code, 'cause:', error?.cause?.message)
