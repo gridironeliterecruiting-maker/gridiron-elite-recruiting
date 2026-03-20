@@ -23,6 +23,12 @@ export async function POST(request: Request) {
     const customer = await findOrCreateCustomer(stripe, userEmail)
     const priceId = getPriceId(plan as 'monthly' | 'annual')
 
+    // Cancel any existing incomplete subscriptions for this customer to avoid stale state
+    const existingSubs = await stripe.subscriptions.list({ customer: customer.id, status: 'incomplete', limit: 5 })
+    for (const sub of existingSubs.data) {
+      await stripe.subscriptions.cancel(sub.id)
+    }
+
     // Create a subscription with payment_behavior='default_incomplete' so Stripe
     // returns a PaymentIntent we can confirm with Elements.
     const subscription = await stripe.subscriptions.create({
@@ -36,17 +42,20 @@ export async function POST(request: Request) {
       expand: ['latest_invoice.payment_intent'],
     })
 
-    const invoice = subscription.latest_invoice as any
-    const paymentIntent = invoice?.payment_intent as any
+    // Resolve the invoice — latest_invoice may be a string ID or expanded object
+    let invoice = subscription.latest_invoice as any
+    if (typeof invoice === 'string') {
+      invoice = await stripe.invoices.retrieve(invoice, { expand: ['payment_intent'] })
+    }
 
-    console.log('[create-payment-intent] sub.status:', subscription.status)
-    console.log('[create-payment-intent] invoice type:', typeof invoice, 'id:', invoice?.id)
-    console.log('[create-payment-intent] pi type:', typeof paymentIntent, 'status:', paymentIntent?.status, 'has_secret:', !!paymentIntent?.client_secret)
+    // Resolve the payment intent — may be a string ID or expanded object
+    let paymentIntent = invoice?.payment_intent as any
+    if (typeof paymentIntent === 'string') {
+      paymentIntent = await stripe.paymentIntents.retrieve(paymentIntent)
+    }
 
     if (!paymentIntent?.client_secret) {
-      return NextResponse.json({
-        error: `sub.status=${subscription.status} | invoice=${typeof invoice}:${invoice?.id ?? invoice} | pi=${typeof paymentIntent}:${paymentIntent?.status ?? paymentIntent}`
-      }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to create payment intent' }, { status: 500 })
     }
 
     return NextResponse.json({
