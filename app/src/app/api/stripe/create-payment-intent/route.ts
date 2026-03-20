@@ -43,23 +43,25 @@ export async function POST(request: Request) {
       expand: ['latest_invoice.payment_intent'],
     })
 
-    // Resolve the invoice — latest_invoice may be a string ID or expanded object
-    let invoice = subscription.latest_invoice as any
-    if (typeof invoice === 'string') {
-      invoice = await stripe.invoices.retrieve(invoice, { expand: ['payment_intent'] })
-    } else if (!invoice?.payment_intent) {
-      // Nested expand didn't populate payment_intent — retrieve explicitly
-      invoice = await stripe.invoices.retrieve(invoice.id, { expand: ['payment_intent'] })
-    }
+    // Resolve the invoice ID
+    const invoiceRef = subscription.latest_invoice as any
+    const invoiceId = typeof invoiceRef === 'string' ? invoiceRef : invoiceRef?.id
 
-    // Resolve the payment intent — may be a string ID or expanded object
-    let paymentIntent = invoice?.payment_intent as any
+    // Resolve the payment intent — try invoice expand first, then fall back to
+    // listing PaymentIntents for this customer filtered by invoice ID.
+    let paymentIntent: any = typeof invoiceRef === 'object' ? invoiceRef?.payment_intent : undefined
     if (typeof paymentIntent === 'string') {
       paymentIntent = await stripe.paymentIntents.retrieve(paymentIntent)
     }
 
+    if (!paymentIntent?.client_secret && invoiceId) {
+      // Stripe API version may not populate payment_intent via expand — look it up directly
+      const pis = await stripe.paymentIntents.list({ customer: customer.id, limit: 10 }) as any
+      paymentIntent = pis.data.find((pi: any) => pi.invoice === invoiceId)
+    }
+
     if (!paymentIntent?.client_secret) {
-      const debugInfo = `sub=${subscription.id} status=${subscription.status} inv_type=${typeof invoice} inv_id=${invoice?.id} inv_status=${invoice?.status} inv_collection=${invoice?.collection_method} pi_type=${typeof paymentIntent} pi=${JSON.stringify(paymentIntent)?.slice(0,200)}`
+      const debugInfo = `sub=${subscription.id} status=${subscription.status} inv_id=${invoiceId} pi=${JSON.stringify(paymentIntent)?.slice(0, 200)}`
       console.error('[create-payment-intent] missing client_secret:', debugInfo)
       return NextResponse.json({ error: debugInfo }, { status: 500 })
     }
