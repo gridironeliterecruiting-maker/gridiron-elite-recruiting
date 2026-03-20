@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       customerId: customer.id,
     })
   } catch (error: any) {
-    console.error('[create-payment-intent]', error)
+    console.error('[create-payment-intent] type:', error?.constructor?.name, 'message:', error?.message, 'code:', error?.code, 'cause:', error?.cause?.message)
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })
   }
 }
