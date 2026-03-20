@@ -25,10 +25,11 @@ export async function GET() {
 
   try {
     const stripe = getStripe()
-    const codes = await stripe.promotionCodes.list({ limit: 100, expand: ['data.coupon'] })
+    const codes = await stripe.promotionCodes.list({ limit: 100, expand: ['data.promotion.coupon'] })
 
     const formatted = codes.data.map(pc => {
-      const coupon = pc.coupon as Stripe.Coupon
+      const promo = pc.promotion as { coupon: Stripe.Coupon; type: string }
+      const coupon = promo.coupon
       return {
         id: pc.id,
         code: pc.code,
