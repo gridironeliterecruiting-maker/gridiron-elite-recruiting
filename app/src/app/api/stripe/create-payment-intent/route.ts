@@ -44,7 +44,9 @@ export async function POST(request: Request) {
     console.log('[create-payment-intent] pi type:', typeof paymentIntent, 'status:', paymentIntent?.status, 'has_secret:', !!paymentIntent?.client_secret)
 
     if (!paymentIntent?.client_secret) {
-      return NextResponse.json({ error: 'Failed to create payment intent' }, { status: 500 })
+      return NextResponse.json({
+        error: `sub.status=${subscription.status} | invoice=${typeof invoice}:${invoice?.id ?? invoice} | pi=${typeof paymentIntent}:${paymentIntent?.status ?? paymentIntent}`
+      }, { status: 500 })
     }
 
     return NextResponse.json({
