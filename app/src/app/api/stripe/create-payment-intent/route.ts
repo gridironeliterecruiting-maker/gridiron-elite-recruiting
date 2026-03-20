@@ -47,6 +47,9 @@ export async function POST(request: Request) {
     let invoice = subscription.latest_invoice as any
     if (typeof invoice === 'string') {
       invoice = await stripe.invoices.retrieve(invoice, { expand: ['payment_intent'] })
+    } else if (!invoice?.payment_intent) {
+      // Nested expand didn't populate payment_intent — retrieve explicitly
+      invoice = await stripe.invoices.retrieve(invoice.id, { expand: ['payment_intent'] })
     }
 
     // Resolve the payment intent — may be a string ID or expanded object
