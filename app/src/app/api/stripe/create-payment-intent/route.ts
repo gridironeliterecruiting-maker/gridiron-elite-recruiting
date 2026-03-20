@@ -29,8 +29,6 @@ export async function POST(request: Request) {
       await stripe.subscriptions.cancel(sub.id)
     }
 
-    // Create the subscription. collection_method must be charge_automatically
-    // so Stripe generates a PaymentIntent (send_invoice skips it).
     const subscription = await stripe.subscriptions.create({
       customer: customer.id,
       items: [{ price: priceId }],
@@ -43,34 +41,21 @@ export async function POST(request: Request) {
       expand: ['latest_invoice.payment_intent'],
     })
 
-    // Resolve the invoice ID
+    // Get the invoice ID
     const invoiceRef = subscription.latest_invoice as any
     const invoiceId = typeof invoiceRef === 'string' ? invoiceRef : invoiceRef?.id
 
-    // Resolve the payment intent — try invoice expand first, then fall back to
-    // listing PaymentIntents for this customer filtered by invoice ID.
-    let paymentIntent: any = typeof invoiceRef === 'object' ? invoiceRef?.payment_intent : undefined
-    if (typeof paymentIntent === 'string') {
-      paymentIntent = await stripe.paymentIntents.retrieve(paymentIntent)
-    }
-
-    if (!paymentIntent?.client_secret && invoiceId) {
-      // Stripe API version may not populate payment_intent via expand — look it up directly
-      const pis = await stripe.paymentIntents.list({ customer: customer.id, limit: 10 }) as any
-      paymentIntent = pis.data.find((pi: any) => pi.invoice === invoiceId)
-    }
-
-    if (!paymentIntent?.client_secret) {
-      const debugInfo = `sub=${subscription.id} status=${subscription.status} inv_id=${invoiceId} pi=${JSON.stringify(paymentIntent)?.slice(0, 200)}`
-      console.error('[create-payment-intent] missing client_secret:', debugInfo)
-      return NextResponse.json({ error: debugInfo }, { status: 500 })
-    }
+    // Retrieve the invoice directly and dump its full structure for debugging
+    const invoice = await stripe.invoices.retrieve(invoiceId) as any
+    const invoiceKeys = Object.keys(invoice)
+    const piField = invoice.payment_intent
+    const piListRaw = await stripe.paymentIntents.list({ customer: customer.id, limit: 10 }) as any
+    const piSummary = piListRaw.data.map((pi: any) => `id=${pi.id} invoice=${pi.invoice} status=${pi.status}`).join(' | ')
 
     return NextResponse.json({
-      clientSecret: paymentIntent.client_secret,
-      subscriptionId: subscription.id,
-      customerId: customer.id,
-    })
+      error: `inv_keys=${invoiceKeys.join(',')} | pi_field=${JSON.stringify(piField)?.slice(0,100)} | pis=${piSummary}`
+    }, { status: 500 })
+
   } catch (error: any) {
     console.error('[create-payment-intent] type:', error?.constructor?.name, 'message:', error?.message, 'code:', error?.code, 'cause:', error?.cause?.message)
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })
