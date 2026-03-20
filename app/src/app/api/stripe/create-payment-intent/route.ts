@@ -29,11 +29,12 @@ export async function POST(request: Request) {
       await stripe.subscriptions.cancel(sub.id)
     }
 
-    // Create a subscription with payment_behavior='default_incomplete' so Stripe
-    // returns a PaymentIntent we can confirm with Elements.
+    // Create the subscription. collection_method must be charge_automatically
+    // so Stripe generates a PaymentIntent (send_invoice skips it).
     const subscription = await stripe.subscriptions.create({
       customer: customer.id,
       items: [{ price: priceId }],
+      collection_method: 'charge_automatically',
       payment_behavior: 'default_incomplete',
       payment_settings: {
         save_default_payment_method: 'on_subscription',
@@ -55,7 +56,9 @@ export async function POST(request: Request) {
     }
 
     if (!paymentIntent?.client_secret) {
-      return NextResponse.json({ error: 'Failed to create payment intent' }, { status: 500 })
+      const debugInfo = `sub=${subscription.id} status=${subscription.status} inv_type=${typeof invoice} inv_id=${invoice?.id} inv_status=${invoice?.status} inv_collection=${invoice?.collection_method} pi_type=${typeof paymentIntent} pi=${JSON.stringify(paymentIntent)?.slice(0,200)}`
+      console.error('[create-payment-intent] missing client_secret:', debugInfo)
+      return NextResponse.json({ error: debugInfo }, { status: 500 })
     }
 
     return NextResponse.json({
