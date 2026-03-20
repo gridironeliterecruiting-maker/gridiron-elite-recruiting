@@ -39,6 +39,10 @@ export async function POST(request: Request) {
     const invoice = subscription.latest_invoice as any
     const paymentIntent = invoice?.payment_intent as any
 
+    console.log('[create-payment-intent] sub.status:', subscription.status)
+    console.log('[create-payment-intent] invoice type:', typeof invoice, 'id:', invoice?.id)
+    console.log('[create-payment-intent] pi type:', typeof paymentIntent, 'status:', paymentIntent?.status, 'has_secret:', !!paymentIntent?.client_secret)
+
     if (!paymentIntent?.client_secret) {
       return NextResponse.json({ error: 'Failed to create payment intent' }, { status: 500 })
     }
