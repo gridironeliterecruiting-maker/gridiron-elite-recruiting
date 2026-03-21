@@ -292,8 +292,9 @@ export function ContentCalendar({ profile }: ContentCalendarProps) {
 
         {/* Header + weekly counter */}
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-display text-sm font-bold uppercase tracking-wider text-foreground">
-            Post on X
+          <h3 className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wider text-foreground">
+            <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-black font-black text-white" style={{ fontSize: 11 }}>X</span>
+            Quick Post
           </h3>
           <div
             className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-colors ${
