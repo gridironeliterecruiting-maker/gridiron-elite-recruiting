@@ -22,6 +22,7 @@ interface Profile {
   gpa: string | null
   hudl_url: string | null
   twitter_handle: string | null
+  instagram_handle: string | null
 }
 
 const inputClass =
@@ -64,6 +65,7 @@ export function ProfileForm({
     weight: profile?.weight || "",
     gpa: profile?.gpa || "",
     hudl_url: profile?.hudl_url || "",
+    instagram_handle: profile?.instagram_handle || "",
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -101,6 +103,7 @@ export function ProfileForm({
         weight: form.weight,
         gpa: form.gpa,
         hudl_url: form.hudl_url,
+        instagram_handle: form.instagram_handle || null,
       })
       .eq("id", profile.id)
     setSaving(false)
@@ -199,6 +202,7 @@ export function ProfileForm({
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <Field label="Hudl Profile URL" value={form.hudl_url} onChange={(v) => update("hudl_url", v)} placeholder="https://www.hudl.com/profile/..." />
+          <Field label="Instagram Handle" value={form.instagram_handle} onChange={(v) => update("instagram_handle", v)} placeholder="@yourhandle" />
 
           {/* X / Twitter — OAuth managed */}
           <div>

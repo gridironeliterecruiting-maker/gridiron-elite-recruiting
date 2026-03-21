@@ -28,6 +28,7 @@ interface AthleteProfile {
   city: string | null
   state: string | null
   twitter_handle: string | null
+  instagram_handle: string | null
 }
 
 interface TwitterProfile {
@@ -259,8 +260,14 @@ export function HubClient({
               {/* X Partner Profiles */}
               <XPartnerProfiles />
 
-              {/* Instagram placeholder */}
-              <InstagramPlaceholder />
+              {/* Instagram card */}
+              <InstagramPlaceholder
+                instagramHandle={profile.instagram_handle}
+                firstName={profile.first_name}
+                lastName={profile.last_name}
+                position={profile.position}
+                gradYear={profile.grad_year}
+              />
             </>
           )}
 
