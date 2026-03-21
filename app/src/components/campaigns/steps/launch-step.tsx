@@ -358,6 +358,7 @@ export function LaunchStep({
           onClick={() => {
             if (!campaignName.trim()) {
               setNameError(true)
+              nameInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
               nameInputRef.current?.focus()
               return
             }

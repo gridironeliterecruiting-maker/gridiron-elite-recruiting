@@ -87,6 +87,7 @@ export function DmComposeStep({
   const handleCreate = async () => {
     if (!campaignName.trim()) {
       setNameError(true)
+      nameInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       nameInputRef.current?.focus()
       return
     }
