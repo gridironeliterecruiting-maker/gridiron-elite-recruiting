@@ -17,6 +17,8 @@ import {
   Pencil,
   ArrowUpDown,
   Plus,
+  FileText,
+  X as XClose,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -71,6 +73,7 @@ interface CampaignDetails {
     id: string
     step_number: number
     subject: string
+    body: string
     send_after_days: number
   }>
   programsWithRecipients: ProgramGroup[]
@@ -201,6 +204,8 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
   const [sortField, setSortField] = useState<'opened' | 'clicked' | null>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const [showGoalPicker, setShowGoalPicker] = useState(false)
+  const [showTemplateViewer, setShowTemplateViewer] = useState(false)
+  const [selectedTemplateIndex, setSelectedTemplateIndex] = useState(0)
 
   useEffect(() => {
     document.body.style.overflow = "hidden"
@@ -460,7 +465,30 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
             <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
               <div className="flex flex-col gap-6">
                 {/* Stats Row */}
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  {/* Templates Used */}
+                  <Card className="flex items-center gap-3 p-4">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Templates Used</p>
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-2xl font-bold text-foreground">{campaign.emails.length}</p>
+                        {campaign.emails.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => { setSelectedTemplateIndex(0); setShowTemplateViewer(true) }}
+                            className="flex items-center gap-0.5 text-[11px] font-semibold text-primary transition-colors hover:text-primary/80"
+                          >
+                            View
+                            <ChevronRight className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+
                   {[
                     { label: "Recipients", value: campaign.stats.total, icon: Users },
                     { label: "Open Rate", value: `${openRate}%`, icon: MailOpen },
@@ -614,6 +642,67 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
           program={selectedCoachData.program}
           onClose={() => setSelectedCoachData(null)}
         />
+      )}
+
+      {showTemplateViewer && campaign && campaign.emails.length > 0 && (
+        <>
+          <div
+            className="fixed inset-0 z-[65] bg-black/30"
+            onClick={() => setShowTemplateViewer(false)}
+          />
+          <div className="animate-in slide-in-from-right fixed inset-y-0 right-0 z-[70] flex w-full flex-col bg-background shadow-2xl duration-200 sm:w-[500px] sm:border-l sm:border-border">
+            {/* Header */}
+            <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setShowTemplateViewer(false)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-secondary"
+                aria-label="Close"
+              >
+                <XClose className="h-4 w-4" />
+              </button>
+
+              {/* Numbered tabs */}
+              <div className="flex items-center gap-1">
+                {campaign.emails.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setSelectedTemplateIndex(i)}
+                    className={`flex h-7 w-7 items-center justify-center rounded text-xs font-bold transition-colors ${
+                      selectedTemplateIndex === i
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+
+              <span className="text-sm font-semibold text-muted-foreground">
+                Template{campaign.emails.length > 1 ? "s" : ""} Used
+              </span>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-5">
+              {campaign.emails[selectedTemplateIndex] && (
+                <>
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Subject</p>
+                  <p className="mb-5 text-sm font-semibold text-foreground">
+                    {campaign.emails[selectedTemplateIndex].subject}
+                  </p>
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Body</p>
+                  <div
+                    className="rounded-lg border border-border bg-secondary/20 p-4 text-sm leading-relaxed text-foreground"
+                    dangerouslySetInnerHTML={{ __html: campaign.emails[selectedTemplateIndex].body }}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </>
   )
