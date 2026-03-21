@@ -8,7 +8,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { provisionZohoAccount } from '@/lib/workspace'
+import { provisionZohoAccount, getZohoAccessToken } from '@/lib/workspace'
 
 const ADMIN_SECRET = process.env.ADMIN_API_SECRET || 'runway-reprovision-2026'
 
@@ -49,7 +49,35 @@ export async function GET(req: NextRequest) {
   const lastName = profile.last_name || userId.slice(0, 6)
 
   try {
-    const accountKey = await provisionZohoAccount(username, firstName, lastName)
+    let accountKey: string
+    try {
+      accountKey = await provisionZohoAccount(username, firstName, lastName)
+    } catch (provisionErr) {
+      const msg = String(provisionErr)
+      // If the account already exists in Zoho, look it up by email
+      if (msg.includes('Email Id already added') || msg.includes('1000')) {
+        const token = await getZohoAccessToken()
+        const listRes = await fetch(
+          `https://mail360.zoho.com/api/accounts?limit=200`,
+          { headers: { Authorization: `Zoho-oauthtoken ${token}` } }
+        )
+        const listData = await listRes.json()
+        const accounts: { account_key: string; emailAddress: { emailAddress: string }[] }[] =
+          listData?.data || []
+        const match = accounts.find(a =>
+          a.emailAddress?.some(e => e.emailAddress === profile.workspace_email)
+        )
+        if (!match) {
+          return NextResponse.json({
+            error: `Account exists in Zoho but could not find it by email ${profile.workspace_email}. Raw list: ${JSON.stringify(accounts.map(a => a.emailAddress))}`,
+          }, { status: 500 })
+        }
+        accountKey = match.account_key
+      } else {
+        throw provisionErr
+      }
+    }
+
     await admin
       .from('profiles')
       .update({ zoho_account_key: accountKey })
