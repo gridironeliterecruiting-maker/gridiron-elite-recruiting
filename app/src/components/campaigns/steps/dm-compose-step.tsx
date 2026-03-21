@@ -41,9 +41,9 @@ export function DmComposeStep({
   onCreateDmCampaign,
   onBack,
 }: DmComposeStepProps) {
-  const [campaignName, setCampaignName] = useState(
-    `DM — ${goal.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}`
-  )
+  const [campaignName, setCampaignName] = useState("")
+  const [nameError, setNameError] = useState(false)
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const [messageBody, setMessageBody] = useState(GOAL_DM_TEMPLATES[goal])
   const [showPreview, setShowPreview] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
@@ -85,7 +85,12 @@ export function DmComposeStep({
   }
 
   const handleCreate = async () => {
-    if (!campaignName.trim() || !messageBody.trim()) return
+    if (!campaignName.trim()) {
+      setNameError(true)
+      nameInputRef.current?.focus()
+      return
+    }
+    if (!messageBody.trim()) return
     setIsCreating(true)
     setError(null)
     try {
@@ -99,7 +104,6 @@ export function DmComposeStep({
   }
 
   const canCreate =
-    campaignName.trim().length > 0 &&
     messageBody.trim().length > 0 &&
     selectedCoaches.length > 0
 
@@ -116,17 +120,28 @@ export function DmComposeStep({
       <div className="mb-6">
         <label
           htmlFor="dm-campaign-name"
-          className="mb-2 block text-xs font-medium text-foreground"
+          className="mb-2 flex items-center gap-1 text-xs font-medium text-foreground"
         >
           Campaign Name
+          <span className="text-red-500">*</span>
+          {nameError && (
+            <span className="ml-1 text-[10px] font-semibold text-red-500">
+              — required
+            </span>
+          )}
         </label>
         <input
+          ref={nameInputRef}
           id="dm-campaign-name"
           type="text"
           value={campaignName}
-          onChange={(e) => setCampaignName(e.target.value)}
-          className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          onChange={(e) => { setCampaignName(e.target.value); if (e.target.value.trim()) setNameError(false) }}
           placeholder="e.g., DM — Film Drop"
+          className={`w-full rounded-md border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 ${
+            nameError
+              ? "border-red-400 bg-red-50/50 focus:border-red-400 focus:ring-red-400/30 dark:bg-red-950/20"
+              : "border-border bg-card focus:border-primary focus:ring-primary"
+          }`}
         />
       </div>
 

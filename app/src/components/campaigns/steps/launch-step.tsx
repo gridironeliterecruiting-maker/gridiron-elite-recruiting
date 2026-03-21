@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import {
   Target,
   Mail,
@@ -66,7 +66,9 @@ export function LaunchStep({
   onBack,
   onLaunched,
 }: LaunchStepProps) {
-  const [campaignName, setCampaignName] = useState("Initial Email 1")
+  const [campaignName, setCampaignName] = useState("")
+  const [nameError, setNameError] = useState(false)
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const [launching, setLaunching] = useState(false)
   const [launchError, setLaunchError] = useState<string | null>(null)
   const [launchSuccess, setLaunchSuccess] = useState(false)
@@ -172,14 +174,26 @@ export function LaunchStep({
       <div className="flex flex-col gap-4">
         {/* Campaign Name */}
         <Card className="p-4">
-          <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <label className="mb-2 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             Campaign Name
+            <span className="text-red-500">*</span>
+            {nameError && (
+              <span className="ml-1 text-[10px] font-semibold normal-case tracking-normal text-red-500">
+                — required before launching
+              </span>
+            )}
           </label>
           <input
+            ref={nameInputRef}
             type="text"
             value={campaignName}
-            onChange={(e) => setCampaignName(e.target.value)}
-            className="max-w-md rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground placeholder:text-muted-foreground/50 focus:border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/30"
+            onChange={(e) => { setCampaignName(e.target.value); if (e.target.value.trim()) setNameError(false) }}
+            placeholder="Give this campaign a name..."
+            className={`w-full max-w-md rounded-md border px-3 py-2 text-sm font-semibold text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 ${
+              nameError
+                ? "border-red-400 bg-red-50/50 focus:border-red-400 focus:ring-red-400/30 dark:bg-red-950/20"
+                : "border-border bg-card focus:border-primary/30 focus:ring-primary/30"
+            }`}
           />
         </Card>
 
@@ -341,7 +355,14 @@ export function LaunchStep({
         </button>
         <button
           type="button"
-          onClick={() => setShowConfirmLaunch(true)}
+          onClick={() => {
+            if (!campaignName.trim()) {
+              setNameError(true)
+              nameInputRef.current?.focus()
+              return
+            }
+            setShowConfirmLaunch(true)
+          }}
           disabled={launching || launchSuccess}
           className="inline-flex items-center gap-2 rounded-md bg-accent px-6 py-2.5 text-sm font-semibold text-accent-foreground transition-all hover:bg-accent/90 shadow-sm disabled:opacity-50"
         >
