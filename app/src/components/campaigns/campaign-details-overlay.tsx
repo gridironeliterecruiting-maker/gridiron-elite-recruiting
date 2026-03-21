@@ -74,7 +74,7 @@ interface CampaignDetails {
     step_number: number
     subject: string
     body: string
-    send_after_days: number
+    delay_days: number
   }>
   programsWithRecipients: ProgramGroup[]
 }
@@ -521,9 +521,9 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-semibold text-foreground">{email.subject}</p>
                             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                              {email.send_after_days === 0
+                              {email.delay_days === 0
                                 ? 'Send immediately'
-                                : `Send after ${email.send_after_days} day${email.send_after_days > 1 ? 's' : ''}`}
+                                : `Send after ${email.delay_days} day${email.delay_days > 1 ? 's' : ''}`}
                             </p>
                           </div>
                         </Card>
