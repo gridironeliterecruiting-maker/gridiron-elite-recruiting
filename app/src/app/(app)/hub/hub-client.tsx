@@ -260,14 +260,6 @@ export function HubClient({
               {/* X Partner Profiles */}
               <XPartnerProfiles />
 
-              {/* Instagram card */}
-              <InstagramPlaceholder
-                instagramHandle={profile.instagram_handle}
-                firstName={profile.first_name}
-                lastName={profile.last_name}
-                position={profile.position}
-                gradYear={profile.grad_year}
-              />
             </>
           )}
 
@@ -315,6 +307,15 @@ export function HubClient({
             <>
               {/* Content calendar */}
               <ContentCalendar profile={profile} />
+
+              {/* Instagram card */}
+              <InstagramPlaceholder
+                instagramHandle={profile.instagram_handle}
+                firstName={profile.first_name}
+                lastName={profile.last_name}
+                position={profile.position}
+                gradYear={profile.grad_year}
+              />
 
               {/* Action items + outreach stats */}
               <HubActionItems
