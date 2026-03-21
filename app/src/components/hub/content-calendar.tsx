@@ -288,32 +288,31 @@ export function ContentCalendar({ profile }: ContentCalendarProps) {
 
   return (
     <Card className="overflow-hidden">
-      <div className="p-5 sm:p-6">
-
-        {/* Header + weekly counter */}
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wider text-foreground">
-            <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-black font-black text-white" style={{ fontSize: 11 }}>X</span>
-            Quick Post
-          </h3>
-          <div
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-colors ${
-              isComplete
-                ? "bg-green-100 text-green-700"
-                : "bg-secondary text-muted-foreground"
-            }`}
-          >
-            {isComplete ? (
-              <>
-                <Check className="h-3 w-3" />
-                Week Complete
-              </>
-            ) : (
-              <>{weeklyCount}/{GOAL} this week</>
-            )}
-          </div>
+      {/* Header + weekly counter */}
+      <div className="flex items-center justify-between px-5 py-4 sm:px-6">
+        <h3 className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wider text-foreground">
+          <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-black font-black text-white" style={{ fontSize: 11 }}>X</span>
+          Quick Post
+        </h3>
+        <div
+          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-colors ${
+            isComplete
+              ? "bg-green-100 text-green-700"
+              : "bg-secondary text-muted-foreground"
+          }`}
+        >
+          {isComplete ? (
+            <>
+              <Check className="h-3 w-3" />
+              Week Complete
+            </>
+          ) : (
+            <>{weeklyCount}/{GOAL} this week</>
+          )}
         </div>
+      </div>
 
+      <div className="px-5 pb-5 sm:px-6 sm:pb-6">
         {/* Category pills */}
         <div className="mb-3 flex flex-wrap gap-1.5">
           {CATEGORIES.map((cat) => (
