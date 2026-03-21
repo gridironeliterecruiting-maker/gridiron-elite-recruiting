@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { Card } from "@/components/ui/card"
-import { Check, ExternalLink, RefreshCw } from "lucide-react"
+import { AlertTriangle, Check, ExternalLink, RefreshCw } from "lucide-react"
 
 interface AthleteProfile {
   first_name: string | null
@@ -353,10 +353,10 @@ export function ContentCalendar({ profile }: ContentCalendarProps) {
                   <button
                     type="button"
                     onClick={handleDone}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-md bg-green-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-green-700"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-md bg-yellow-400 px-3 py-2 text-xs font-bold text-yellow-900 transition-colors hover:bg-yellow-500"
                   >
-                    <Check className="h-3 w-3" />
-                    Done — I Posted
+                    <AlertTriangle className="h-3 w-3" />
+                    Click if you completed your post on X.
                   </button>
                 ) : (
                   <button
