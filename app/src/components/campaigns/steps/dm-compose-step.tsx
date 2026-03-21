@@ -87,7 +87,20 @@ export function DmComposeStep({
   const handleCreate = async () => {
     if (!campaignName.trim()) {
       setNameError(true)
-      nameInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      const el = nameInputRef.current
+      if (el) {
+        let parent = el.parentElement
+        while (parent && parent !== document.body) {
+          const oy = window.getComputedStyle(parent).overflowY
+          if (oy === 'auto' || oy === 'scroll') {
+            const rect = el.getBoundingClientRect()
+            const parentRect = parent.getBoundingClientRect()
+            parent.scrollTo({ top: parent.scrollTop + rect.top - parentRect.top - 100, behavior: 'smooth' })
+            break
+          }
+          parent = parent.parentElement
+        }
+      }
       nameInputRef.current?.focus()
       return
     }

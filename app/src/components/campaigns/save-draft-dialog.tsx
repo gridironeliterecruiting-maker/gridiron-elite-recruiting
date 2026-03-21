@@ -11,7 +11,7 @@ interface SaveDraftDialogProps {
   defaultTitle?: string
 }
 
-export function SaveDraftDialog({ isOpen, onSave, onDelete, onCancel, defaultTitle = "Untitled Campaign" }: SaveDraftDialogProps) {
+export function SaveDraftDialog({ isOpen, onSave, onDelete, onCancel, defaultTitle = "" }: SaveDraftDialogProps) {
   const [title, setTitle] = useState(defaultTitle)
 
   if (!isOpen) return null
@@ -41,8 +41,9 @@ export function SaveDraftDialog({ isOpen, onSave, onDelete, onCancel, defaultTit
           </p>
 
           <div className="mb-6">
-            <label htmlFor="campaign-title" className="mb-2 block text-sm font-medium text-foreground">
+            <label htmlFor="campaign-title" className="mb-2 flex items-center gap-1 text-sm font-medium text-foreground">
               Campaign Title
+              <span className="text-red-500">*</span>
             </label>
             <input
               id="campaign-title"
@@ -50,7 +51,7 @@ export function SaveDraftDialog({ isOpen, onSave, onDelete, onCancel, defaultTit
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              placeholder="Enter campaign title..."
+              placeholder="Give this campaign a name..."
               autoFocus
             />
           </div>
