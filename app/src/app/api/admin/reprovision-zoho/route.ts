@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
       if (msg.includes('Email Id already added') || msg.includes('1000')) {
         const token = await getZohoAccessToken()
         const listRes = await fetch(
-          `https://mail360.zoho.com/api/accounts?limit=200`,
+          `https://mail360.zoho.com/api/accounts`,
           { headers: { Authorization: `Zoho-oauthtoken ${token}` } }
         )
         const listData = await listRes.json()
