@@ -4,7 +4,7 @@ import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Save, Check, Link2, Unlink, X, Loader2 } from "lucide-react"
+import { Save, Check, Link2, Unlink, X, Loader2, Info } from "lucide-react"
 
 interface Profile {
   id: string
@@ -21,6 +21,7 @@ interface Profile {
   weight: string | null
   gpa: string | null
   hudl_url: string | null
+  primary_video_url: string | null
   twitter_handle: string | null
   instagram_handle: string | null
 }
@@ -65,6 +66,7 @@ export function ProfileForm({
     weight: profile?.weight || "",
     gpa: profile?.gpa || "",
     hudl_url: profile?.hudl_url || "",
+    primary_video_url: profile?.primary_video_url || "",
     instagram_handle: profile?.instagram_handle || "",
   })
   const [saving, setSaving] = useState(false)
@@ -103,6 +105,7 @@ export function ProfileForm({
         weight: form.weight,
         gpa: form.gpa,
         hudl_url: form.hudl_url,
+        primary_video_url: form.primary_video_url || null,
         instagram_handle: form.instagram_handle || null,
       })
       .eq("id", profile.id)
@@ -172,7 +175,7 @@ export function ProfileForm({
           </div>
 
           <Field label="Phone" value={form.phone} onChange={(v) => update("phone", v)} placeholder="(555) 123-4567" />
-          <div />
+          <Field label="GPA" value={form.gpa} onChange={(v) => update("gpa", v)} placeholder="3.5" />
           <Field label="City" value={form.city} onChange={(v) => update("city", v)} placeholder="Cedar Rapids" />
           <Field label="State" value={form.state} onChange={(v) => update("state", v)} placeholder="IA" />
         </CardContent>
@@ -191,16 +194,34 @@ export function ProfileForm({
           </div>
           <Field label="Height" value={form.height} onChange={(v) => update("height", v)} placeholder={`6'2"`} />
           <Field label="Weight" value={form.weight} onChange={(v) => update("weight", v)} placeholder="185 lbs" />
-          <Field label="GPA" value={form.gpa} onChange={(v) => update("gpa", v)} placeholder="3.5" />
         </CardContent>
       </Card>
 
-      {/* Recruiting Profiles & Email */}
+      {/* Socials, Links, & Email */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Recruiting Profiles & Email</CardTitle>
+          <CardTitle className="text-base">Socials, Links, & Email</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
+          {/* Primary Video Link */}
+          <div>
+            <label className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Primary Video Link
+              <span className="group relative inline-flex">
+                <Info className="h-3.5 w-3.5 cursor-pointer text-muted-foreground/60 hover:text-primary" />
+                <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-72 -translate-x-1/2 rounded-lg border border-border bg-popover px-3 py-2.5 text-[11px] font-normal normal-case tracking-normal text-popover-foreground opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+                  Your primary video link will be used whenever you&apos;re targeting coaches you want to evaluate your film. It is your best highlight reel and should start automatically for coaches. It is highly recommended to use a link to your video on your X account.
+                </span>
+              </span>
+            </label>
+            <input
+              type="url"
+              value={form.primary_video_url}
+              onChange={(e) => update("primary_video_url", e.target.value)}
+              placeholder="https://x.com/yourhandle/status/..."
+              className={inputClass}
+            />
+          </div>
           <Field label="Hudl Profile URL" value={form.hudl_url} onChange={(v) => update("hudl_url", v)} placeholder="https://www.hudl.com/profile/..." />
           <Field label="Instagram Handle" value={form.instagram_handle} onChange={(v) => update("instagram_handle", v)} placeholder="@yourhandle" />
 
