@@ -49,7 +49,7 @@ DNS verified: SPF, DKIM, DMARC, MX in GoDaddy → Zoho
 
 ---
 
-## In-App Email Tab — Spec (Not Yet Built)
+## In-App Email Tab ✅ Built (`app/src/app/(app)/email/`)
 
 Route: `/email`. Nav item between Campaigns and Profile. Nav rename: Outreach → Campaigns.
 

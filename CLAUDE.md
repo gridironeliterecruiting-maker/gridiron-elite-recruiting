@@ -102,12 +102,14 @@ Cookie: `site_session=<value>;path=/;max-age=31536000;samesite=lax` (1 year)
 
 ---
 
-## Stripe (Planned — Not Yet Live on Prod)
+## Stripe (Live on Prod ✅)
 
 - Flow: Register → `/checkout` → Stripe payment → `/profile-setup`
 - Pricing: $50/month (`STRIPE_PRICE_MONTHLY`), $450/year (`STRIPE_PRICE_ANNUAL`)
 - Grandfathered users: `profiles.is_grandfathered = true` (bypass checkout → go to dashboard)
 - Users: Cael (caelkong3@gmail.com), Bubba (bubbadonald@icloud.com) are grandfathered
+- Webhook handles: `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
+- API gotcha: `invoice.payment_intent` expand does NOT work in API 2026-02-25.clover — find PI by listing for customer and matching `status === 'requires_payment_method'`
 
 ---
 
@@ -118,16 +120,13 @@ Cookie: `site_session=<value>;path=/;max-age=31536000;samesite=lax` (1 year)
 - [ ] E2E test: provisioning creates jetstreammail account via complete-profile flow
 
 **Stripe Live**
-- [ ] Business verified in Stripe live account
-- [ ] Product + monthly ($50) + annual ($450) prices created
-- [ ] Webhook endpoint configured for prod URL
-- [ ] Live Stripe keys added to Vercel prod
+- [x] Live on prod — checkout, webhook, subscriptions all working
 
 **Database**
 - [ ] Migration 012 to production (usernames, workspace_email, subscriptions, is_grandfathered)
 
 **Features**
-- [ ] In-app email tab built (spec in `docs/features.md`)
+- [x] In-app email tab built (`app/src/app/(app)/email/`)
 - [ ] Grandfathered users bypass checkout, land on dashboard
 
 **Full E2E Staging Test**
@@ -154,7 +153,6 @@ Cookie: `site_session=<value>;path=/;max-age=31536000;samesite=lax` (1 year)
 
 - Film hosting + tracking: `runwayrecruit.com/film/{username}` — high priority, no competitor does this
 - Brand name rebrand in code: pending commit (NavBar, footer, ticker, etc.)
-- In-app email tab: spec complete, not built — see `docs/features.md`
 - Simplify program colors to 2 (primary + secondary, no white)
 - Scope players to current program via `program_members`
 - Coach Phase 2: in-app player invitation flow
