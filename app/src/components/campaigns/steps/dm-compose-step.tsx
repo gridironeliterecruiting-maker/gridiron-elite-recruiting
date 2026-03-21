@@ -89,14 +89,14 @@ export function DmComposeStep({
       setNameError(true)
       const el = nameInputRef.current
       if (el) {
-        let parent = el.parentElement
+        let parent: HTMLElement | null = el.parentElement
         while (parent && parent !== document.body) {
-          const oy = window.getComputedStyle(parent).overflowY
-          if (oy === 'auto' || oy === 'scroll') {
-            const rect = el.getBoundingClientRect()
-            const parentRect = parent.getBoundingClientRect()
-            parent.scrollTo({ top: parent.scrollTop + rect.top - parentRect.top - 100, behavior: 'smooth' })
-            break
+          if (parent.scrollHeight > parent.clientHeight) {
+            const oy = window.getComputedStyle(parent).overflowY
+            if (oy === 'auto' || oy === 'scroll') {
+              parent.scrollTo({ top: 0, behavior: 'smooth' })
+              break
+            }
           }
           parent = parent.parentElement
         }

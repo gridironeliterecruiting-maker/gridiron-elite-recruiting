@@ -458,7 +458,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
         onSave={handleSaveDraft}
         onDelete={handleDeleteDraft}
         onCancel={handleCancelDialog}
-        defaultTitle={`${draft.goal || 'New'} Campaign`}
+        defaultTitle=""
       />
     </div>
   )
