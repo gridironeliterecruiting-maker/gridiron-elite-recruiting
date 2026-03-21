@@ -88,6 +88,13 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
+  // Lock body scroll while overlay is open so scroll events stay inside the overlay
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
   // Track whether the user has manually edited templates in step 3.
   // If they haven't, changing the goal resets templates to the new goal's defaults.
   // If they have, changing the goal only updates the goal label and preserves their work.
