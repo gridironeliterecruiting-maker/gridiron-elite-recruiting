@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { Card } from "@/components/ui/card"
-import { AlertTriangle, Check, ExternalLink, RefreshCw } from "lucide-react"
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
 
 interface AthleteProfile {
   first_name: string | null
@@ -51,7 +51,7 @@ const POSTS: Record<string, string[]> = {
     "Didn't feel like going today. Went anyway. Those are honestly the reps that matter most.\n\n#Classof((Grad Year)) #CollegeFootball",
     "Working on the little things coaches notice. Every rep is a rep toward a scholarship.\n\n#((Position)) #Classof((Grad Year))",
     "Recovery is training too. Ice bath done. Ready for tomorrow.\n\n#Classof((Grad Year)) #CollegeFootball",
-    "Three things I'm locked in on this month: explosiveness, hand placement, film knowledge.\n\n#Classof((Grad Year)) #((Position))Recruiting",
+    "Three things I'm locked in on this month: explosiveness, footwork, film knowledge.\n\n#Classof((Grad Year)) #((Position))Recruiting",
     "Every coach wants to know what you do when nobody's watching. I'm building that answer right now.\n\n#Classof((Grad Year)) #CollegeFootball",
     "Morning sprint work. My first step has gotten noticeably quicker. The work is showing up.\n\n#Classof((Grad Year)) #((Position))",
     "Position-specific work today. Coaches at the next level will see someone who knows their craft inside out.\n\n#((Position)) #Classof((Grad Year))",
@@ -77,7 +77,7 @@ const POSTS: Record<string, string[]> = {
     "Cut a new reel focused on my best performance of the year. Come look.\n\n((Film Link))\n\n#((Position)) #Classof((Grad Year))",
     "Coaches — full game tape is available. The highlight reel is just the preview.\n\n((Film Link))\n\n#Classof((Grad Year)) #((Position))Recruiting #CollegeFootball",
     "New film dropped. Notice how I finish through the whistle on every single rep.\n\n((Film Link))\n\n#Classof((Grad Year)) #((Position))",
-    "Updated film showing improvement in the exact areas I've been grinding on.\n\n((Film Link))\n\n#Classof((Grad Year)) #CollegeFootball #RecruitMe",
+    "Shot some film showing improvement in the exact areas I've been grinding on.\n\n(add film of your workout)\n\n#Classof((Grad Year)) #CollegeFootball #RecruitMe",
     "Film study + live reps = growth. Here's what it looks like.\n\n((Film Link))\n\n#Classof((Grad Year)) #((Position))Recruiting",
   ],
   gameday: [
@@ -265,6 +265,11 @@ export function ContentCalendar({ profile }: ContentCalendarProps) {
     setLaunchedText(null)
   }
 
+  const handleBack = () => {
+    setPage((p) => Math.max(0, p - 1))
+    setLaunchedText(null)
+  }
+
   const handlePostOnX = (resolved: string) => {
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(resolved)}`
     window.open(url, "_blank", "noopener,noreferrer")
@@ -309,7 +314,7 @@ export function ContentCalendar({ profile }: ContentCalendarProps) {
         </div>
 
         {/* Category pills */}
-        <div className="mb-4 flex flex-wrap gap-1.5">
+        <div className="mb-3 flex flex-wrap gap-1.5">
           {CATEGORIES.map((cat) => (
             <button
               key={cat.id}
@@ -324,6 +329,36 @@ export function ContentCalendar({ profile }: ContentCalendarProps) {
               {cat.icon} {cat.label}
             </button>
           ))}
+        </div>
+
+        {/* Page navigation */}
+        <div className="mb-4 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={handleBack}
+            disabled={page === 0}
+            className={`flex items-center gap-1 text-xs font-semibold transition-colors ${
+              page === 0
+                ? "cursor-default text-muted-foreground/30"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Go Back
+          </button>
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={pageCount <= 1}
+            className={`flex items-center gap-1 text-xs font-semibold transition-colors ${
+              pageCount <= 1
+                ? "cursor-default text-muted-foreground/30"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Show More
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
         </div>
 
         {/* Post options */}
@@ -373,17 +408,6 @@ export function ContentCalendar({ profile }: ContentCalendarProps) {
           })}
         </div>
 
-        {/* Next / more posts */}
-        {pageCount > 1 && (
-          <button
-            type="button"
-            onClick={handleNext}
-            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary"
-          >
-            <RefreshCw className="h-3 w-3" />
-            More {category.label} Posts
-          </button>
-        )}
       </div>
     </Card>
   )
