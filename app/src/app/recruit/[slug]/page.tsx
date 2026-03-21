@@ -84,59 +84,60 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
               />
             </div>
 
-            {/* Info — right, left-justified */}
-            <div className="min-w-0">
+            {/* Info — right, left-justified, locked to logo height */}
+            <div className="flex h-[100px] min-w-0 flex-col justify-between">
               {/* Row 1: Name */}
-              <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-white sm:text-3xl lg:text-4xl">
+              <h1 className="font-display text-xl font-bold uppercase leading-tight tracking-tight text-white">
                 {fullName}
               </h1>
 
-              {/* Row 2: Position, Class, School/City */}
-              <p className="mt-1.5 text-sm text-white/70 sm:text-base">
-                {[
-                  profile.position,
-                  profile.grad_year ? `Class of ${profile.grad_year}` : null,
-                  locationParts || null,
-                ].filter(Boolean).join(" \u00B7 ")}
-              </p>
-
-              {/* Row 3: GPA, Height, Weight */}
-              {(profile.gpa || profile.height || profile.weight) && (
-                <p className="mt-1 text-sm text-white/50">
+              {/* Middle: Position · Class · School/City + GPA · Height · Weight */}
+              <div className="space-y-0.5">
+                <p className="text-[11px] leading-tight text-white/70">
                   {[
-                    profile.gpa ? `${formatGPA(profile.gpa)} GPA` : null,
-                    profile.height,
-                    profile.weight ? `${profile.weight} lbs` : null,
+                    profile.position,
+                    profile.grad_year ? `Class of ${profile.grad_year}` : null,
+                    locationParts || null,
                   ].filter(Boolean).join(" \u00B7 ")}
                 </p>
-              )}
+                {(profile.gpa || profile.height || profile.weight) && (
+                  <p className="text-[10px] leading-tight text-white/50">
+                    {[
+                      profile.gpa ? `${formatGPA(profile.gpa)} GPA` : null,
+                      profile.height,
+                      profile.weight ? `${profile.weight} lbs` : null,
+                    ].filter(Boolean).join(" \u00B7 ")}
+                  </p>
+                )}
+              </div>
 
-              {/* Links row */}
-              {(profile.twitter_handle || profile.hudl_url) && (
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  {profile.twitter_handle && (
-                    <a
-                      href={`https://x.com/${profile.twitter_handle.replace("@", "")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-lg bg-white/10 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-white/20"
-                    >
-                      X
-                    </a>
-                  )}
-                  {profile.hudl_url && (
-                    <a
-                      href={profile.hudl_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-lg px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-80"
-                      style={{ backgroundColor: accentColor }}
-                    >
-                      Hudl
-                    </a>
-                  )}
-                </div>
-              )}
+              {/* Links row — anchored to bottom */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {profile.twitter_handle && (
+                  <a
+                    href={`https://x.com/${profile.twitter_handle.replace("@", "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-md bg-white/10 px-3 py-1 text-[11px] font-bold text-white transition-colors hover:bg-white/20"
+                  >
+                    X
+                  </a>
+                )}
+                {profile.hudl_url && (
+                  <a
+                    href={profile.hudl_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-md px-3 py-1 text-[11px] font-bold text-white transition-opacity hover:opacity-80"
+                    style={{ backgroundColor: accentColor }}
+                  >
+                    Hudl
+                  </a>
+                )}
+                {!profile.twitter_handle && !profile.hudl_url && (
+                  <span className="h-[26px]" />
+                )}
+              </div>
             </div>
           </div>
         </div>
