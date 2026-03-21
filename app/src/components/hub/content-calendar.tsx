@@ -340,7 +340,7 @@ export function ContentCalendar({ profile }: ContentCalendarProps) {
                   isPosted ? "border-green-200 bg-green-50" : "bg-secondary/30"
                 }`}
               >
-                <p className="mb-3 whitespace-pre-wrap break-all text-sm leading-relaxed text-foreground">
+                <p className="mb-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground" style={{ overflowWrap: "anywhere" }}>
                   {resolved}
                 </p>
 
