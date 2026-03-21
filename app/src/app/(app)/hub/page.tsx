@@ -62,7 +62,7 @@ export default async function HubPage() {
     if (activePlayerId) {
       const { data: pp } = await supabase
         .from("profiles")
-        .select("first_name, last_name, position, grad_year, high_school, hudl_url, city, state, twitter_handle")
+        .select("first_name, last_name, position, grad_year, high_school, hudl_url, city, state, twitter_handle, instagram_handle")
         .eq("id", activePlayerId)
         .single()
       playerProfile = pp
