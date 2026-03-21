@@ -33,6 +33,7 @@ interface DmComposeStepProps {
   selectedCoaches: SelectedCoach[]
   onCreateDmCampaign: (name: string, messageBody: string) => Promise<void>
   onBack: () => void
+  onScrollToTop?: () => void
 }
 
 export function DmComposeStep({
@@ -40,6 +41,7 @@ export function DmComposeStep({
   selectedCoaches,
   onCreateDmCampaign,
   onBack,
+  onScrollToTop,
 }: DmComposeStepProps) {
   const [campaignName, setCampaignName] = useState("")
   const [nameError, setNameError] = useState(false)
@@ -87,20 +89,7 @@ export function DmComposeStep({
   const handleCreate = async () => {
     if (!campaignName.trim()) {
       setNameError(true)
-      const el = nameInputRef.current
-      if (el) {
-        let parent: HTMLElement | null = el.parentElement
-        while (parent && parent !== document.body) {
-          if (parent.scrollHeight > parent.clientHeight) {
-            const oy = window.getComputedStyle(parent).overflowY
-            if (oy === 'auto' || oy === 'scroll') {
-              parent.scrollTo({ top: 0, behavior: 'smooth' })
-              break
-            }
-          }
-          parent = parent.parentElement
-        }
-      }
+      onScrollToTop?.()
       nameInputRef.current?.focus()
       return
     }

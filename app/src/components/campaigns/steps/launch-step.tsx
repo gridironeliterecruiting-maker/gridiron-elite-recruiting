@@ -45,6 +45,7 @@ interface LaunchStepProps {
   onEditTarget: () => void
   onEditBuild: () => void
   onBack: () => void
+  onScrollToTop?: () => void
   onLaunched?: (campaignData: {
     name: string
     recipientCount: number
@@ -65,6 +66,7 @@ export function LaunchStep({
   onEditBuild,
   onBack,
   onLaunched,
+  onScrollToTop,
 }: LaunchStepProps) {
   const [campaignName, setCampaignName] = useState("")
   const [nameError, setNameError] = useState(false)
@@ -358,20 +360,7 @@ export function LaunchStep({
           onClick={() => {
             if (!campaignName.trim()) {
               setNameError(true)
-              const el = nameInputRef.current
-              if (el) {
-                let parent: HTMLElement | null = el.parentElement
-                while (parent && parent !== document.body) {
-                  if (parent.scrollHeight > parent.clientHeight) {
-                    const oy = window.getComputedStyle(parent).overflowY
-                    if (oy === 'auto' || oy === 'scroll') {
-                      parent.scrollTo({ top: 0, behavior: 'smooth' })
-                      break
-                    }
-                  }
-                  parent = parent.parentElement
-                }
-              }
+              onScrollToTop?.()
               nameInputRef.current?.focus()
               return
             }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Mail, MessageCircle, Check } from "lucide-react"
 import { GoalStep } from "./steps/goal-step"
@@ -83,6 +83,10 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
   const [isSaving, setIsSaving] = useState(false)
   const [dmCampaignId, setDmCampaignId] = useState<string | null>(null)
   const [dmAllSent, setDmAllSent] = useState(false)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const scrollToTop = useCallback(() => {
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
 
   // Track whether the user has manually edited templates in step 3.
   // If they haven't, changing the goal resets templates to the new goal's defaults.
@@ -289,7 +293,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
   const HeaderIcon = headerIcon
 
   return (
-    <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[60] overflow-y-auto bg-background duration-300">
+    <div ref={scrollContainerRef} className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[60] overflow-y-auto bg-background duration-300">
       {/* Header */}
       <div className="sticky top-0 z-10 border-b border-border bg-card shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 lg:px-8">
@@ -420,6 +424,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
             onEditTarget={() => goToStep(2)}
             onEditBuild={() => goToStep(3)}
             onBack={() => goToStep(3)}
+            onScrollToTop={scrollToTop}
             onLaunched={(campaignData) => {
               setHasUnsavedChanges(false)
               window.scrollTo(0, 0)
@@ -438,6 +443,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
             selectedCoaches={draft.selectedCoaches}
             onCreateDmCampaign={handleCreateDmCampaign}
             onBack={() => goToStep(2)}
+            onScrollToTop={scrollToTop}
           />
         )}
 
