@@ -90,7 +90,9 @@ export function DmComposeStep({
     if (!campaignName.trim()) {
       setNameError(true)
       onScrollToTop?.()
-      nameInputRef.current?.focus()
+      requestAnimationFrame(() => {
+        nameInputRef.current?.focus({ preventScroll: true })
+      })
       return
     }
     if (!messageBody.trim()) return

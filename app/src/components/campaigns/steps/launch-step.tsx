@@ -361,7 +361,9 @@ export function LaunchStep({
             if (!campaignName.trim()) {
               setNameError(true)
               onScrollToTop?.()
-              nameInputRef.current?.focus()
+              requestAnimationFrame(() => {
+                nameInputRef.current?.focus({ preventScroll: true })
+              })
               return
             }
             setShowConfirmLaunch(true)
