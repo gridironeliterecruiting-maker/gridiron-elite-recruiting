@@ -88,11 +88,16 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
-  // Lock body scroll while overlay is open so scroll events stay inside the overlay
+  // Lock scroll while overlay is open — must target both html and body for Next.js App Router
   useEffect(() => {
-    const prev = document.body.style.overflow
+    const prevBody = document.body.style.overflow
+    const prevHtml = document.documentElement.style.overflow
     document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
+    document.documentElement.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prevBody
+      document.documentElement.style.overflow = prevHtml
+    }
   }, [])
 
   // Track whether the user has manually edited templates in step 3.
