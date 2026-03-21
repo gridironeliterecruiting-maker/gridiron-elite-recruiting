@@ -222,6 +222,7 @@ export function ProfileForm({
               className={inputClass}
             />
           </div>
+          <Field label="Hudl Profile URL" value={form.hudl_url} onChange={(v) => update("hudl_url", v)} placeholder="https://www.hudl.com/profile/..." />
           {/* X / Twitter — OAuth managed */}
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">X (Twitter) Account</label>
@@ -249,7 +250,6 @@ export function ProfileForm({
               </button>
             )}
           </div>
-          <Field label="Hudl Profile URL" value={form.hudl_url} onChange={(v) => update("hudl_url", v)} placeholder="https://www.hudl.com/profile/..." />
           <Field label="Instagram Handle" value={form.instagram_handle} onChange={(v) => update("instagram_handle", v)} placeholder="@yourhandle" />
 
           {/* Recruiting Email — display only */}
