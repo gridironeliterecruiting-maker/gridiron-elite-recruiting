@@ -34,6 +34,7 @@ export default async function HubPage() {
     city: string | null
     state: string | null
     twitter_handle: string | null
+    instagram_handle: string | null
   } | null = null
   let coachProgramName: string | null = null
 
