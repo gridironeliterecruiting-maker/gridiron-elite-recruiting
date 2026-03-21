@@ -94,7 +94,7 @@ export function InstagramPlaceholder({
               href={instagramUrl!}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg px-6 py-2 text-xs font-bold uppercase tracking-wider text-white transition-opacity hover:opacity-90"
+              className="self-center rounded-lg px-6 py-2 text-xs font-bold uppercase tracking-wider text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: "#fcb045" }}
             >
               Open Instagram
