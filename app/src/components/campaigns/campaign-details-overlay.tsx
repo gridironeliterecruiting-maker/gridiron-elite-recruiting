@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Minus,
   ChevronRight,
+  ArrowRight,
   MousePointerClick,
   ExternalLink,
   Send,
@@ -473,16 +474,16 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Templates Used</p>
-                      <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-end justify-between gap-1">
                         <p className="text-2xl font-bold text-foreground">{campaign.emails.length}</p>
                         {campaign.emails.length > 0 && (
                           <button
                             type="button"
                             onClick={() => { setSelectedTemplateIndex(0); setShowTemplateViewer(true) }}
-                            className="flex items-center gap-0.5 text-[11px] font-semibold text-primary transition-colors hover:text-primary/80"
+                            className="flex items-center gap-0.5 pb-0.5 text-[11px] font-semibold text-primary transition-colors hover:text-primary/80"
                           >
                             View
-                            <ChevronRight className="h-3 w-3" />
+                            <ArrowRight className="h-3 w-3" />
                           </button>
                         )}
                       </div>
