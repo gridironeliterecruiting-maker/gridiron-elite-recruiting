@@ -67,7 +67,7 @@ const POSTS: Record<string, string[]> = {
     "Film session this morning. Found three things to clean up before next week. I love this process.\n\n#Classof((Grad Year)) #CollegeFootball",
     "Here's my film. Coaches — come see what I'm about.\n\n((Film Link))\n\n#((Position))Recruiting #Classof((Grad Year))",
     "Went back and watched film from six months ago. The growth is real. Still a long way to go.\n\n#Classof((Grad Year)) #CollegeFootball",
-    "New film up. Pay attention to how I set my blocks in the second clip.\n\n((Film Link))\n\n#((Position)) #Classof((Grad Year)) #RecruitMe",
+    "New film up. Pay attention to how I set my blocks. Getting better each week.\n\n((Film Link))\n\n#((Position)) #Classof((Grad Year)) #RecruitMe",
     "New highlight package is live. Coaches — DMs are open.\n\n((Film Link))\n\n#Classof((Grad Year)) #((Position))Recruiting",
     "Film doesn't lie. This is what I've been building toward.\n\n((Film Link))\n\n#Classof((Grad Year)) #CollegeFootball",
     "Fresh tape from Friday night. Full game film available on request.\n\n((Film Link))\n\n#((Position)) #Classof((Grad Year))",
