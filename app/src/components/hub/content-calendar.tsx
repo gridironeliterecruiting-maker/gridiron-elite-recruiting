@@ -65,7 +65,7 @@ const POSTS: Record<string, string[]> = {
     "Put together some highlights from this season. Letting the film do the talking.\n\n((Film Link))\n\n#Classof((Grad Year)) #CollegeFootball",
     "New clip up. Focus on my release off the line — been working on this all offseason.\n\n((Film Link))\n\n#((Position)) #Classof((Grad Year))",
     "Film session this morning. Found three things to clean up before next week. I love this process.\n\n#Classof((Grad Year)) #CollegeFootball",
-    "Updated my Hudl. Full games and a cut reel. Coaches — come see what I'm about.\n\n((Film Link))\n\n#((Position))Recruiting #Classof((Grad Year))",
+    "Here's my film. Coaches — come see what I'm about.\n\n((Film Link))\n\n#((Position))Recruiting #Classof((Grad Year))",
     "Went back and watched film from six months ago. The growth is real. Still a long way to go.\n\n#Classof((Grad Year)) #CollegeFootball",
     "New film up. Pay attention to how I set my blocks in the second clip.\n\n((Film Link))\n\n#((Position)) #Classof((Grad Year)) #RecruitMe",
     "New highlight package is live. Coaches — DMs are open.\n\n((Film Link))\n\n#Classof((Grad Year)) #((Position))Recruiting",
@@ -75,7 +75,7 @@ const POSTS: Record<string, string[]> = {
     "Just updated my highlights. Coaches who want the full game film, my contact info is in the link.\n\n((Film Link))\n\n#Classof((Grad Year)) #((Position))Recruiting",
     "Film is the great equalizer. Doesn't matter what you tell coaches — what matters is what they see.\n\n((Film Link))\n\n#Classof((Grad Year)) #CollegeFootball",
     "Cut a new reel focused on my best performance of the year. Come look.\n\n((Film Link))\n\n#((Position)) #Classof((Grad Year))",
-    "Coaches — full game tape is on my Hudl. The highlight reel is just the preview.\n\n((Film Link))\n\n#Classof((Grad Year)) #((Position))Recruiting #CollegeFootball",
+    "Coaches — full game tape is available. The highlight reel is just the preview.\n\n((Film Link))\n\n#Classof((Grad Year)) #((Position))Recruiting #CollegeFootball",
     "New film dropped. Notice how I finish through the whistle on every single rep.\n\n((Film Link))\n\n#Classof((Grad Year)) #((Position))",
     "Updated film showing improvement in the exact areas I've been grinding on.\n\n((Film Link))\n\n#Classof((Grad Year)) #CollegeFootball #RecruitMe",
     "Film study + live reps = growth. Here's what it looks like.\n\n((Film Link))\n\n#Classof((Grad Year)) #((Position))Recruiting",
@@ -340,7 +340,7 @@ export function ContentCalendar({ profile }: ContentCalendarProps) {
                   isPosted ? "border-green-200 bg-green-50" : "bg-secondary/30"
                 }`}
               >
-                <p className="mb-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                <p className="mb-3 whitespace-pre-wrap break-all text-sm leading-relaxed text-foreground">
                   {resolved}
                 </p>
 
