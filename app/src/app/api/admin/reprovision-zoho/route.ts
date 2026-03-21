@@ -62,17 +62,8 @@ export async function GET(req: NextRequest) {
           { headers: { Authorization: `Zoho-oauthtoken ${token}` } }
         )
         const listData = await listRes.json()
-        const accounts: { account_key: string; emailAddress: { emailAddress: string }[] }[] =
-          listData?.data || []
-        const match = accounts.find(a =>
-          a.emailAddress?.some(e => e.emailAddress === profile.workspace_email)
-        )
-        if (!match) {
-          return NextResponse.json({
-            error: `Account exists in Zoho but could not find it by email ${profile.workspace_email}. Raw list: ${JSON.stringify(accounts.map(a => a.emailAddress))}`,
-          }, { status: 500 })
-        }
-        accountKey = match.account_key
+        // Return raw structure so we can see what Zoho gives us
+        return NextResponse.json({ debug: true, listData }, { status: 200 })
       } else {
         throw provisionErr
       }
