@@ -85,7 +85,10 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
   const [dmAllSent, setDmAllSent] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollToTop = useCallback(() => {
+    // Scroll both the overlay container AND the outer window to cover both scroll contexts
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    document.documentElement.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
   // Lock scroll while overlay is open — must target both html and body for Next.js App Router
