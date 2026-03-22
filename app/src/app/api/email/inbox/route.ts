@@ -1,9 +1,44 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getZohoAccessToken } from '@/lib/workspace'
+import { zohoFetch } from '@/lib/workspace'
 
 export const dynamic = 'force-dynamic'
+
+const ZOHO_API_BASE = 'https://mail360.zoho.com/api'
+
+/**
+ * Look up the numeric folderId for the Inbox folder on a given account.
+ * Zoho Mail360 requires folderId (numeric) — "folder=Inbox" is not valid.
+ */
+async function getInboxFolderId(accountKey: string): Promise<string | null> {
+  const res = await zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/folders`, {})
+  if (!res.ok) {
+    const err = await res.text()
+    console.error('[email/inbox] Zoho folders error:', res.status, err)
+    return null
+  }
+  const data = await res.json()
+  const folders: any[] = data.data || []
+  if (folders.length === 0) {
+    console.error('[email/inbox] Zoho returned no folders for account:', accountKey)
+    return null
+  }
+  // Find the Inbox — Zoho uses folderName or name, and folderType or type for identification
+  const inbox = folders.find((f: any) =>
+    f.folderName?.toLowerCase() === 'inbox' ||
+    f.name?.toLowerCase() === 'inbox' ||
+    f.folderType?.toLowerCase() === 'inbox' ||
+    f.type?.toLowerCase() === 'inbox'
+  )
+  if (!inbox) {
+    // Log all folder names to diagnose
+    const names = folders.map((f: any) => f.folderName || f.name || JSON.stringify(f)).join(', ')
+    console.error('[email/inbox] Inbox folder not found. Available folders:', names)
+    return null
+  }
+  return String(inbox.folderId || inbox.id || '')
+}
 
 export async function GET() {
   const supabase = await createClient()
@@ -23,17 +58,22 @@ export async function GET() {
   }
 
   try {
-    const token = await getZohoAccessToken()
+    // Step 1: Get the Inbox folder ID (Zoho requires numeric folderId, not folder name)
+    const folderId = await getInboxFolderId(accountKey)
+    if (!folderId) {
+      return NextResponse.json({ items: [], unreadCount: 0 })
+    }
 
-    const listRes = await fetch(
-      `https://mail360.zoho.com/api/accounts/${accountKey}/messages?folder=Inbox&limit=25`,
-      { headers: { Authorization: `Zoho-oauthtoken ${token}` } }
+    // Step 2: Fetch messages using correct folderId parameter + zohoFetch (auto-retry on token expiry)
+    const listRes = await zohoFetch(
+      `${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${folderId}&limit=25`,
+      {}
     )
 
     if (!listRes.ok) {
       const err = await listRes.text()
-      console.error('[email/inbox] Zoho list error:', err)
-      return NextResponse.json({ items: [], unreadCount: 0, debug: `Zoho list error: ${err}` })
+      console.error('[email/inbox] Zoho messages error:', listRes.status, err)
+      return NextResponse.json({ items: [], unreadCount: 0 })
     }
 
     const listData = await listRes.json()
@@ -68,6 +108,6 @@ export async function GET() {
     return NextResponse.json({ items, unreadCount })
   } catch (err: any) {
     console.error('[email/inbox] Unexpected error:', err?.message || err)
-    return NextResponse.json({ items: [], unreadCount: 0, debug: `Unexpected error: ${err?.message}` })
+    return NextResponse.json({ items: [], unreadCount: 0 })
   }
 }

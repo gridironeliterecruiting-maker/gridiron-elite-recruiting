@@ -102,8 +102,9 @@ function isInvalidTokenError(body: unknown): boolean {
 
 /**
  * Execute a Zoho API call. Auto-retries once with a fresh token on MA_9067.
+ * Exported so API routes can use it directly for consistent retry behavior.
  */
-async function zohoFetch(
+export async function zohoFetch(
   url: string,
   options: RequestInit,
   attempt = 1

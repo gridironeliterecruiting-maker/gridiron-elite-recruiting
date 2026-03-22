@@ -87,7 +87,7 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
             {/* Info — right, left-justified, locked to logo height */}
             <div className="flex h-[100px] min-w-0 flex-col justify-between">
               {/* Row 1: Name */}
-              <h1 className="font-display text-2xl font-bold uppercase leading-tight tracking-tight text-white">
+              <h1 className="font-display text-3xl font-bold uppercase leading-tight tracking-tight text-white">
                 {fullName}
               </h1>
 
