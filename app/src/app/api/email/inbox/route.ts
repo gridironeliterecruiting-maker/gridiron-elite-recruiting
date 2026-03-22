@@ -47,28 +47,24 @@ export async function GET() {
       return NextResponse.json({ threads: [], unreadCount: 0 })
     }
 
-    // Zoho Mail360 Threads API — native conversation grouping
-    // Test without folderId to see if any threads exist at all
-    const url = `${ZOHO_API_BASE}/accounts/${accountKey}/threads?limit=50`
-    console.error(`[inbox] folderId=${inboxFolderId} url=${url}`)
-    const res = await zohoFetch(url, {})
+    // Parallel diagnostic: threads vs messages — confirms whether scope or data is the issue
+    const [threadsRes, msgsRes] = await Promise.all([
+      zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/threads?folderId=${inboxFolderId}&limit=50`, {}),
+      zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${inboxFolderId}&limit=5`, {}),
+    ])
 
-    if (!res.ok) {
-      const errBody = await res.text()
-      console.error(`[inbox] HTTP_${res.status}: ${errBody.substring(0, 400)}`)
+    const [threadsText, msgsText] = await Promise.all([threadsRes.text(), msgsRes.text()])
+    const threadsData = JSON.parse(threadsText)
+    const msgsData = JSON.parse(msgsText)
+
+    const msgCount = Array.isArray(msgsData.data) ? msgsData.data.length : '?'
+    const rawThreads: any[] = threadsData.data || []
+    console.error(`[inbox] threads=${rawThreads.length} msgs=${msgCount} tSc=${threadsData?.status?.code} mSc=${msgsData?.status?.code} firstMsg=${JSON.stringify(msgsData?.data?.[0] ?? null).substring(0, 200)}`)
+
+    if (threadsData?.status?.code && threadsData.status.code !== 200) {
+      console.error(`[inbox] THREADS_APIERR_${threadsData.status.code}: ${JSON.stringify(threadsData).substring(0, 200)}`)
       return NextResponse.json({ threads: [], unreadCount: 0 })
     }
-
-    const rawText = await res.text()
-    const data = JSON.parse(rawText)
-
-    if (data?.status?.code && data.status.code !== 200) {
-      console.error(`[inbox] APIERR_${data.status.code}: ${JSON.stringify(data).substring(0, 400)}`)
-      return NextResponse.json({ threads: [], unreadCount: 0 })
-    }
-
-    const rawThreads: any[] = data.data || []
-    console.error(`[inbox] N=${rawThreads.length} sc=${data?.status?.code} first=${JSON.stringify(rawThreads[0] ?? null).substring(0, 400)}`)
 
     const threads = rawThreads.map((t: any) => {
       const fromRaw = t.fromAddress || t.sender || ''
