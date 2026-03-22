@@ -87,7 +87,7 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
             {/* Info — right, left-justified, locked to logo height */}
             <div className="flex h-[100px] min-w-0 flex-col justify-between">
               {/* Row 1: Name */}
-              <h1 className="font-display text-xl font-bold uppercase leading-tight tracking-tight text-white">
+              <h1 className="font-display text-2xl font-bold uppercase leading-tight tracking-tight text-white">
                 {fullName}
               </h1>
 
@@ -118,7 +118,7 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
                     href={`https://x.com/${profile.twitter_handle.replace("@", "")}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-md bg-white/10 px-3 py-1 text-[11px] font-bold text-white transition-colors hover:bg-white/20"
+                    className="min-w-[52px] rounded-md bg-white/10 px-3 py-1 text-center text-[11px] font-bold text-white transition-colors hover:bg-white/20"
                   >
                     X
                   </a>
@@ -128,7 +128,7 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
                     href={profile.hudl_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-md px-3 py-1 text-[11px] font-bold text-white transition-opacity hover:opacity-80"
+                    className="min-w-[52px] rounded-md px-3 py-1 text-center text-[11px] font-bold text-white transition-opacity hover:opacity-80"
                     style={{ backgroundColor: accentColor }}
                   >
                     Hudl
