@@ -48,21 +48,21 @@ export async function GET() {
     }
 
     // Zoho Mail360 Threads API — native conversation grouping
-    const url = `${ZOHO_API_BASE}/accounts/${accountKey}/threads?folderId=${inboxFolderId}&limit=50&sortby=date&sortorder=false`
+    const url = `${ZOHO_API_BASE}/accounts/${accountKey}/threads?folderId=${inboxFolderId}&limit=50`
     const res = await zohoFetch(url, {})
 
     if (!res.ok) {
       const errBody = await res.text()
-      console.error('[email/inbox] THREADS_ERROR status:', res.status, 'body:', errBody.substring(0, 500))
+      console.error(`[inbox] HTTP_${res.status}: ${errBody.substring(0, 400)}`)
       return NextResponse.json({ threads: [], unreadCount: 0 })
     }
 
     const rawText = await res.text()
-    console.error('[email/inbox] THREADS_RAW:', rawText.substring(0, 800))
+    console.error(`[inbox] RAW200: ${rawText.substring(0, 700)}`)
     const data = JSON.parse(rawText)
 
     if (data?.status?.code && data.status.code !== 200) {
-      console.error('[email/inbox] THREADS_STATUS_ERR:', JSON.stringify(data))
+      console.error(`[inbox] APIERR_${data.status.code}: ${JSON.stringify(data).substring(0, 400)}`)
       return NextResponse.json({ threads: [], unreadCount: 0 })
     }
 
