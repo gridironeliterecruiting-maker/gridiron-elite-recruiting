@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getZohoAccessToken, sendZohoEmail } from '@/lib/workspace'
+import { zohoFetch } from '@/lib/workspace'
 
+const ZOHO_API_BASE = 'https://mail360.zoho.com/api'
+
+/**
+ * Send a reply using the Mail360 Send Reply API.
+ *
+ * This uses POST /accounts/{account_key}/messages/{messageId} with action: "reply"
+ * which properly sets In-Reply-To and References headers and creates/updates
+ * the conversation thread. DO NOT use the regular POST /messages endpoint
+ * for replies — that creates standalone messages with no thread linkage.
+ */
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  // Accept both 'messageId' and legacy 'gmailMessageId' field names
   const { messageId: directId, gmailMessageId, toEmail, toName, replyBody } = body as {
     messageId?: string
     gmailMessageId?: string
@@ -19,8 +28,8 @@ export async function POST(req: NextRequest) {
   }
   const messageId = directId || gmailMessageId || ''
 
-  if (!toEmail || !replyBody?.trim()) {
-    return NextResponse.json({ error: 'toEmail and replyBody are required' }, { status: 400 })
+  if (!messageId || !replyBody?.trim()) {
+    return NextResponse.json({ error: 'messageId and replyBody are required' }, { status: 400 })
   }
 
   const admin = createAdminClient()
@@ -39,30 +48,35 @@ export async function POST(req: NextRequest) {
   }
 
   const senderName = `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim()
+  const fromAddress = senderName ? `${senderName} <${workspaceEmail}>` : workspaceEmail
 
-  // Fetch original message to get subject for Re: threading
-  let subject = 'Re: Your Message'
+  const htmlContent = `<div style="font-family: Arial, sans-serif; font-size: 14px; color: #222;">${replyBody.replace(/\n/g, '<br />')}</div>`
+
   try {
-    const token = await getZohoAccessToken()
-    const msgRes = await fetch(
-      `https://mail360.zoho.com/api/accounts/${accountKey}/messages/${messageId}`,
-      { headers: { Authorization: `Zoho-oauthtoken ${token}` } }
+    // Mail360 Send Reply API — POST /accounts/{key}/messages/{messageId}
+    // This creates a proper threaded reply with correct email headers
+    const res = await zohoFetch(
+      `${ZOHO_API_BASE}/accounts/${accountKey}/messages/${messageId}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fromAddress,
+          action: 'reply',
+          content: htmlContent,
+          mailFormat: 'html',
+        }),
+      }
     )
-    if (msgRes.ok) {
-      const msgData = await msgRes.json()
-      const originalSubject = msgData.data?.subject || ''
-      subject = originalSubject.startsWith('Re:') ? originalSubject : `Re: ${originalSubject}`
+
+    if (!res.ok) {
+      const err = await res.text()
+      console.error('[email/reply] Zoho Send Reply error:', err)
+      return NextResponse.json({ error: 'Failed to send reply' }, { status: 500 })
     }
-  } catch {
-    // Non-fatal — proceed with default subject
-  }
 
-  const htmlBody = `<div style="font-family: Arial, sans-serif; font-size: 14px; color: #222;">${replyBody.replace(/\n/g, '<br />')}</div>`
-  const toAddress = toName ? `${toName} <${toEmail}>` : toEmail
-
-  try {
-    const result = await sendZohoEmail(accountKey, workspaceEmail, toAddress, subject, htmlBody, senderName)
-    return NextResponse.json({ ok: true, messageId: result.messageId })
+    const data = await res.json()
+    return NextResponse.json({ ok: true, messageId: data.data?.messageId || '' })
   } catch (err: any) {
     console.error('[email/reply] Error:', err)
     return NextResponse.json({ error: err.message || 'Send failed' }, { status: 500 })
