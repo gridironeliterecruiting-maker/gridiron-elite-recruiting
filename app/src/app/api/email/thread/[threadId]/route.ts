@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { zohoFetch } from '@/lib/workspace'
+import { zohoFetch, getZohoFolders, findFolderId } from '@/lib/workspace'
 
 export const dynamic = 'force-dynamic'
 
@@ -111,26 +111,38 @@ export async function GET(
   if (!accountKey) return NextResponse.json({ messages: [] })
 
   try {
-    // Zoho Mail360 Threads API — fetch all messages in this conversation
-    const url = `${ZOHO_API_BASE}/accounts/${accountKey}/threads/${threadId}?limit=100`
-    console.log('[email/thread] Calling Zoho thread URL:', url)
-    const res = await zohoFetch(url, {})
+    // The threadId passed in is a messageId from the inbox.
+    // First, get that message's metadata to find the subject and contact.
+    const seedRes = await zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages/${threadId}`, {})
+    const seedData = seedRes.ok ? await seedRes.json() : null
+    const seedMsg = seedData?.data || null
+    const seedSubject = (seedMsg?.subject || '').replace(/^(Re:\s*|Fwd:\s*|Fw:\s*)+/i, '').trim().toLowerCase()
+    const seedFrom = parseFrom(seedMsg?.fromAddress || '').email.toLowerCase()
+    const seedTo = parseFrom(seedMsg?.toAddress || '').email.toLowerCase()
+    const contactEmail = seedFrom === workspaceEmail ? seedTo : seedFrom
 
-    if (!res.ok) {
-      const errBody = await res.text()
-      console.error('[email/thread] Zoho thread error — status:', res.status, '— body:', errBody)
-      return NextResponse.json({ messages: [] })
-    }
+    // Fetch inbox + sent messages and find all that match this conversation
+    const folders = await getZohoFolders(accountKey)
+    const inboxFolderId = findFolderId(folders, 'inbox')
+    const sentFolderId = findFolderId(folders, 'sent')
 
-    const data = await res.json()
-    console.log('[email/thread] Zoho thread response status code:', data?.status?.code, '| data count:', data?.data?.length)
+    const [inboxRes, sentRes] = await Promise.all([
+      inboxFolderId ? zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${inboxFolderId}&limit=200`, {}) : Promise.resolve(null),
+      sentFolderId ? zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${sentFolderId}&limit=200`, {}) : Promise.resolve(null),
+    ])
 
-    if (data?.status?.code && data.status.code !== 200) {
-      console.error('[email/thread] Zoho thread API error body:', JSON.stringify(data))
-      return NextResponse.json({ messages: [] })
-    }
+    const inboxMsgs: any[] = inboxRes?.ok ? (await inboxRes.json()).data || [] : []
+    const sentMsgs: any[] = sentRes?.ok ? (await sentRes.json()).data || [] : []
 
-    const rawMessages: any[] = data.data || []
+    // Filter to messages in this conversation by matching normalized subject + contact
+    const allMsgs = [...inboxMsgs, ...sentMsgs]
+    const rawMessages = allMsgs.filter((msg: any) => {
+      const subj = (msg.subject || '').replace(/^(Re:\s*|Fwd:\s*|Fw:\s*)+/i, '').trim().toLowerCase()
+      if (subj !== seedSubject) return false
+      const from = parseFrom(msg.fromAddress || '').email.toLowerCase()
+      const to = parseFrom(msg.toAddress || '').email.toLowerCase()
+      return from === contactEmail || to === contactEmail
+    })
 
     // Fetch full bodies in parallel
     const messages = await Promise.all(

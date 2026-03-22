@@ -14,6 +14,14 @@ function parseFrom(fromRaw: string): { name: string; email: string } {
   return { name: name || email, email }
 }
 
+/** Normalize subject for grouping: strip Re:/Fwd: prefixes and whitespace */
+function normalizeSubject(subject: string): string {
+  return subject
+    .replace(/^(Re:\s*|Fwd:\s*|Fw:\s*)+/i, '')
+    .trim()
+    .toLowerCase()
+}
+
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -36,82 +44,91 @@ export async function GET() {
   try {
     const folders = await getZohoFolders(accountKey)
     if (folders.length === 0) {
-      console.error('[inbox] no folders for account:', accountKey)
       return NextResponse.json({ threads: [], unreadCount: 0 })
     }
 
     const inboxFolderId = findFolderId(folders, 'inbox')
+    const sentFolderId = findFolderId(folders, 'sent')
     if (!inboxFolderId) {
-      const names = folders.map((f: any) => f.folderName || f.name).join(', ')
-      console.error('[inbox] inbox folder not found. folders:', names)
       return NextResponse.json({ threads: [], unreadCount: 0 })
     }
 
-    // Zoho Mail360 Threads API — GET /accounts/{account_key}/threads
-    const url = `${ZOHO_API_BASE}/accounts/${accountKey}/threads?folderId=${inboxFolderId}&limit=50`
-    const res = await zohoFetch(url, {})
+    // Fetch inbox messages AND sent messages to build complete conversations
+    const [inboxRes, sentRes] = await Promise.all([
+      zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${inboxFolderId}&limit=200`, {}),
+      sentFolderId
+        ? zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${sentFolderId}&limit=200`, {})
+        : Promise.resolve(null),
+    ])
 
-    if (!res.ok) {
-      const errBody = await res.text()
-      console.error(`[inbox] HTTP ${res.status}:`, errBody.substring(0, 300))
-      return NextResponse.json({ threads: [], unreadCount: 0 })
+    const inboxData = inboxRes.ok ? await inboxRes.json() : null
+    const sentData = sentRes?.ok ? await sentRes.json() : null
+    const inboxMessages: any[] = inboxData?.data || []
+    const sentMessages: any[] = sentData?.data || []
+
+    // Build conversation groups by normalized subject + contact email pair
+    // This correctly groups: Cael sends "Hello Coach" → Coach replies "Re: Hello Coach"
+    const conversationMap = new Map<string, { inbox: any[]; sent: any[]; latestMs: number }>()
+
+    for (const msg of inboxMessages) {
+      const normalizedSubject = normalizeSubject(msg.subject || '')
+      const { email: fromEmail } = parseFrom(msg.fromAddress || '')
+      const key = `${fromEmail.toLowerCase()}::${normalizedSubject}`
+
+      const existing = conversationMap.get(key) || { inbox: [], sent: [], latestMs: 0 }
+      existing.inbox.push(msg)
+      const ms = parseInt(msg.receivedTime || msg.sentDateInGMT || '0', 10)
+      if (ms > existing.latestMs) existing.latestMs = ms
+      conversationMap.set(key, existing)
     }
 
-    const data = await res.json()
+    // Match sent messages to conversations by normalized subject + recipient
+    for (const msg of sentMessages) {
+      const normalizedSubject = normalizeSubject(msg.subject || '')
+      const { email: toEmail } = parseFrom(msg.toAddress || '')
+      const key = `${toEmail.toLowerCase()}::${normalizedSubject}`
 
-    if (data?.status?.code && data.status.code !== 200) {
-      console.error('[inbox] Zoho API error:', JSON.stringify(data).substring(0, 300))
-      return NextResponse.json({ threads: [], unreadCount: 0 })
-    }
-
-    // Group by threadId — threads API returns individual messages; same threadId = same conversation
-    const rawMessages: any[] = data.data || []
-    const threadMap = new Map<string, any>()
-
-    for (const msg of rawMessages) {
-      const threadId = String(msg.threadId || msg.messageId || '')
-      if (!threadId) continue
-
-      const existing = threadMap.get(threadId)
-      const receivedMs = parseInt(msg.receivedTime || msg.sentDateInGMT || '0', 10)
-
-      if (!existing || receivedMs > parseInt(existing._latestMs, 10)) {
-        threadMap.set(threadId, { ...msg, _latestMs: String(receivedMs) })
+      const existing = conversationMap.get(key)
+      if (existing) {
+        existing.sent.push(msg)
       }
     }
 
-    const threads = Array.from(threadMap.values()).map((t: any) => {
-      const fromRaw = t.fromAddress || t.sender || ''
+    // Build thread list from conversations
+    const threads = Array.from(conversationMap.entries()).map(([key, conv]) => {
+      // Use the latest inbox message as the thread representative
+      const latestInbox = conv.inbox.sort((a: any, b: any) => {
+        const aMs = parseInt(a.receivedTime || '0', 10)
+        const bMs = parseInt(b.receivedTime || '0', 10)
+        return bMs - aMs
+      })[0]
+
+      const fromRaw = latestInbox.fromAddress || latestInbox.sender || ''
       const { name: fromName, email: fromEmail } = parseFrom(fromRaw)
-      const receivedMs = parseInt(t.receivedTime || t.sentDateInGMT || '0', 10)
+      const receivedMs = parseInt(latestInbox.receivedTime || latestInbox.sentDateInGMT || '0', 10)
       const latestAt = receivedMs ? new Date(receivedMs).toISOString() : new Date().toISOString()
 
-      const isFromAthlete = fromEmail.toLowerCase() === workspaceEmail
-      const otherEmail = isFromAthlete
-        ? parseFrom(t.toAddress || '').email.toLowerCase()
-        : fromEmail.toLowerCase()
-      const otherName = isFromAthlete
-        ? parseFrom(t.toAddress || '').name
-        : (fromName || fromEmail)
+      const otherEmail = fromEmail.toLowerCase()
+      const otherName = fromName || fromEmail
 
-      const isUnread = String(t.status) === '0'
-      const threadMessages = rawMessages.filter(m => String(m.threadId || m.messageId) === String(t.threadId || t.messageId))
+      const unreadInbox = conv.inbox.filter((m: any) => String(m.status) === '0')
+      const totalMessages = conv.inbox.length + conv.sent.length
 
       return {
-        threadId: String(t.threadId || t.messageId || ''),
-        subject: t.subject || '(No subject)',
+        threadId: String(latestInbox.messageId || ''),
+        subject: latestInbox.subject || '(No subject)',
         latestAt,
         otherName: otherName || otherEmail,
         otherEmail,
-        snippet: t.summary || '',
-        unreadCount: isUnread ? 1 : 0,
-        messageCount: threadMessages.length || 1,
-        hasUnread: isUnread,
-        latestReceivedId: String(t.messageId || ''),
+        snippet: latestInbox.summary || '',
+        unreadCount: unreadInbox.length,
+        messageCount: totalMessages,
+        hasUnread: unreadInbox.length > 0,
+        latestReceivedId: String(latestInbox.messageId || ''),
         logoUrl: null as string | null,
         schoolName: null as string | null,
       }
-    }).filter(t => t.threadId && t.otherEmail)
+    }).filter(t => t.otherEmail && t.otherEmail !== workspaceEmail)
       .sort((a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime())
 
     // Batch logo + coach name lookup
