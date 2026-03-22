@@ -49,23 +49,20 @@ export async function GET() {
 
     // Zoho Mail360 Threads API — native conversation grouping
     const url = `${ZOHO_API_BASE}/accounts/${accountKey}/threads?folderId=${inboxFolderId}&limit=50&sortby=date&sortorder=false`
-    console.log('[email/inbox] Calling Zoho threads URL:', url)
     const res = await zohoFetch(url, {})
 
     if (!res.ok) {
       const errBody = await res.text()
-      console.error('[email/inbox] Zoho threads error — status:', res.status, '— body:', errBody)
+      console.error('[email/inbox] THREADS_ERROR status:', res.status, 'body:', errBody.substring(0, 500))
       return NextResponse.json({ threads: [], unreadCount: 0 })
     }
 
     const rawText = await res.text()
-    console.log('[email/inbox] Zoho threads raw response:', rawText.substring(0, 600))
+    console.error('[email/inbox] THREADS_RAW:', rawText.substring(0, 800))
     const data = JSON.parse(rawText)
-    console.log('[email/inbox] Zoho threads status code:', data?.status?.code, '| data count:', data?.data?.length)
 
-    // Zoho returns status.code !== 200 even on 200 HTTP in some error cases
     if (data?.status?.code && data.status.code !== 200) {
-      console.error('[email/inbox] Zoho threads API error body:', JSON.stringify(data))
+      console.error('[email/inbox] THREADS_STATUS_ERR:', JSON.stringify(data))
       return NextResponse.json({ threads: [], unreadCount: 0 })
     }
 
