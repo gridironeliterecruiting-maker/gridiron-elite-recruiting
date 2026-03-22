@@ -67,6 +67,7 @@ export async function GET() {
     }
 
     const rawThreads: any[] = data.data || []
+    console.error(`[inbox] COUNT_${rawThreads.length} code=${data?.status?.code} first=${JSON.stringify(rawThreads[0] ?? null).substring(0, 300)}`)
 
     const threads = rawThreads.map((t: any) => {
       const fromRaw = t.fromAddress || t.sender || ''
