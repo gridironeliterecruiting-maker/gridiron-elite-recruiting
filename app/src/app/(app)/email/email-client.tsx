@@ -23,6 +23,7 @@ import {
   ChevronLeft,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { createClient as createBrowserSupabase } from "@/lib/supabase/client"
 import { RecruitingEmailBadge } from "@/components/recruiting-email-badge"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -451,8 +452,27 @@ function InboxView() {
 
   useEffect(() => {
     loadInbox()
+    // Fallback polling every 30s in case Realtime disconnects
     const interval = setInterval(loadInbox, 30000)
-    return () => clearInterval(interval)
+
+    // Subscribe to Supabase Realtime for instant inbox updates via webhook
+    const supabase = createBrowserSupabase()
+    const channel = supabase
+      .channel('email-notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'email_notifications' },
+        () => {
+          // New email arrived — refresh inbox immediately
+          loadInbox()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      clearInterval(interval)
+      supabase.removeChannel(channel)
+    }
   }, [loadInbox])
 
   const handleSelectThread = (thread: Thread) => {
