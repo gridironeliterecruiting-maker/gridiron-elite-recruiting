@@ -48,7 +48,9 @@ export async function GET() {
     }
 
     // Zoho Mail360 Threads API — native conversation grouping
-    const url = `${ZOHO_API_BASE}/accounts/${accountKey}/threads?folderId=${inboxFolderId}&limit=50`
+    // Test without folderId to see if any threads exist at all
+    const url = `${ZOHO_API_BASE}/accounts/${accountKey}/threads?limit=50`
+    console.error(`[inbox] folderId=${inboxFolderId} url=${url}`)
     const res = await zohoFetch(url, {})
 
     if (!res.ok) {
