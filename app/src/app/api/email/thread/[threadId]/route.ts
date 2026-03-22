@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { zohoFetch, getZohoFolders, findFolderId } from '@/lib/workspace'
+import { zohoFetch } from '@/lib/workspace'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,16 +47,6 @@ function stripHtml(html: string): string {
     .trim()
 }
 
-async function fetchFolderMessages(accountKey: string, folderId: string): Promise<any[]> {
-  const res = await zohoFetch(
-    `${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${folderId}&limit=200&sortby=date&sortorder=false`,
-    {}
-  )
-  if (!res.ok) return []
-  const data = await res.json()
-  return data.data || []
-}
-
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ threadId: string }> }
@@ -79,39 +69,30 @@ export async function GET(
   if (!accountKey) return NextResponse.json({ messages: [] })
 
   try {
-    const folders = await getZohoFolders(accountKey)
-    const inboxFolderId = findFolderId(folders, 'inbox')
-    const sentFolderId = findFolderId(folders, 'sent', 'sent mail')
+    // Zoho Mail360 Threads API — fetch all messages in this conversation
+    const url = `${ZOHO_API_BASE}/accounts/${accountKey}/threads/${threadId}?limit=100`
+    console.log('[email/thread] Calling Zoho thread URL:', url)
+    const res = await zohoFetch(url, {})
 
-    // Fetch from inbox and sent in parallel
-    const [inboxMsgs, sentMsgs] = await Promise.all([
-      inboxFolderId ? fetchFolderMessages(accountKey, inboxFolderId) : Promise.resolve([]),
-      sentFolderId ? fetchFolderMessages(accountKey, sentFolderId) : Promise.resolve([]),
-    ])
-
-    const allMessages = [...inboxMsgs, ...sentMsgs]
-
-    // Deduplicate by messageId
-    const seen = new Set<string>()
-    const deduped: any[] = []
-    for (const msg of allMessages) {
-      const mid = String(msg.messageId || msg.message_id || '')
-      if (mid && !seen.has(mid)) {
-        seen.add(mid)
-        deduped.push(msg)
-      }
+    if (!res.ok) {
+      const errBody = await res.text()
+      console.error('[email/thread] Zoho thread error — status:', res.status, '— body:', errBody)
+      return NextResponse.json({ messages: [] })
     }
 
-    // Filter to messages belonging to this thread
-    const threadMessages = deduped.filter(msg => {
-      const tid = String(msg.threadId || msg.thread_id || msg.conversationId || '').trim()
-      const mid = String(msg.messageId || msg.message_id || '')
-      return tid === threadId || mid === threadId
-    })
+    const data = await res.json()
+    console.log('[email/thread] Zoho thread response status code:', data?.status?.code, '| data count:', data?.data?.length)
+
+    if (data?.status?.code && data.status.code !== 200) {
+      console.error('[email/thread] Zoho thread API error body:', JSON.stringify(data))
+      return NextResponse.json({ messages: [] })
+    }
+
+    const rawMessages: any[] = data.data || []
 
     // Fetch full bodies in parallel
     const messages = await Promise.all(
-      threadMessages.map(async (raw: any) => {
+      rawMessages.map(async (raw: any) => {
         const msgId = String(raw.messageId || raw.message_id || '')
         const bodyHtml = msgId ? await fetchMessageBody(accountKey, msgId) : ''
         const body = bodyHtml ? stripHtml(bodyHtml) : (raw.summary || '')
@@ -137,8 +118,6 @@ export async function GET(
 
     // Oldest first for conversation display
     messages.sort((a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime())
-
-    console.log(`[email/thread] threadId=${threadId} found ${messages.length} messages`)
 
     return NextResponse.json({ messages })
   } catch (err: any) {
