@@ -57,6 +57,23 @@ function stripHtml(html: string): string {
     .trim()
 }
 
+/** Strip all leading Re:/Fwd: prefixes, lowercase, URL-safe */
+function normalizeSubject(subject: string): string {
+  let s = subject
+  const prefixRe = /^(Re|Fwd|Fw|RE|FWD|FW):\s*/i
+  while (prefixRe.test(s)) s = s.replace(prefixRe, '')
+  return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+/** The email address of the non-athlete participant */
+function getOtherEmail(raw: any, myEmail: string): string {
+  const { email: fromEmail } = parseFrom(raw.fromAddress || raw.from_address || '')
+  if (fromEmail.toLowerCase() !== myEmail) return fromEmail.toLowerCase()
+  const toRaw = raw.toAddress || raw.to_address || ''
+  const { email: toEmail } = parseFrom((toRaw.split(',')[0] || '').trim())
+  return toEmail.toLowerCase()
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ threadId: string }> }
@@ -75,6 +92,7 @@ export async function GET(
     .single()
 
   const accountKey = (profile as any)?.zoho_account_key as string | null
+  const workspaceEmail = ((profile as any)?.workspace_email as string | null)?.toLowerCase() || ''
   if (!accountKey) return NextResponse.json({ messages: [] })
 
   try {
@@ -87,10 +105,18 @@ export async function GET(
       sentFolderId ? fetchFolderMessages(accountKey, sentFolderId, 100) : Promise.resolve([]),
     ])
 
-    // Filter to messages belonging to this thread
-    const matchThread = (raw: any) => {
-      const tid = raw.threadId || raw.thread_id || raw.messageId || raw.message_id || ''
-      return tid === threadId
+    /**
+     * Match a raw message to this thread.
+     * Checks Zoho's native threadId first, then falls back to otherEmail::normalizedSubject —
+     * must match whatever getGroupKey() produced in the inbox route.
+     */
+    const matchThread = (raw: any): boolean => {
+      const zohoTid = raw.threadId || raw.thread_id || ''
+      if (zohoTid && String(zohoTid) === threadId) return true
+      const other = getOtherEmail(raw, workspaceEmail)
+      const subj = normalizeSubject(raw.subject || '')
+      const key = other && subj ? `${other}::${subj}` : ''
+      return key === threadId
     }
 
     const threadMsgs = [
@@ -98,7 +124,7 @@ export async function GET(
       ...sentMsgs.filter(matchThread).map(raw => ({ raw, isSent: true })),
     ]
 
-    // De-duplicate by messageId in case a message appears in both folders
+    // De-duplicate by messageId
     const seen = new Set<string>()
     const unique = threadMsgs.filter(m => {
       const id = m.raw.messageId || m.raw.message_id || ''
@@ -132,7 +158,7 @@ export async function GET(
       })
     )
 
-    // Sort chronologically — oldest first for conversation display
+    // Oldest first for conversation display
     messages.sort((a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime())
 
     return NextResponse.json({ messages })

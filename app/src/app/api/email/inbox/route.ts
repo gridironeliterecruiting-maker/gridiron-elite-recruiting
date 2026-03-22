@@ -28,6 +28,36 @@ function parseFrom(fromRaw: string): { name: string; email: string } {
   return { name: name || email, email }
 }
 
+/** Strip all leading Re:/Fwd: prefixes, lowercase, URL-safe */
+function normalizeSubject(subject: string): string {
+  let s = subject
+  const prefixRe = /^(Re|Fwd|Fw|RE|FWD|FW):\s*/i
+  while (prefixRe.test(s)) s = s.replace(prefixRe, '')
+  return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+/** The email address of the non-athlete participant */
+function getOtherEmail(raw: any, myEmail: string): string {
+  const { email: fromEmail } = parseFrom(raw.fromAddress || raw.from_address || '')
+  if (fromEmail.toLowerCase() !== myEmail) return fromEmail.toLowerCase()
+  const toRaw = raw.toAddress || raw.to_address || ''
+  const { email: toEmail } = parseFrom((toRaw.split(',')[0] || '').trim())
+  return toEmail.toLowerCase()
+}
+
+/**
+ * Stable thread group key.
+ * Uses Zoho's native threadId if present; otherwise otherEmail::normalizedSubject.
+ * This ensures Re: replies group with the original email even without a Zoho threadId.
+ */
+function getGroupKey(raw: any, myEmail: string): string {
+  const zohoTid = raw.threadId || raw.thread_id || ''
+  if (zohoTid) return String(zohoTid)
+  const other = getOtherEmail(raw, myEmail)
+  const subj = normalizeSubject(raw.subject || '')
+  return other && subj ? `${other}::${subj}` : (raw.messageId || raw.message_id || '')
+}
+
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -74,16 +104,21 @@ export async function GET() {
       ...sentMsgs.map(raw => ({ raw, isSent: true })),
     ]
 
-    // Group by threadId
+    // Group messages by stable thread key
     const threadMap = new Map<string, TaggedMessage[]>()
     for (const msg of allMessages) {
-      const tid = msg.raw.threadId || msg.raw.thread_id || msg.raw.messageId || msg.raw.message_id || ''
-      if (!tid) continue
-      if (!threadMap.has(tid)) threadMap.set(tid, [])
-      threadMap.get(tid)!.push(msg)
+      const key = getGroupKey(msg.raw, workspaceEmail)
+      if (!key) continue
+      if (!threadMap.has(key)) threadMap.set(key, [])
+      threadMap.get(key)!.push(msg)
     }
 
-    const threads = Array.from(threadMap.entries()).map(([threadId, msgs]) => {
+    // Only show threads where a coach has actually emailed — never athlete-sent-only threads
+    const coachThreadEntries = [...threadMap.entries()].filter(
+      ([, msgs]) => msgs.some(m => !m.isSent)
+    )
+
+    const threads = coachThreadEntries.map(([threadId, msgs]) => {
       const byNewest = [...msgs].sort((a, b) =>
         parseInt(b.raw.receivedTime || b.raw.received_time || '0', 10) -
         parseInt(a.raw.receivedTime || a.raw.received_time || '0', 10)
@@ -93,16 +128,13 @@ export async function GET() {
       const latestMs = parseInt(latestMsg.raw.receivedTime || latestMsg.raw.received_time || '0', 10)
       const latestAt = latestMs ? new Date(latestMs).toISOString() : new Date().toISOString()
 
-      // Use actual subject from the most recent message (verbatim — coach may have changed it)
+      // Verbatim subject from the most recent message
       const subject = latestMsg.raw.subject || '(No subject)'
 
-      // "Other person" = the participant who is NOT the athlete
-      const otherMsg = msgs.find(m => {
-        const { email } = parseFrom(m.raw.fromAddress || m.raw.from_address || '')
-        return email.toLowerCase() !== workspaceEmail
-      }) || byNewest[0]
+      // Coach identity = first received message's sender (always the coach, never the athlete)
+      const receivedMsg = msgs.find(m => !m.isSent)!
       const { name: otherName, email: otherEmail } = parseFrom(
-        otherMsg.raw.fromAddress || otherMsg.raw.from_address || ''
+        receivedMsg.raw.fromAddress || receivedMsg.raw.from_address || ''
       )
 
       const snippet = latestMsg.raw.summary || latestMsg.raw.snippet || ''
@@ -125,7 +157,7 @@ export async function GET() {
       }
     })
 
-    // Sort threads by latest activity, newest first
+    // Sort newest activity first
     threads.sort((a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime())
 
     // Batch logo lookup — one query for all coach emails
