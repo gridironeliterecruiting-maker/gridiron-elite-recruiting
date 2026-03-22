@@ -19,9 +19,11 @@ export async function GET(req: NextRequest) {
   const step = searchParams.get('step') || 'diagnose'
   const results: Record<string, any> = { step }
 
+  const accountKey = searchParams.get('accountKey') || TEST_ACCOUNT_KEY
+
   if (step === 'diagnose') {
     // Original diagnostic — check current state
-    await runDiagnose(results)
+    await runDiagnose(accountKey, results)
   } else if (step === 'set-password') {
     // Step 1: Set password on the existing HOSTED_ACCOUNT
     await runSetPassword(results)
@@ -44,7 +46,6 @@ export async function GET(req: NextRequest) {
     await runRecreateHosted(results)
   } else if (step === 'send-test') {
     // Send a test email to create conversation material for threading test
-    const accountKey = searchParams.get('accountKey') || TEST_ACCOUNT_KEY
     await runSendTest(accountKey, results)
   } else if (step === 'list-accounts') {
     // List all accounts to see what exists
@@ -56,10 +57,12 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(results, { status: 200 })
 }
 
-async function runDiagnose(results: Record<string, any>) {
+async function runDiagnose(acctKey: string, results: Record<string, any>) {
+  results.accountKeyUsed = acctKey
+
   // 1. Get folders
   try {
-    const folders = await getZohoFolders(TEST_ACCOUNT_KEY)
+    const folders = await getZohoFolders(acctKey)
     results.folders = folders.map((f: any) => ({ name: f.folderName, id: f.folderId, type: f.folderType }))
     const inboxFolder = folders.find((f: any) =>
       (f.folderName || '').toLowerCase() === 'inbox' ||
@@ -72,38 +75,79 @@ async function runDiagnose(results: Record<string, any>) {
 
   const inboxFolderId = results.inboxFolderId
 
-  // 2. Messages
-  try {
-    const msgUrl = `${ZOHO_API_BASE}/accounts/${TEST_ACCOUNT_KEY}/messages?folderId=${inboxFolderId}&limit=5`
-    const msgRes = await zohoFetch(msgUrl, {})
-    const msgData = await msgRes.json()
-    results.messages = {
-      count: msgData?.data?.length ?? 0,
-      firstItemKeys: msgData?.data?.[0] ? Object.keys(msgData.data[0]) : [],
-      firstItem: msgData?.data?.[0] || null,
-    }
-  } catch (e: any) {
-    results.messagesError = e?.message || String(e)
-  }
-
-  // 3. Threads
+  // 2. Messages in inbox
   if (inboxFolderId) {
     try {
-      const thrUrl = `${ZOHO_API_BASE}/accounts/${TEST_ACCOUNT_KEY}/threads?folderId=${inboxFolderId}&limit=50`
+      const msgUrl = `${ZOHO_API_BASE}/accounts/${acctKey}/messages?folderId=${inboxFolderId}&limit=5`
+      const msgRes = await zohoFetch(msgUrl, {})
+      const msgData = await msgRes.json()
+      results.inboxMessages = {
+        count: msgData?.data?.length ?? 0,
+        firstItemKeys: msgData?.data?.[0] ? Object.keys(msgData.data[0]) : [],
+        firstItem: msgData?.data?.[0] || null,
+      }
+    } catch (e: any) {
+      results.inboxMessagesError = e?.message || String(e)
+    }
+  }
+
+  // 2b. Messages in sent folder
+  try {
+    const folders = await getZohoFolders(acctKey)
+    const sentFolder = folders.find((f: any) =>
+      (f.folderName || '').toLowerCase() === 'sent' ||
+      (f.folderType || '').toLowerCase() === 'sent'
+    )
+    if (sentFolder) {
+      const sentId = String(sentFolder.folderId || '')
+      const msgUrl = `${ZOHO_API_BASE}/accounts/${acctKey}/messages?folderId=${sentId}&limit=5`
+      const msgRes = await zohoFetch(msgUrl, {})
+      const msgData = await msgRes.json()
+      results.sentMessages = {
+        count: msgData?.data?.length ?? 0,
+        firstItemKeys: msgData?.data?.[0] ? Object.keys(msgData.data[0]) : [],
+        firstItem: msgData?.data?.[0] || null,
+      }
+    }
+  } catch (e: any) {
+    results.sentMessagesError = e?.message || String(e)
+  }
+
+  // 3. Threads with inbox folderId
+  if (inboxFolderId) {
+    try {
+      const thrUrl = `${ZOHO_API_BASE}/accounts/${acctKey}/threads?folderId=${inboxFolderId}&limit=50`
       const thrRes = await zohoFetch(thrUrl, {})
       const thrData = await thrRes.json()
-      results.threads = {
+      results.threadsInbox = {
         count: thrData?.data?.length ?? 0,
+        firstItem: thrData?.data?.[0] || null,
+        firstItemKeys: thrData?.data?.[0] ? Object.keys(thrData.data[0]) : [],
         fullResponse: thrData,
       }
     } catch (e: any) {
-      results.threadsError = e?.message || String(e)
+      results.threadsInboxError = e?.message || String(e)
     }
+  }
+
+  // 3b. Threads without folderId (all folders)
+  try {
+    const thrUrl = `${ZOHO_API_BASE}/accounts/${acctKey}/threads?limit=50&includesent=true`
+    const thrRes = await zohoFetch(thrUrl, {})
+    const thrData = await thrRes.json()
+    results.threadsAll = {
+      count: thrData?.data?.length ?? 0,
+      firstItem: thrData?.data?.[0] || null,
+      firstItemKeys: thrData?.data?.[0] ? Object.keys(thrData.data[0]) : [],
+      fullResponse: thrData,
+    }
+  } catch (e: any) {
+    results.threadsAllError = e?.message || String(e)
   }
 
   // 4. Account info
   try {
-    const res = await zohoFetch(`${ZOHO_API_BASE}/accounts/${TEST_ACCOUNT_KEY}`, {})
+    const res = await zohoFetch(`${ZOHO_API_BASE}/accounts/${acctKey}`, {})
     const data = await res.json()
     results.accountInfo = data?.data || null
   } catch (e: any) {
