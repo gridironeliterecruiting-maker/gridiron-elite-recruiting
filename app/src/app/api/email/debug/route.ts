@@ -36,6 +36,9 @@ export async function GET(req: NextRequest) {
     } else {
       await runTestSync(syncKey, results)
     }
+  } else if (step === 'delete-and-recreate') {
+    // Delete existing hosted account, then create sync account
+    await runDeleteAndRecreate(results)
   } else if (step === 'list-accounts') {
     // List all accounts to see what exists
     await runListAccounts(results)
@@ -221,6 +224,57 @@ async function runTestSync(syncKey: string, results: Record<string, any>) {
     }
   } catch (e: any) {
     results.syncThreadsNoFolderError = e?.message || String(e)
+  }
+}
+
+async function runDeleteAndRecreate(results: Record<string, any>) {
+  // Step 1: Delete the existing hosted account
+  try {
+    const delRes = await zohoFetch(`${ZOHO_API_BASE}/accounts/${TEST_ACCOUNT_KEY}`, {
+      method: 'DELETE',
+    })
+    const delData = await delRes.json().catch(() => ({}))
+    results.deleteHosted = {
+      httpStatus: delRes.status,
+      response: delData,
+    }
+  } catch (e: any) {
+    results.deleteHostedError = e?.message || String(e)
+    return // Don't proceed if delete fails
+  }
+
+  // Step 2: Wait a moment for deletion to propagate
+  await new Promise(resolve => setTimeout(resolve, 2000))
+
+  // Step 3: Create sync account (accountType: 2) pointing to Zoho IMAP
+  try {
+    const createRes = await zohoFetch(`${ZOHO_API_BASE}/accounts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        accountType: '2',
+        emailid: TEST_EMAIL,
+        displayName: 'Cael Kongshaug',
+        incomingUser: TEST_EMAIL,
+        incomingPasswd: TEST_PASSWORD,
+        incomingServer: 'imappro.zoho.com',
+        incomingServerPort: '993',
+        sslEnabled: true,
+        outgoingServer: 'smtppro.zoho.com',
+        outgoingServerPort: '465',
+        smtpConnection: '1', // SSL
+        outgoingUser: TEST_EMAIL,
+        outgoingPasswd: TEST_PASSWORD,
+      }),
+    })
+    const createData = await createRes.json()
+    results.createSync = {
+      httpStatus: createRes.status,
+      response: createData,
+      newAccountKey: createData?.data?.account_key || null,
+    }
+  } catch (e: any) {
+    results.createSyncError = e?.message || String(e)
   }
 }
 
