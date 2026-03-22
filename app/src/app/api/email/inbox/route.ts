@@ -46,13 +46,12 @@ function getOtherEmail(raw: any, myEmail: string): string {
 }
 
 /**
- * Stable thread group key.
- * Uses Zoho's native threadId if present; otherwise otherEmail::normalizedSubject.
- * This ensures Re: replies group with the original email even without a Zoho threadId.
+ * Stable thread group key: coachEmail::normalizedSubject
+ * We intentionally ignore Zoho's threadId because it is inconsistently present —
+ * some messages in the same conversation have it, others don't, causing splits.
+ * Subject-based grouping is reliable because every reply shares the same base subject.
  */
 function getGroupKey(raw: any, myEmail: string): string {
-  const zohoTid = raw.threadId || raw.thread_id || ''
-  if (zohoTid) return String(zohoTid)
   const other = getOtherEmail(raw, myEmail)
   const subj = normalizeSubject(raw.subject || '')
   return other && subj ? `${other}::${subj}` : (raw.messageId || raw.message_id || '')

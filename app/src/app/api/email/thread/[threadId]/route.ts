@@ -106,13 +106,10 @@ export async function GET(
     ])
 
     /**
-     * Match a raw message to this thread.
-     * Checks Zoho's native threadId first, then falls back to otherEmail::normalizedSubject —
-     * must match whatever getGroupKey() produced in the inbox route.
+     * Match by coachEmail::normalizedSubject — same logic as getGroupKey() in inbox route.
+     * Zoho's threadId is intentionally ignored (inconsistently present across messages).
      */
     const matchThread = (raw: any): boolean => {
-      const zohoTid = raw.threadId || raw.thread_id || ''
-      if (zohoTid && String(zohoTid) === threadId) return true
       const other = getOtherEmail(raw, workspaceEmail)
       const subj = normalizeSubject(raw.subject || '')
       const key = other && subj ? `${other}::${subj}` : ''
