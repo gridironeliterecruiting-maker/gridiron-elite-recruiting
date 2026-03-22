@@ -83,6 +83,42 @@ export async function GET(req: NextRequest) {
         results.threadDetailError = e?.message || String(e)
       }
     }
+  } else if (step === 'conversation') {
+    // Simulate what the thread detail does to find all messages in a conversation
+    const msgId = searchParams.get('messageId')
+    if (!msgId) { results.error = 'messageId required'; } else {
+      const seedRes = await zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages/${msgId}`, {})
+      const seedData = seedRes.ok ? await seedRes.json() : null
+      const seedMsg = seedData?.data || null
+      results.seedMsg = { subject: seedMsg?.subject, fromAddress: seedMsg?.fromAddress, toAddress: seedMsg?.toAddress }
+      const seedSubject = (seedMsg?.subject || '').replace(/^(Re:\s*|Fwd:\s*|Fw:\s*)+/i, '').trim().toLowerCase()
+      const seedFrom = (seedMsg?.fromAddress || '').replace(/.*<(.+?)>.*/, '$1').toLowerCase() || (seedMsg?.fromAddress || '').toLowerCase()
+      const seedTo = (seedMsg?.toAddress || '').replace(/.*<(.+?)>.*/, '$1').toLowerCase() || (seedMsg?.toAddress || '').toLowerCase()
+      const wse = 'caelkongshaug@jetstreammail.com'
+      const contactEmail = seedFrom === wse ? seedTo : seedFrom
+      results.matching = { seedSubject, seedFrom, seedTo, contactEmail, workspaceEmail: wse }
+      const folders = await getZohoFolders(accountKey)
+      const inboxFolderId = folders.find((f: any) => (f.folderName || '').toLowerCase() === 'inbox')?.folderId
+      const sentFolderId = folders.find((f: any) => (f.folderName || '').toLowerCase() === 'sent')?.folderId
+      results.folderIds = { inboxFolderId, sentFolderId }
+      const inboxRes2 = inboxFolderId ? await zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${inboxFolderId}&limit=200`, {}) : null
+      const sentRes2 = sentFolderId ? await zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${sentFolderId}&limit=200`, {}) : null
+      const inboxMsgs = inboxRes2?.ok ? (await inboxRes2.json()).data || [] : []
+      const sentMsgs = sentRes2?.ok ? (await sentRes2.json()).data || [] : []
+      results.totalInbox = inboxMsgs.length
+      results.totalSent = sentMsgs.length
+      const allMsgs = [...inboxMsgs, ...sentMsgs]
+      const matched = allMsgs.filter((m: any) => {
+        const subj = (m.subject || '').replace(/^(Re:\s*|Fwd:\s*|Fw:\s*)+/i, '').trim().toLowerCase()
+        if (subj !== seedSubject) return false
+        const from = (m.fromAddress || '').replace(/.*<(.+?)>.*/, '$1').toLowerCase() || (m.fromAddress || '').toLowerCase()
+        const to = (m.toAddress || '').replace(/.*<(.+?)>.*/, '$1').toLowerCase() || (m.toAddress || '').toLowerCase()
+        return from === contactEmail || to === contactEmail
+      })
+      results.matchedMessages = matched.map((m: any) => ({
+        messageId: m.messageId, subject: m.subject, from: m.fromAddress, to: m.toAddress, folder: m.folderId
+      }))
+    }
   } else if (step === 'headers') {
     // Fetch email headers to check threading (In-Reply-To, References, Message-ID)
     const msgId = searchParams.get('messageId')
