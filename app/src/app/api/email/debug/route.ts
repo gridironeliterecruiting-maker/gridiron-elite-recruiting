@@ -55,6 +55,34 @@ export async function GET(req: NextRequest) {
     } else {
       await runSendReply(accountKey, msgId, results)
     }
+  } else if (step === 'thread-detail') {
+    // Fetch thread detail — same as what the thread view calls
+    const threadId = searchParams.get('threadId')
+    if (!threadId) {
+      results.error = 'threadId query param required'
+    } else {
+      try {
+        const url = `${ZOHO_API_BASE}/accounts/${accountKey}/threads/${threadId}?limit=100`
+        const res = await zohoFetch(url, {})
+        const data = await res.json()
+        results.threadDetail = {
+          httpStatus: res.status,
+          count: data?.data?.length ?? 0,
+          messages: (data?.data || []).map((m: any) => ({
+            messageId: m.messageId,
+            subject: m.subject,
+            fromAddress: m.fromAddress,
+            toAddress: m.toAddress,
+            folderId: m.folderId,
+            receivedTime: m.receivedTime,
+            status: m.status,
+            summary: m.summary?.substring(0, 80),
+          })),
+        }
+      } catch (e: any) {
+        results.threadDetailError = e?.message || String(e)
+      }
+    }
   } else if (step === 'test-zohomail') {
     // Test if Zoho Mail API (different from Mail360) supports threading
     await runTestZohoMail(accountKey, results)
