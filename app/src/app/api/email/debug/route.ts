@@ -83,6 +83,35 @@ export async function GET(req: NextRequest) {
         results.threadDetailError = e?.message || String(e)
       }
     }
+  } else if (step === 'raw-body') {
+    // Fetch raw message body to see what Zoho actually returns
+    const msgId = searchParams.get('messageId')
+    if (!msgId) {
+      results.error = 'messageId query param required'
+    } else {
+      try {
+        const url = `${ZOHO_API_BASE}/accounts/${accountKey}/messages/${msgId}`
+        const res = await zohoFetch(url, {})
+        const data = await res.json()
+        const content = data.data?.content || ''
+        const body = data.data?.body || ''
+        const htmlBody = data.data?.htmlBody || ''
+        const textBody = data.data?.textBody || ''
+        results.rawBody = {
+          contentLength: content.length,
+          contentFirst500: content.substring(0, 500),
+          bodyLength: body.length,
+          bodyFirst500: body.substring(0, 500),
+          htmlBodyLength: htmlBody.length,
+          htmlBodyFirst500: htmlBody.substring(0, 500),
+          textBodyLength: textBody.length,
+          textBodyFirst500: textBody.substring(0, 500),
+          allDataKeys: data.data ? Object.keys(data.data) : [],
+        }
+      } catch (e: any) {
+        results.rawBodyError = e?.message || String(e)
+      }
+    }
   } else if (step === 'test-zohomail') {
     // Test if Zoho Mail API (different from Mail360) supports threading
     await runTestZohoMail(accountKey, results)
