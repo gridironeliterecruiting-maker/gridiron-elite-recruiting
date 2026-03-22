@@ -9,15 +9,18 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { messageId, toEmail, toName, replyBody } = body as {
-    messageId: string
+  // Accept both 'messageId' and legacy 'gmailMessageId' field names
+  const { messageId: directId, gmailMessageId, toEmail, toName, replyBody } = body as {
+    messageId?: string
+    gmailMessageId?: string
     toEmail: string
     toName?: string
     replyBody: string
   }
+  const messageId = directId || gmailMessageId || ''
 
-  if (!messageId || !toEmail || !replyBody?.trim()) {
-    return NextResponse.json({ error: 'messageId, toEmail, and replyBody are required' }, { status: 400 })
+  if (!toEmail || !replyBody?.trim()) {
+    return NextResponse.json({ error: 'toEmail and replyBody are required' }, { status: 400 })
   }
 
   const admin = createAdminClient()
