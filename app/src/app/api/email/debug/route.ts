@@ -83,6 +83,24 @@ export async function GET(req: NextRequest) {
         results.threadDetailError = e?.message || String(e)
       }
     }
+  } else if (step === 'headers') {
+    // Fetch email headers to check threading (In-Reply-To, References, Message-ID)
+    const msgId = searchParams.get('messageId')
+    if (!msgId) {
+      results.error = 'messageId query param required'
+    } else {
+      try {
+        const url = `${ZOHO_API_BASE}/accounts/${accountKey}/messages/${msgId}/header`
+        const res = await zohoFetch(url, {})
+        const data = await res.json()
+        results.headers = {
+          httpStatus: res.status,
+          headerContent: data.data?.headerContent || '',
+        }
+      } catch (e: any) {
+        results.headersError = e?.message || String(e)
+      }
+    }
   } else if (step === 'raw-body') {
     // Fetch raw message body to see what Zoho actually returns
     const msgId = searchParams.get('messageId')
