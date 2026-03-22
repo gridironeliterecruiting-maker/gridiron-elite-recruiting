@@ -97,6 +97,16 @@ export async function GET() {
       sentFolderId ? fetchFolderMessages(accountKey, sentFolderId, 50) : Promise.resolve([]),
     ])
 
+    // DEBUG: log all fields on the first few messages so we can see what Zoho actually returns
+    if (inboxMsgs.length > 0) {
+      console.log('[email/inbox] DEBUG raw inbox msg[0] keys:', Object.keys(inboxMsgs[0]))
+      console.log('[email/inbox] DEBUG raw inbox msg[0]:', JSON.stringify(inboxMsgs[0]))
+    }
+    if (sentMsgs.length > 0) {
+      console.log('[email/inbox] DEBUG raw sent msg[0] keys:', Object.keys(sentMsgs[0]))
+      console.log('[email/inbox] DEBUG raw sent msg[0]:', JSON.stringify(sentMsgs[0]))
+    }
+
     type TaggedMessage = { raw: any; isSent: boolean }
     const allMessages: TaggedMessage[] = [
       ...inboxMsgs.map(raw => ({ raw, isSent: false })),
