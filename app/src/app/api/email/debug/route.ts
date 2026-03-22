@@ -118,6 +118,17 @@ export async function GET(req: NextRequest) {
       results.matchedMessages = matched.map((m: any) => ({
         messageId: m.messageId, subject: m.subject, from: m.fromAddress, to: m.toAddress, folder: m.folderId
       }))
+      // Also show all sent messages so we can see why they didn't match
+      results.allSentMessages = sentMsgs.map((m: any) => ({
+        messageId: m.messageId,
+        subject: m.subject,
+        normalizedSubject: (m.subject || '').replace(/^(Re:\s*|Fwd:\s*|Fw:\s*)+/i, '').trim().toLowerCase(),
+        from: m.fromAddress,
+        to: m.toAddress,
+        toParsed: (m.toAddress || '').replace(/.*<(.+?)>.*/, '$1').toLowerCase(),
+        wouldMatchSubject: (m.subject || '').replace(/^(Re:\s*|Fwd:\s*|Fw:\s*)+/i, '').trim().toLowerCase() === seedSubject,
+        wouldMatchContact: ((m.fromAddress || '').replace(/.*<(.+?)>.*/, '$1').toLowerCase() === contactEmail) || ((m.toAddress || '').replace(/.*<(.+?)>.*/, '$1').toLowerCase() === contactEmail),
+      }))
     }
   } else if (step === 'headers') {
     // Fetch email headers to check threading (In-Reply-To, References, Message-ID)
