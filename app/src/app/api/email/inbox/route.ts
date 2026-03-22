@@ -58,8 +58,10 @@ export async function GET() {
       return NextResponse.json({ threads: [], unreadCount: 0 })
     }
 
-    const data = await res.json()
-    console.log('[email/inbox] Zoho threads response status code:', data?.status?.code, '| data count:', data?.data?.length)
+    const rawText = await res.text()
+    console.log('[email/inbox] Zoho threads raw response:', rawText.substring(0, 600))
+    const data = JSON.parse(rawText)
+    console.log('[email/inbox] Zoho threads status code:', data?.status?.code, '| data count:', data?.data?.length)
 
     // Zoho returns status.code !== 200 even on 200 HTTP in some error cases
     if (data?.status?.code && data.status.code !== 200) {
