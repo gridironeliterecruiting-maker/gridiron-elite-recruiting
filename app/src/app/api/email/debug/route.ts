@@ -39,6 +39,13 @@ export async function GET(req: NextRequest) {
   } else if (step === 'delete-and-recreate') {
     // Delete existing hosted account, then create sync account
     await runDeleteAndRecreate(results)
+  } else if (step === 'recreate-hosted') {
+    // Recreate Cael's hosted account after deletion
+    await runRecreateHosted(results)
+  } else if (step === 'send-test') {
+    // Send a test email to create conversation material for threading test
+    const accountKey = searchParams.get('accountKey') || TEST_ACCOUNT_KEY
+    await runSendTest(accountKey, results)
   } else if (step === 'list-accounts') {
     // List all accounts to see what exists
     await runListAccounts(results)
@@ -275,6 +282,52 @@ async function runDeleteAndRecreate(results: Record<string, any>) {
     }
   } catch (e: any) {
     results.createSyncError = e?.message || String(e)
+  }
+}
+
+async function runRecreateHosted(results: Record<string, any>) {
+  try {
+    const res = await zohoFetch(`${ZOHO_API_BASE}/accounts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        accountType: '1',
+        emailid: TEST_EMAIL,
+        displayName: 'Cael Kongshaug',
+      }),
+    })
+    const data = await res.json()
+    results.recreateHosted = {
+      httpStatus: res.status,
+      response: data,
+      newAccountKey: data?.data?.account_key || null,
+    }
+  } catch (e: any) {
+    results.recreateHostedError = e?.message || String(e)
+  }
+}
+
+async function runSendTest(accountKey: string, results: Record<string, any>) {
+  // Send a test email from Cael's account to Paul, then send a reply from Paul back
+  // This creates a multi-message conversation for threading test
+  try {
+    const res = await zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fromAddress: TEST_EMAIL,
+        toAddress: 'paulkongshaug@gmail.com',
+        subject: 'Threading test conversation',
+        content: 'This is a test message to verify Zoho threads API works for hosted accounts. Please reply to create a thread.',
+      }),
+    })
+    const data = await res.json()
+    results.sendTest = {
+      httpStatus: res.status,
+      response: data,
+    }
+  } catch (e: any) {
+    results.sendTestError = e?.message || String(e)
   }
 }
 
