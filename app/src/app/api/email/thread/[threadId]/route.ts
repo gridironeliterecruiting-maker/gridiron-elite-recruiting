@@ -139,9 +139,11 @@ export async function GET(
     const rawMessages = allMsgs.filter((msg: any) => {
       const subj = (msg.subject || '').replace(/^(Re:\s*|Fwd:\s*|Fw:\s*)+/i, '').trim().toLowerCase()
       if (subj !== seedSubject) return false
-      const from = parseFrom(msg.fromAddress || '').email.toLowerCase()
-      const to = parseFrom(msg.toAddress || '').email.toLowerCase()
-      return from === contactEmail || to === contactEmail
+      // Check if contactEmail appears anywhere in from or to addresses
+      // This handles all format variations: "Name <email>", "<email>", "email"
+      const fromStr = (msg.fromAddress || '').toLowerCase()
+      const toStr = (msg.toAddress || '').toLowerCase()
+      return fromStr.includes(contactEmail) || toStr.includes(contactEmail)
     })
 
     // Fetch full bodies in parallel
