@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { zohoFetch } from '@/lib/workspace'
+import { zohoFetch, getZohoFolders, findFolderId } from '@/lib/workspace'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,10 +42,15 @@ export async function GET() {
   }
 
   try {
-    // Single API call: fetch inbox messages only
-    // Sent messages are fetched separately when opening a thread detail
+    // Get inbox folder ID, then fetch inbox messages (2 API calls total)
+    const folders = await getZohoFolders(accountKey)
+    const inboxFolderId = findFolderId(folders, 'inbox')
+    if (!inboxFolderId) {
+      return NextResponse.json({ threads: [], unreadCount: 0 })
+    }
+
     const inboxRes = await zohoFetch(
-      `${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=-1&limit=200&status=&sortby=date`,
+      `${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${inboxFolderId}&limit=200`,
       {}
     )
 
