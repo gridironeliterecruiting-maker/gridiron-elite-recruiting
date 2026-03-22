@@ -47,6 +47,14 @@ export async function GET(req: NextRequest) {
   } else if (step === 'send-test') {
     // Send a test email to create conversation material for threading test
     await runSendTest(accountKey, results)
+  } else if (step === 'send-reply') {
+    // Use Mail360 Send Reply API to create a proper threaded reply
+    const msgId = searchParams.get('messageId')
+    if (!msgId) {
+      results.error = 'messageId query param required'
+    } else {
+      await runSendReply(accountKey, msgId, results)
+    }
   } else if (step === 'test-zohomail') {
     // Test if Zoho Mail API (different from Mail360) supports threading
     await runTestZohoMail(accountKey, results)
@@ -375,6 +383,63 @@ async function runSendTest(accountKey: string, results: Record<string, any>) {
     }
   } catch (e: any) {
     results.sendTestError = e?.message || String(e)
+  }
+}
+
+async function runSendReply(acctKey: string, messageId: string, results: Record<string, any>) {
+  // Use the Mail360 Send Reply API to reply to an existing message
+  // This should create a proper thread with In-Reply-To and References headers
+  try {
+    const url = `${ZOHO_API_BASE}/accounts/${acctKey}/messages/${messageId}`
+    const res = await zohoFetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fromAddress: TEST_EMAIL,
+        action: 'reply',
+        content: 'This is a reply sent via the Mail360 Send Reply API to test thread creation.',
+      }),
+    })
+    const data = await res.json()
+    results.sendReply = {
+      httpStatus: res.status,
+      response: data,
+    }
+  } catch (e: any) {
+    results.sendReplyError = e?.message || String(e)
+  }
+
+  // Now immediately check threads to see if a thread was created
+  try {
+    const folders = await getZohoFolders(acctKey)
+    const inboxFolder = folders.find((f: any) =>
+      (f.folderName || '').toLowerCase() === 'inbox'
+    )
+    const inboxId = inboxFolder ? String(inboxFolder.folderId || '') : null
+
+    // Check threads in inbox
+    if (inboxId) {
+      const thrUrl = `${ZOHO_API_BASE}/accounts/${acctKey}/threads?folderId=${inboxId}&limit=50`
+      const thrRes = await zohoFetch(thrUrl, {})
+      const thrData = await thrRes.json()
+      results.threadsAfterReply = {
+        count: thrData?.data?.length ?? 0,
+        firstItem: thrData?.data?.[0] || null,
+        firstItemKeys: thrData?.data?.[0] ? Object.keys(thrData.data[0]) : [],
+      }
+    }
+
+    // Check threads in all folders
+    const thrUrl2 = `${ZOHO_API_BASE}/accounts/${acctKey}/threads?limit=50&includesent=true`
+    const thrRes2 = await zohoFetch(thrUrl2, {})
+    const thrData2 = await thrRes2.json()
+    results.threadsAllAfterReply = {
+      count: thrData2?.data?.length ?? 0,
+      firstItem: thrData2?.data?.[0] || null,
+      firstItemKeys: thrData2?.data?.[0] ? Object.keys(thrData2.data[0]) : [],
+    }
+  } catch (e: any) {
+    results.threadsCheckError = e?.message || String(e)
   }
 }
 
