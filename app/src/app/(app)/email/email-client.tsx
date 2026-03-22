@@ -209,11 +209,14 @@ function ConversationView({ thread, onBack, onArchived, onDeleted }: {
     }
   }, [showReply])
 
-  // Mark entire thread as read when opened
+  // Mark all unread messages as read when thread is opened
   useEffect(() => {
-    const hasUnread = messages.some(m => !m.is_read && !m.is_sent)
-    if (hasUnread && thread.threadId) {
-      fetch(`/api/email/inbox/${encodeURIComponent(thread.threadId)}/read`, { method: "PATCH" }).catch(() => {})
+    const unreadMessages = messages.filter(m => !m.is_read && !m.is_sent)
+    if (unreadMessages.length > 0) {
+      // Mark each unread message individually
+      for (const msg of unreadMessages) {
+        fetch(`/api/email/inbox/${encodeURIComponent(msg.id)}/read`, { method: "PATCH" }).catch(() => {})
+      }
       // Update local state so the unread indicator disappears immediately
       thread.hasUnread = false
       thread.unreadCount = 0

@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { zohoFetch } from '@/lib/workspace'
 
+const ZOHO_API_BASE = 'https://mail360.zoho.com/api'
+
 export async function PATCH(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -24,16 +26,16 @@ export async function PATCH(
   if (!accountKey) return NextResponse.json({ ok: true })
 
   try {
-    // Use Mail360 "Mark threads as read" API — marks entire conversation
-    // PUT /accounts/{account_key}/threads with mode: markAsRead, threadId: [id]
+    // Mail360 "Mark emails as read" API
+    // PUT /accounts/{account_key}/messages with mode: markAsRead, messageId: [ids]
     await zohoFetch(
-      `https://mail360.zoho.com/api/accounts/${accountKey}/threads`,
+      `${ZOHO_API_BASE}/accounts/${accountKey}/messages`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode: 'markAsRead',
-          threadId: [id],
+          messageId: [id],
         }),
       }
     )
