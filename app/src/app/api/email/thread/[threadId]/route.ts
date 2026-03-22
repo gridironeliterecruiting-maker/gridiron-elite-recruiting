@@ -28,14 +28,8 @@ function parseFrom(fromRaw: string): { name: string; email: string } {
   return { name: name || email, email }
 }
 
-function stripHtml(html: string): string {
-  return html
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n')
-    .replace(/<\/div>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
+function decodeEntities(text: string): string {
+  return text
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
@@ -43,6 +37,34 @@ function stripHtml(html: string): string {
     .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, ' ')
     .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code)))
+}
+
+function stripHtml(html: string): string {
+  // Remove quoted reply blocks from Gmail/Outlook style replies
+  // These appear as <blockquote> or <div class="gmail_quote"> in HTML
+  let cleaned = html
+    .replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, '')
+    .replace(/<div[^>]*class="[^"]*gmail_quote[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+    .replace(/<div[^>]*class="[^"]*yahoo_quoted[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+
+  // Strip HTML tags, decode entities
+  cleaned = cleaned
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+
+  cleaned = decodeEntities(cleaned)
+
+  // Strip plain-text quoted replies (e.g. "On Mon, Mar 22, 2026 ... wrote:")
+  // Match "On <date>...<email> wrote:" followed by the quoted text
+  cleaned = cleaned.replace(/\s*On\s+\w{3},\s+\w{3}\s+\d{1,2},\s+\d{4}[\s\S]*?wrote:[\s\S]*/i, '')
+  // Also match "On <day> <date> <time> <offset>\n<name> <email> wrote" format
+  cleaned = cleaned.replace(/\s*On\s+\w{3},\s+\d{1,2}\s+\w{3}\s+\d{4}\s+[\d:]+\s+[+-]\d{4}[\s\S]*/i, '')
+
+  return cleaned
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
