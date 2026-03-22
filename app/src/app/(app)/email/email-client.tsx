@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -128,6 +128,13 @@ function ReadingPane({ item, onClose, onFiled, onDeleted, showFileButton = true 
   const [filing, setFiling] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [sent, setSent] = useState(false)
+  const replyTextareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (showReply) {
+      replyTextareaRef.current?.focus()
+    }
+  }, [showReply])
 
   const fromName = "from_name" in item ? item.from_name : (item as FolderEmail).coach_name
   const fromEmail = "from_email" in item ? item.from_email : null
@@ -300,6 +307,7 @@ function ReadingPane({ item, onClose, onFiled, onDeleted, showFileButton = true 
             Reply to {fromName || fromEmail}
           </p>
           <textarea
+            ref={replyTextareaRef}
             className="w-full rounded-md border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             rows={5}
             placeholder="Type your reply..."
@@ -336,9 +344,13 @@ function InboxView() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<InboxItem | null>(null)
   const [mobileViewEmail, setMobileViewEmail] = useState(false)
+  const isFirstLoad = useRef(true)
 
   const loadInbox = useCallback(async () => {
-    setLoading(true)
+    // Only show loading skeleton on first load — background refreshes must not
+    // unmount the reading pane or they will destroy any reply draft in progress.
+    const firstLoad = isFirstLoad.current
+    if (firstLoad) setLoading(true)
     try {
       const res = await fetch("/api/email/inbox")
       if (res.ok) {
@@ -346,7 +358,10 @@ function InboxView() {
         setItems(data.items || [])
       }
     } finally {
-      setLoading(false)
+      if (firstLoad) {
+        isFirstLoad.current = false
+        setLoading(false)
+      }
     }
   }, [])
 
