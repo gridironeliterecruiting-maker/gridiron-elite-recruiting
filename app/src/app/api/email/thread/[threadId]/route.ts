@@ -28,26 +28,48 @@ function parseFrom(fromRaw: string): { name: string; email: string } {
   return { name: name || email, email }
 }
 
+/** Decode HTML entities — run twice to handle double-encoding (&amp;lt; → &lt; → <) */
 function decodeEntities(text: string): string {
+  function decodeOnce(s: string): string {
+    return s
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code)))
+  }
+  return decodeOnce(decodeOnce(text))
+}
+
+/** Strip quoted reply text from plain text content */
+function stripQuotedReply(text: string): string {
+  // Gmail format: "On Mon, Mar 22, 2026, 2:05 AM <email> wrote:"
+  // Also: "On Mon, Mar 22, 2026 at 2:05 AM <email> wrote:"
+  const idx = text.search(/\n?\s*On\s+\w{3},\s+\w{3}\s+\d{1,2},\s+\d{4}/i)
+  if (idx > 0) return text.substring(0, idx).trim()
+
+  // RFC format: "On Sun, 22 Mar 2026 07:33:20 -0700"
+  const idx2 = text.search(/\n?\s*On\s+\w{3},\s+\d{1,2}\s+\w{3}\s+\d{4}\s+[\d:]/i)
+  if (idx2 > 0) return text.substring(0, idx2).trim()
+
+  // Outlook format: "From: Name <email>" reply header
+  const idx3 = text.search(/\n?\s*-{2,}\s*Original Message\s*-{2,}/i)
+  if (idx3 > 0) return text.substring(0, idx3).trim()
+
   return text
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code)))
 }
 
 function stripHtml(html: string): string {
   // Remove quoted reply blocks from Gmail/Outlook style replies
-  // These appear as <blockquote> or <div class="gmail_quote"> in HTML
   let cleaned = html
-    .replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, '')
-    .replace(/<div[^>]*class="[^"]*gmail_quote[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
-    .replace(/<div[^>]*class="[^"]*yahoo_quoted[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+    .replace(/<blockquote[^>]*>[\s\S]*<\/blockquote>/gi, '')
+    .replace(/<div[^>]*class="[^"]*gmail_quote[^"]*"[^>]*>[\s\S]*<\/div>/gi, '')
+    .replace(/<div[^>]*class="[^"]*yahoo_quoted[^"]*"[^>]*>[\s\S]*<\/div>/gi, '')
+    .replace(/<div[^>]*class="[^"]*moz-cite-prefix[^"]*"[^>]*>[\s\S]*<\/div>/gi, '')
 
-  // Strip HTML tags, decode entities
+  // Strip HTML tags
   cleaned = cleaned
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
@@ -56,13 +78,9 @@ function stripHtml(html: string): string {
     .replace(/<\/div>/gi, '\n')
     .replace(/<[^>]+>/g, '')
 
+  // Decode entities, then strip quoted replies from plain text
   cleaned = decodeEntities(cleaned)
-
-  // Strip plain-text quoted replies (e.g. "On Mon, Mar 22, 2026 ... wrote:")
-  // Match "On <date>...<email> wrote:" followed by the quoted text
-  cleaned = cleaned.replace(/\s*On\s+\w{3},\s+\w{3}\s+\d{1,2},\s+\d{4}[\s\S]*?wrote:[\s\S]*/i, '')
-  // Also match "On <day> <date> <time> <offset>\n<name> <email> wrote" format
-  cleaned = cleaned.replace(/\s*On\s+\w{3},\s+\d{1,2}\s+\w{3}\s+\d{4}\s+[\d:]+\s+[+-]\d{4}[\s\S]*/i, '')
+  cleaned = stripQuotedReply(cleaned)
 
   return cleaned
     .replace(/\n{3,}/g, '\n\n')
