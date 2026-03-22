@@ -165,23 +165,26 @@ export async function GET() {
     if (otherEmails.length > 0) {
       const { data: coachRows } = await admin
         .from('coaches')
-        .select('email, programs(logo_url, school_name)')
+        .select('email, first_name, last_name, programs(logo_url, school_name)')
         .in('email', otherEmails)
 
       if (coachRows) {
-        const logoMap = new Map<string, { logoUrl: string | null; schoolName: string | null }>()
+        const coachMap = new Map<string, { logoUrl: string | null; schoolName: string | null; coachName: string | null }>()
         for (const row of coachRows as any[]) {
           const prog = Array.isArray(row.programs) ? row.programs[0] : row.programs
-          logoMap.set(row.email?.toLowerCase() || '', {
+          const coachName = [row.first_name, row.last_name].filter(Boolean).join(' ') || null
+          coachMap.set(row.email?.toLowerCase() || '', {
             logoUrl: prog?.logo_url || null,
             schoolName: prog?.school_name || null,
+            coachName,
           })
         }
         for (const thread of threads) {
-          const entry = logoMap.get(thread.otherEmail)
+          const entry = coachMap.get(thread.otherEmail)
           if (entry) {
             thread.logoUrl = entry.logoUrl
             thread.schoolName = entry.schoolName
+            if (entry.coachName) thread.otherName = entry.coachName
           }
         }
       }

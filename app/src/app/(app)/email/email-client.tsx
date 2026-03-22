@@ -294,10 +294,11 @@ function ConversationView({ thread, onBack, onArchived, onDeleted }: {
       <div className="shrink-0 border-b border-border bg-card px-4 py-3 flex items-center gap-3">
         <button
           onClick={onBack}
-          className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-semibold text-foreground hover:bg-muted transition-colors shrink-0"
           aria-label="Back to inbox"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-5 w-5" />
+          Back
         </button>
         <div className="flex-1 min-w-0">
           <span className="font-semibold text-sm text-foreground truncate block">{thread.subject}</span>
