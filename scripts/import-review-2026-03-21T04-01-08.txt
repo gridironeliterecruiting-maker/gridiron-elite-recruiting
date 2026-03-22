@@ -1,0 +1,2 @@
+ERROR | Rodney Garner @ University of Tennessee | duplicate key value violates unique constraint "coaches_program_name_key"
+ERROR | Ricky Rahne @ Old Dominion University | duplicate key value violates unique constraint "coaches_program_name_key"

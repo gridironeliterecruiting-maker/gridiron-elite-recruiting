@@ -1,21 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { zohoFetch, getZohoFolders, findFolderId } from '@/lib/workspace'
+import { zohoFetch } from '@/lib/workspace'
 
 export const dynamic = 'force-dynamic'
 
 const ZOHO_API_BASE = 'https://mail360.zoho.com/api'
-
-async function fetchFolderMessages(accountKey: string, folderId: string, limit = 100): Promise<any[]> {
-  const res = await zohoFetch(
-    `${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${folderId}&limit=${limit}`,
-    {}
-  )
-  if (!res.ok) return []
-  const data = await res.json()
-  return data.data || []
-}
 
 async function fetchMessageBody(accountKey: string, messageId: string): Promise<string> {
   try {
@@ -57,23 +47,6 @@ function stripHtml(html: string): string {
     .trim()
 }
 
-/** Strip all leading Re:/Fwd: prefixes, lowercase, URL-safe */
-function normalizeSubject(subject: string): string {
-  let s = subject
-  const prefixRe = /^(Re|Fwd|Fw|RE|FWD|FW):\s*/i
-  while (prefixRe.test(s)) s = s.replace(prefixRe, '')
-  return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-}
-
-/** The email address of the non-athlete participant */
-function getOtherEmail(raw: any, myEmail: string): string {
-  const { email: fromEmail } = parseFrom(raw.fromAddress || raw.from_address || '')
-  if (fromEmail.toLowerCase() !== myEmail) return fromEmail.toLowerCase()
-  const toRaw = raw.toAddress || raw.to_address || ''
-  const { email: toEmail } = parseFrom((toRaw.split(',')[0] || '').trim())
-  return toEmail.toLowerCase()
-}
-
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ threadId: string }> }
@@ -96,50 +69,32 @@ export async function GET(
   if (!accountKey) return NextResponse.json({ messages: [] })
 
   try {
-    const folders = await getZohoFolders(accountKey)
-    const inboxFolderId = findFolderId(folders, 'inbox')
-    const sentFolderId = findFolderId(folders, 'sent', 'sent items', 'sent mail')
+    // Use Zoho's Threads API — returns all messages in the conversation natively
+    const res = await zohoFetch(
+      `${ZOHO_API_BASE}/accounts/${accountKey}/threads/${threadId}?limit=100`,
+      {}
+    )
 
-    const [inboxMsgs, sentMsgs] = await Promise.all([
-      inboxFolderId ? fetchFolderMessages(accountKey, inboxFolderId, 100) : Promise.resolve([]),
-      sentFolderId ? fetchFolderMessages(accountKey, sentFolderId, 100) : Promise.resolve([]),
-    ])
-
-    /**
-     * Match by coachEmail::normalizedSubject — same logic as getGroupKey() in inbox route.
-     * Zoho's threadId is intentionally ignored (inconsistently present across messages).
-     */
-    const matchThread = (raw: any): boolean => {
-      const other = getOtherEmail(raw, workspaceEmail)
-      const subj = normalizeSubject(raw.subject || '')
-      const key = other && subj ? `${other}::${subj}` : ''
-      return key === threadId
+    if (!res.ok) {
+      const err = await res.text()
+      console.error('[email/thread] Zoho thread fetch error:', res.status, err)
+      return NextResponse.json({ messages: [] })
     }
 
-    const threadMsgs = [
-      ...inboxMsgs.filter(matchThread).map(raw => ({ raw, isSent: false })),
-      ...sentMsgs.filter(matchThread).map(raw => ({ raw, isSent: true })),
-    ]
-
-    // De-duplicate by messageId
-    const seen = new Set<string>()
-    const unique = threadMsgs.filter(m => {
-      const id = m.raw.messageId || m.raw.message_id || ''
-      if (seen.has(id)) return false
-      seen.add(id)
-      return true
-    })
+    const data = await res.json()
+    const rawMessages: any[] = data.data || []
 
     // Fetch full bodies in parallel
     const messages = await Promise.all(
-      unique.map(async ({ raw, isSent }) => {
-        const msgId = raw.messageId || raw.message_id || ''
+      rawMessages.map(async (raw: any) => {
+        const msgId = String(raw.messageId || raw.message_id || '')
         const bodyHtml = msgId ? await fetchMessageBody(accountKey, msgId) : ''
-        const body = bodyHtml ? stripHtml(bodyHtml) : (raw.summary || raw.snippet || '')
+        const body = bodyHtml ? stripHtml(bodyHtml) : (raw.summary || '')
 
-        const fromRaw = raw.fromAddress || raw.from_address || ''
+        const fromRaw = raw.fromAddress || raw.sender || ''
         const { name: fromName, email: fromEmail } = parseFrom(fromRaw)
-        const receivedMs = parseInt(raw.receivedTime || raw.received_time || '0', 10)
+        const receivedMs = parseInt(raw.receivedTime || raw.sentDateInGMT || '0', 10)
+        const isSent = fromEmail.toLowerCase() === workspaceEmail
 
         return {
           id: msgId,
@@ -147,10 +102,10 @@ export async function GET(
           from_email: fromEmail,
           subject: raw.subject || '(No subject)',
           body,
-          snippet: raw.summary || raw.snippet || '',
+          snippet: raw.summary || '',
           received_at: receivedMs ? new Date(receivedMs).toISOString() : new Date().toISOString(),
           is_sent: isSent,
-          is_read: isSent || (raw.isRead ?? raw.is_read ?? true),
+          is_read: String(raw.status) === '1' || isSent,
         }
       })
     )
