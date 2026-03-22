@@ -36,67 +36,83 @@ export async function GET() {
   try {
     const folders = await getZohoFolders(accountKey)
     if (folders.length === 0) {
-      console.error('[email/inbox] No folders returned for account:', accountKey)
+      console.error('[inbox] no folders for account:', accountKey)
       return NextResponse.json({ threads: [], unreadCount: 0 })
     }
 
     const inboxFolderId = findFolderId(folders, 'inbox')
     if (!inboxFolderId) {
       const names = folders.map((f: any) => f.folderName || f.name).join(', ')
-      console.error('[email/inbox] Inbox folder not found. Available:', names)
+      console.error('[inbox] inbox folder not found. folders:', names)
       return NextResponse.json({ threads: [], unreadCount: 0 })
     }
 
-    // Parallel diagnostic: threads vs messages — confirms whether scope or data is the issue
-    const [threadsRes, msgsRes] = await Promise.all([
-      zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/threads?folderId=${inboxFolderId}&limit=50`, {}),
-      zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${inboxFolderId}&limit=5`, {}),
-    ])
+    // Zoho Mail360 Threads API — GET /accounts/{account_key}/threads
+    const url = `${ZOHO_API_BASE}/accounts/${accountKey}/threads?folderId=${inboxFolderId}&limit=50`
+    const res = await zohoFetch(url, {})
 
-    const [threadsText, msgsText] = await Promise.all([threadsRes.text(), msgsRes.text()])
-    const threadsData = JSON.parse(threadsText)
-    const msgsData = JSON.parse(msgsText)
-
-    const msgCount = Array.isArray(msgsData.data) ? msgsData.data.length : '?'
-    const rawThreads: any[] = threadsData.data || []
-    console.error(`[inbox] threads=${rawThreads.length} msgs=${msgCount} tSc=${threadsData?.status?.code} mSc=${msgsData?.status?.code} firstMsg=${JSON.stringify(msgsData?.data?.[0] ?? null).substring(0, 200)}`)
-
-    if (threadsData?.status?.code && threadsData.status.code !== 200) {
-      console.error(`[inbox] THREADS_APIERR_${threadsData.status.code}: ${JSON.stringify(threadsData).substring(0, 200)}`)
+    if (!res.ok) {
+      const errBody = await res.text()
+      console.error(`[inbox] HTTP ${res.status}:`, errBody.substring(0, 300))
       return NextResponse.json({ threads: [], unreadCount: 0 })
     }
 
-    const threads = rawThreads.map((t: any) => {
+    const data = await res.json()
+
+    if (data?.status?.code && data.status.code !== 200) {
+      console.error('[inbox] Zoho API error:', JSON.stringify(data).substring(0, 300))
+      return NextResponse.json({ threads: [], unreadCount: 0 })
+    }
+
+    // Group by threadId — threads API returns individual messages; same threadId = same conversation
+    const rawMessages: any[] = data.data || []
+    const threadMap = new Map<string, any>()
+
+    for (const msg of rawMessages) {
+      const threadId = String(msg.threadId || msg.messageId || '')
+      if (!threadId) continue
+
+      const existing = threadMap.get(threadId)
+      const receivedMs = parseInt(msg.receivedTime || msg.sentDateInGMT || '0', 10)
+
+      if (!existing || receivedMs > parseInt(existing._latestMs, 10)) {
+        threadMap.set(threadId, { ...msg, _latestMs: String(receivedMs) })
+      }
+    }
+
+    const threads = Array.from(threadMap.values()).map((t: any) => {
       const fromRaw = t.fromAddress || t.sender || ''
       const { name: fromName, email: fromEmail } = parseFrom(fromRaw)
       const receivedMs = parseInt(t.receivedTime || t.sentDateInGMT || '0', 10)
       const latestAt = receivedMs ? new Date(receivedMs).toISOString() : new Date().toISOString()
 
       const isFromAthlete = fromEmail.toLowerCase() === workspaceEmail
-      let otherEmail = isFromAthlete
+      const otherEmail = isFromAthlete
         ? parseFrom(t.toAddress || '').email.toLowerCase()
         : fromEmail.toLowerCase()
-      let otherName = isFromAthlete
+      const otherName = isFromAthlete
         ? parseFrom(t.toAddress || '').name
         : (fromName || fromEmail)
 
       const isUnread = String(t.status) === '0'
+      const threadMessages = rawMessages.filter(m => String(m.threadId || m.messageId) === String(t.threadId || t.messageId))
 
       return {
-        threadId: String(t.threadId || t.thread_id || t.messageId || ''),
+        threadId: String(t.threadId || t.messageId || ''),
         subject: t.subject || '(No subject)',
         latestAt,
         otherName: otherName || otherEmail,
         otherEmail,
         snippet: t.summary || '',
         unreadCount: isUnread ? 1 : 0,
-        messageCount: t.threadCount || 1,
+        messageCount: threadMessages.length || 1,
         hasUnread: isUnread,
         latestReceivedId: String(t.messageId || ''),
         logoUrl: null as string | null,
         schoolName: null as string | null,
       }
     }).filter(t => t.threadId && t.otherEmail)
+      .sort((a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime())
 
     // Batch logo + coach name lookup
     const otherEmails = [...new Set(threads.map(t => t.otherEmail).filter(Boolean))]
@@ -131,7 +147,7 @@ export async function GET() {
     const unreadCount = threads.reduce((sum, t) => sum + t.unreadCount, 0)
     return NextResponse.json({ threads, unreadCount })
   } catch (err: any) {
-    console.error('[email/inbox] Unexpected error:', err?.message || err)
+    console.error('[inbox] unexpected error:', err?.message || err)
     return NextResponse.json({ threads: [], unreadCount: 0 })
   }
 }

@@ -111,6 +111,8 @@ export async function zohoFetch(
 ): Promise<Response> {
   const token = await getZohoAccessToken()
   const headers = {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
     Authorization: `Zoho-oauthtoken ${token}`,
   }
