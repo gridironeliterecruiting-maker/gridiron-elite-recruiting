@@ -58,7 +58,6 @@ export async function GET() {
     }
 
     const rawText = await res.text()
-    console.error(`[inbox] RAW200: ${rawText.substring(0, 700)}`)
     const data = JSON.parse(rawText)
 
     if (data?.status?.code && data.status.code !== 200) {
@@ -67,7 +66,7 @@ export async function GET() {
     }
 
     const rawThreads: any[] = data.data || []
-    console.error(`[inbox] COUNT_${rawThreads.length} code=${data?.status?.code} first=${JSON.stringify(rawThreads[0] ?? null).substring(0, 300)}`)
+    console.error(`[inbox] N=${rawThreads.length} sc=${data?.status?.code} first=${JSON.stringify(rawThreads[0] ?? null).substring(0, 400)}`)
 
     const threads = rawThreads.map((t: any) => {
       const fromRaw = t.fromAddress || t.sender || ''
