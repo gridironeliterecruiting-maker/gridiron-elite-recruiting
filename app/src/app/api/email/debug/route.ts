@@ -4,9 +4,11 @@ import { zohoFetch, getZohoFolders } from '@/lib/workspace'
 export const dynamic = 'force-dynamic'
 
 const ZOHO_API_BASE = 'https://mail360.zoho.com/api'
-// Cael's account for diagnostic testing
 const TEST_ACCOUNT_KEY = 'KzI777I80zt'
+const TEST_EMAIL = 'caelkongshaug@jetstreammail.com'
 const SECRET = 'runway_debug_2026'
+// Deterministic password for testing — will be replaced with crypto.randomUUID() in prod
+const TEST_PASSWORD = 'RunwayTest2026!Xyz'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -14,114 +16,220 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
-  const results: Record<string, any> = {}
+  const step = searchParams.get('step') || 'diagnose'
+  const results: Record<string, any> = { step }
 
+  if (step === 'diagnose') {
+    // Original diagnostic — check current state
+    await runDiagnose(results)
+  } else if (step === 'set-password') {
+    // Step 1: Set password on the existing HOSTED_ACCOUNT
+    await runSetPassword(results)
+  } else if (step === 'create-sync') {
+    // Step 2: Create an IMAP sync account pointing to Zoho's own IMAP
+    await runCreateSync(results)
+  } else if (step === 'test-sync') {
+    // Step 3: Test threads on the sync account
+    const syncKey = searchParams.get('syncKey')
+    if (!syncKey) {
+      results.error = 'syncKey query param required'
+    } else {
+      await runTestSync(syncKey, results)
+    }
+  } else if (step === 'list-accounts') {
+    // List all accounts to see what exists
+    await runListAccounts(results)
+  } else {
+    results.error = `Unknown step: ${step}. Use: diagnose, set-password, create-sync, test-sync, list-accounts`
+  }
+
+  return NextResponse.json(results, { status: 200 })
+}
+
+async function runDiagnose(results: Record<string, any>) {
   // 1. Get folders
   try {
     const folders = await getZohoFolders(TEST_ACCOUNT_KEY)
-    results.folders = folders
+    results.folders = folders.map((f: any) => ({ name: f.folderName, id: f.folderId, type: f.folderType }))
     const inboxFolder = folders.find((f: any) =>
       (f.folderName || '').toLowerCase() === 'inbox' ||
-      (f.folderType || '').toLowerCase() === 'inbox' ||
-      (f.name || '').toLowerCase() === 'inbox'
+      (f.folderType || '').toLowerCase() === 'inbox'
     )
-    results.inboxFolder = inboxFolder || null
-    results.inboxFolderId = inboxFolder ? String(inboxFolder.folderId || inboxFolder.id || '') : null
+    results.inboxFolderId = inboxFolder ? String(inboxFolder.folderId || '') : null
   } catch (e: any) {
     results.foldersError = e?.message || String(e)
   }
 
   const inboxFolderId = results.inboxFolderId
 
-  // 2. Messages API (known-working baseline)
+  // 2. Messages
   try {
-    const msgUrl = inboxFolderId
-      ? `${ZOHO_API_BASE}/accounts/${TEST_ACCOUNT_KEY}/messages?folderId=${inboxFolderId}&limit=5`
-      : `${ZOHO_API_BASE}/accounts/${TEST_ACCOUNT_KEY}/messages?limit=5`
+    const msgUrl = `${ZOHO_API_BASE}/accounts/${TEST_ACCOUNT_KEY}/messages?folderId=${inboxFolderId}&limit=5`
     const msgRes = await zohoFetch(msgUrl, {})
     const msgData = await msgRes.json()
     results.messages = {
-      status: msgRes.status,
-      url: msgUrl,
-      statusCode: msgData?.status?.code,
-      dataLength: msgData?.data?.length ?? null,
-      firstItem: msgData?.data?.[0] || null,
+      count: msgData?.data?.length ?? 0,
       firstItemKeys: msgData?.data?.[0] ? Object.keys(msgData.data[0]) : [],
-      rawStatus: msgData?.status,
+      firstItem: msgData?.data?.[0] || null,
     }
   } catch (e: any) {
     results.messagesError = e?.message || String(e)
   }
 
-  // 3. Threads API with folderId
+  // 3. Threads
   if (inboxFolderId) {
     try {
       const thrUrl = `${ZOHO_API_BASE}/accounts/${TEST_ACCOUNT_KEY}/threads?folderId=${inboxFolderId}&limit=50`
       const thrRes = await zohoFetch(thrUrl, {})
       const thrData = await thrRes.json()
-      results.threadsWithFolder = {
-        status: thrRes.status,
-        url: thrUrl,
-        statusCode: thrData?.status?.code,
-        dataLength: thrData?.data?.length ?? null,
-        firstItem: thrData?.data?.[0] || null,
-        firstItemKeys: thrData?.data?.[0] ? Object.keys(thrData.data[0]) : [],
-        rawStatus: thrData?.status,
+      results.threads = {
+        count: thrData?.data?.length ?? 0,
         fullResponse: thrData,
       }
     } catch (e: any) {
-      results.threadsWithFolderError = e?.message || String(e)
+      results.threadsError = e?.message || String(e)
     }
   }
 
-  // 4. Threads API without folderId (default = all folders / -1)
+  // 4. Account info
   try {
-    const thrUrl2 = `${ZOHO_API_BASE}/accounts/${TEST_ACCOUNT_KEY}/threads?limit=50`
-    const thrRes2 = await zohoFetch(thrUrl2, {})
-    const thrData2 = await thrRes2.json()
-    results.threadsNoFolder = {
-      status: thrRes2.status,
-      url: thrUrl2,
-      statusCode: thrData2?.status?.code,
-      dataLength: thrData2?.data?.length ?? null,
-      firstItem: thrData2?.data?.[0] || null,
-      firstItemKeys: thrData2?.data?.[0] ? Object.keys(thrData2.data[0]) : [],
-      rawStatus: thrData2?.status,
-      fullResponse: thrData2,
-    }
-  } catch (e: any) {
-    results.threadsNoFolderError = e?.message || String(e)
-  }
-
-  // 5. Threads API with includesent=true
-  try {
-    const thrUrl3 = `${ZOHO_API_BASE}/accounts/${TEST_ACCOUNT_KEY}/threads?limit=50&includesent=true`
-    const thrRes3 = await zohoFetch(thrUrl3, {})
-    const thrData3 = await thrRes3.json()
-    results.threadsIncludeSent = {
-      status: thrRes3.status,
-      url: thrUrl3,
-      statusCode: thrData3?.status?.code,
-      dataLength: thrData3?.data?.length ?? null,
-      firstItem: thrData3?.data?.[0] || null,
-      rawStatus: thrData3?.status,
-    }
-  } catch (e: any) {
-    results.threadsIncludeSentError = e?.message || String(e)
-  }
-
-  // 6. Get access token info (just check it's valid)
-  try {
-    const tokenCheckRes = await zohoFetch(`${ZOHO_API_BASE}/accounts/${TEST_ACCOUNT_KEY}`, {})
-    const tokenCheckData = await tokenCheckRes.json()
-    results.accountInfo = {
-      status: tokenCheckRes.status,
-      statusCode: tokenCheckData?.status?.code,
-      data: tokenCheckData?.data || null,
-    }
+    const res = await zohoFetch(`${ZOHO_API_BASE}/accounts/${TEST_ACCOUNT_KEY}`, {})
+    const data = await res.json()
+    results.accountInfo = data?.data || null
   } catch (e: any) {
     results.accountInfoError = e?.message || String(e)
   }
+}
 
-  return NextResponse.json(results, { status: 200 })
+async function runSetPassword(results: Record<string, any>) {
+  try {
+    const res = await zohoFetch(`${ZOHO_API_BASE}/accounts/${TEST_ACCOUNT_KEY}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'updatePassword',
+        newPassword: TEST_PASSWORD,
+      }),
+    })
+    const data = await res.json()
+    results.setPassword = {
+      httpStatus: res.status,
+      response: data,
+    }
+  } catch (e: any) {
+    results.setPasswordError = e?.message || String(e)
+  }
+}
+
+async function runCreateSync(results: Record<string, any>) {
+  try {
+    const res = await zohoFetch(`${ZOHO_API_BASE}/accounts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        accountType: '2',
+        emailid: TEST_EMAIL,
+        displayName: 'Cael Kongshaug (sync)',
+        incomingUser: TEST_EMAIL,
+        incomingPasswd: TEST_PASSWORD,
+        incomingServer: 'imappro.zoho.com',
+        incomingServerPort: '993',
+        sslEnabled: true,
+        outgoingServer: 'smtppro.zoho.com',
+        outgoingServerPort: '465',
+        smtpConnection: '1', // 0=PLAIN, 1=SSL, 2=TLS
+        outgoingUser: TEST_EMAIL,
+        outgoingPasswd: TEST_PASSWORD,
+      }),
+    })
+    const data = await res.json()
+    results.createSync = {
+      httpStatus: res.status,
+      response: data,
+      newAccountKey: data?.data?.account_key || null,
+    }
+  } catch (e: any) {
+    results.createSyncError = e?.message || String(e)
+  }
+}
+
+async function runTestSync(syncKey: string, results: Record<string, any>) {
+  // 1. Account info for the sync account
+  try {
+    const res = await zohoFetch(`${ZOHO_API_BASE}/accounts/${syncKey}`, {})
+    const data = await res.json()
+    results.syncAccountInfo = data?.data || null
+  } catch (e: any) {
+    results.syncAccountInfoError = e?.message || String(e)
+  }
+
+  // 2. Folders
+  try {
+    const folders = await getZohoFolders(syncKey)
+    results.syncFolders = folders.map((f: any) => ({ name: f.folderName, id: f.folderId, type: f.folderType }))
+    const inboxFolder = folders.find((f: any) =>
+      (f.folderName || '').toLowerCase() === 'inbox' ||
+      (f.folderType || '').toLowerCase() === 'inbox'
+    )
+    results.syncInboxFolderId = inboxFolder ? String(inboxFolder.folderId || '') : null
+  } catch (e: any) {
+    results.syncFoldersError = e?.message || String(e)
+  }
+
+  // 3. Messages on sync account
+  const inboxFolderId = results.syncInboxFolderId
+  if (inboxFolderId) {
+    try {
+      const msgUrl = `${ZOHO_API_BASE}/accounts/${syncKey}/messages?folderId=${inboxFolderId}&limit=5`
+      const msgRes = await zohoFetch(msgUrl, {})
+      const msgData = await msgRes.json()
+      results.syncMessages = {
+        count: msgData?.data?.length ?? 0,
+        firstItemKeys: msgData?.data?.[0] ? Object.keys(msgData.data[0]) : [],
+      }
+    } catch (e: any) {
+      results.syncMessagesError = e?.message || String(e)
+    }
+  }
+
+  // 4. Threads on sync account — THE KEY TEST
+  if (inboxFolderId) {
+    try {
+      const thrUrl = `${ZOHO_API_BASE}/accounts/${syncKey}/threads?folderId=${inboxFolderId}&limit=50`
+      const thrRes = await zohoFetch(thrUrl, {})
+      const thrData = await thrRes.json()
+      results.syncThreads = {
+        count: thrData?.data?.length ?? 0,
+        firstItem: thrData?.data?.[0] || null,
+        firstItemKeys: thrData?.data?.[0] ? Object.keys(thrData.data[0]) : [],
+        fullResponse: thrData,
+      }
+    } catch (e: any) {
+      results.syncThreadsError = e?.message || String(e)
+    }
+  }
+
+  // 5. Threads without folderId
+  try {
+    const thrUrl = `${ZOHO_API_BASE}/accounts/${syncKey}/threads?limit=50`
+    const thrRes = await zohoFetch(thrUrl, {})
+    const thrData = await thrRes.json()
+    results.syncThreadsNoFolder = {
+      count: thrData?.data?.length ?? 0,
+      firstItem: thrData?.data?.[0] || null,
+      fullResponse: thrData,
+    }
+  } catch (e: any) {
+    results.syncThreadsNoFolderError = e?.message || String(e)
+  }
+}
+
+async function runListAccounts(results: Record<string, any>) {
+  try {
+    const res = await zohoFetch(`${ZOHO_API_BASE}/accounts`, {})
+    const data = await res.json()
+    results.accounts = data?.data || data
+  } catch (e: any) {
+    results.accountsError = e?.message || String(e)
+  }
 }
