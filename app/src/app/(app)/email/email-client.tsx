@@ -455,10 +455,9 @@ function InboxView() {
 
   useEffect(() => {
     loadInbox()
-    // Fallback polling every 30s in case Realtime disconnects
-    const interval = setInterval(loadInbox, 30000)
 
     // Subscribe to Supabase Realtime for instant inbox updates via webhook
+    // No polling — webhooks handle real-time updates
     const supabase = createBrowserSupabase()
     const channel = supabase
       .channel('email-notifications')
@@ -473,7 +472,6 @@ function InboxView() {
       .subscribe()
 
     return () => {
-      clearInterval(interval)
       supabase.removeChannel(channel)
     }
   }, [loadInbox])
