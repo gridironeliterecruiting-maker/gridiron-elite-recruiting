@@ -9,13 +9,15 @@ const ZOHO_API_BASE = 'https://mail360.zoho.com/api'
 
 async function fetchMessageBody(accountKey: string, messageId: string): Promise<string> {
   try {
+    // Mail360 "Get email content" API — /messages/{messageId}/content
+    // The /messages/{messageId} endpoint only returns metadata, not the body
     const res = await zohoFetch(
-      `${ZOHO_API_BASE}/accounts/${accountKey}/messages/${messageId}`,
+      `${ZOHO_API_BASE}/accounts/${accountKey}/messages/${messageId}/content`,
       {}
     )
     if (!res.ok) return ''
     const data = await res.json()
-    return data.data?.content || data.data?.body || data.data?.htmlBody || data.data?.textBody || ''
+    return data.data?.content || ''
   } catch {
     return ''
   }
