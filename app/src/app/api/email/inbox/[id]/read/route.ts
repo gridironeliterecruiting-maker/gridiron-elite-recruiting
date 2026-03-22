@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getZohoAccessToken } from '@/lib/workspace'
+import { zohoFetch } from '@/lib/workspace'
 
 export async function PATCH(
   _req: NextRequest,
@@ -24,13 +24,17 @@ export async function PATCH(
   if (!accountKey) return NextResponse.json({ ok: true })
 
   try {
-    const token = await getZohoAccessToken()
-    await fetch(
-      `https://mail360.zoho.com/api/accounts/${accountKey}/messages/${id}`,
+    // Use Mail360 "Mark threads as read" API — marks entire conversation
+    // PUT /accounts/{account_key}/threads with mode: markAsRead, threadId: [id]
+    await zohoFetch(
+      `https://mail360.zoho.com/api/accounts/${accountKey}/threads`,
       {
         method: 'PUT',
-        headers: { Authorization: `Zoho-oauthtoken ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isRead: true }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'markAsRead',
+          threadId: [id],
+        }),
       }
     )
     return NextResponse.json({ ok: true })

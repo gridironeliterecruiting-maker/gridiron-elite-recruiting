@@ -208,13 +208,16 @@ function ConversationView({ thread, onBack, onArchived, onDeleted }: {
     }
   }, [showReply])
 
-  // Mark latest unread as read
+  // Mark entire thread as read when opened
   useEffect(() => {
-    const unread = messages.find(m => !m.is_read && !m.is_sent)
-    if (unread?.id) {
-      fetch(`/api/email/inbox/${unread.id}/read`, { method: "PATCH" }).catch(() => {})
+    const hasUnread = messages.some(m => !m.is_read && !m.is_sent)
+    if (hasUnread && thread.threadId) {
+      fetch(`/api/email/inbox/${encodeURIComponent(thread.threadId)}/read`, { method: "PATCH" }).catch(() => {})
+      // Update local state so the unread indicator disappears immediately
+      thread.hasUnread = false
+      thread.unreadCount = 0
     }
-  }, [messages])
+  }, [messages, thread])
 
   const handleReply = async () => {
     if (!replyBody.trim()) return
