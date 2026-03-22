@@ -16,12 +16,11 @@ import {
   Archive,
   Loader2,
   Mail,
-  MailOpen,
   ArrowLeft,
   Building2,
   Trash2,
   Plus,
-  MessageSquare,
+  ChevronLeft,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { RecruitingEmailBadge } from "@/components/recruiting-email-badge"
@@ -32,12 +31,15 @@ interface Thread {
   threadId: string
   subject: string
   latestAt: string
-  latestFrom: string
-  latestFromEmail: string
+  otherName: string
+  otherEmail: string
   snippet: string
   unreadCount: number
   messageCount: number
   hasUnread: boolean
+  latestReceivedId: string
+  logoUrl: string | null
+  schoolName: string | null
 }
 
 interface ThreadMessage {
@@ -65,27 +67,10 @@ interface FolderEmail {
   filed_at: string
 }
 
-interface CoachFolder {
-  coach_id: string | null
-  coach_name: string
-  emails: FolderEmail[]
-}
-
-interface SchoolFolder {
-  program_id: string | null
-  school_name: string
-  coaches: CoachFolder[]
-}
-
-interface ConferenceFolder {
-  conference: string
-  schools: SchoolFolder[]
-}
-
-interface DivisionFolder {
-  division: string
-  conferences: ConferenceFolder[]
-}
+interface CoachFolder { coach_id: string | null; coach_name: string; emails: FolderEmail[] }
+interface SchoolFolder { program_id: string | null; school_name: string; coaches: CoachFolder[] }
+interface ConferenceFolder { conference: string; schools: SchoolFolder[] }
+interface DivisionFolder { division: string; conferences: ConferenceFolder[] }
 
 type Tab = "inbox" | "folders"
 
@@ -101,24 +86,95 @@ function formatDate(ts: string | null): string {
   return d.toLocaleDateString([], { month: "short", day: "numeric" })
 }
 
-// ─── Conversation Pane ────────────────────────────────────────────────────────
+// ─── Program Logo (matches coaches/pipeline pages exactly) ────────────────────
 
-interface ConversationPaneProps {
-  thread: Thread
-  workspaceEmail?: string | null
-  onClose?: () => void
-  onFiled?: (msgId: string) => void
-  onDeleted?: (threadId: string) => void
+function ThreadLogo({ logoUrl, schoolName, otherName }: {
+  logoUrl: string | null
+  schoolName: string | null
+  otherName: string
+}) {
+  const [imgError, setImgError] = useState(false)
+  const initials = (schoolName || otherName).slice(0, 2).toUpperCase()
+
+  if (logoUrl && !imgError) {
+    return (
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white ring-1 ring-primary/20 overflow-hidden">
+        <img
+          src={logoUrl}
+          alt={schoolName || otherName}
+          width={32}
+          height={32}
+          className="object-contain"
+          onError={() => setImgError(true)}
+        />
+      </div>
+    )
+  }
+  return (
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[10px] font-bold text-primary ring-1 ring-primary/20">
+      {initials}
+    </div>
+  )
 }
 
-function ConversationPane({ thread, workspaceEmail, onClose, onDeleted }: ConversationPaneProps) {
+// ─── Thread List Row ──────────────────────────────────────────────────────────
+
+function ThreadRow({ thread, selected, onClick }: {
+  thread: Thread
+  selected: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "w-full flex items-center gap-3 px-4 py-3 border-b border-border text-left transition-colors hover:bg-muted/40",
+        selected && "bg-primary/5 border-l-2 border-l-primary",
+        thread.hasUnread && !selected && "bg-blue-50/50"
+      )}
+    >
+      <ThreadLogo logoUrl={thread.logoUrl} schoolName={thread.schoolName} otherName={thread.otherName} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <span className={cn(
+            "truncate text-sm",
+            thread.hasUnread ? "font-bold text-foreground" : "font-medium text-foreground"
+          )}>
+            {thread.otherName}
+          </span>
+          <span className="shrink-0 text-xs text-muted-foreground">{formatDate(thread.latestAt)}</span>
+        </div>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          {thread.hasUnread && (
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
+          )}
+          <span className={cn(
+            "truncate text-xs",
+            thread.hasUnread ? "font-semibold text-foreground" : "text-muted-foreground"
+          )}>
+            {thread.subject}
+          </span>
+        </div>
+      </div>
+    </button>
+  )
+}
+
+// ─── Conversation View ────────────────────────────────────────────────────────
+
+function ConversationView({ thread, onBack, onArchived, onDeleted }: {
+  thread: Thread
+  onBack: () => void
+  onArchived: (threadId: string) => void
+  onDeleted: (threadId: string) => void
+}) {
   const [messages, setMessages] = useState<ThreadMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [showReply, setShowReply] = useState(false)
   const [replyBody, setReplyBody] = useState("")
   const [sending, setSending] = useState(false)
-  const [sent, setSent] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [archiving, setArchiving] = useState(false)
   const replyTextareaRef = useRef<HTMLTextAreaElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -135,38 +191,36 @@ function ConversationPane({ thread, workspaceEmail, onClose, onDeleted }: Conver
     }
   }, [thread.threadId])
 
-  useEffect(() => {
-    loadThread()
-  }, [loadThread])
+  useEffect(() => { loadThread() }, [loadThread])
 
-  // Scroll to bottom when messages load or new message sent
+  // Scroll to bottom (newest message) when thread loads or reply is added
   useEffect(() => {
     if (!loading) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+      bottomRef.current?.scrollIntoView({ behavior: "auto" })
     }
   }, [loading, messages.length])
 
-  // Auto-focus reply textarea when reply opens
+  // Auto-focus reply textarea when reply opens, scroll into view
   useEffect(() => {
     if (showReply) {
       replyTextareaRef.current?.focus()
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50)
     }
   }, [showReply])
 
-  // Mark thread as read when opened
+  // Mark latest unread as read
   useEffect(() => {
-    const unreadMsg = messages.find(m => !m.is_read && !m.is_sent)
-    if (unreadMsg?.id) {
-      fetch(`/api/email/inbox/${unreadMsg.id}/read`, { method: "PATCH" }).catch(() => {})
+    const unread = messages.find(m => !m.is_read && !m.is_sent)
+    if (unread?.id) {
+      fetch(`/api/email/inbox/${unread.id}/read`, { method: "PATCH" }).catch(() => {})
     }
   }, [messages])
 
   const handleReply = async () => {
     if (!replyBody.trim()) return
-    // Find the latest received message to reply to
     const latestReceived = [...messages].reverse().find(m => !m.is_sent)
-    const toEmail = latestReceived?.from_email || thread.latestFromEmail
-    const toName = latestReceived?.from_name || thread.latestFrom
+    const toEmail = latestReceived?.from_email || thread.otherEmail
+    const toName = latestReceived?.from_name || thread.otherName
 
     setSending(true)
     try {
@@ -174,7 +228,7 @@ function ConversationPane({ thread, workspaceEmail, onClose, onDeleted }: Conver
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          gmailMessageId: latestReceived?.id || '',
+          gmailMessageId: latestReceived?.id || thread.latestReceivedId,
           threadId: thread.threadId,
           toEmail,
           toName,
@@ -182,11 +236,9 @@ function ConversationPane({ thread, workspaceEmail, onClose, onDeleted }: Conver
         }),
       })
       if (res.ok) {
-        setSent(true)
         setReplyBody("")
         setShowReply(false)
-        // Reload thread after a short delay to include the sent message
-        setTimeout(() => { loadThread(); setSent(false) }, 1500)
+        setTimeout(() => loadThread(), 1000)
       } else {
         const err = await res.json()
         alert(err.error || "Failed to send reply")
@@ -198,165 +250,178 @@ function ConversationPane({ thread, workspaceEmail, onClose, onDeleted }: Conver
     }
   }
 
-  const handleDeleteThread = async () => {
-    if (!confirm("Delete this entire conversation?")) return
+  const handleArchive = async () => {
+    setArchiving(true)
+    try {
+      await fetch("/api/email/file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gmailMessageId: thread.latestReceivedId,
+          threadId: thread.threadId,
+          fromEmail: thread.otherEmail,
+          fromName: thread.otherName,
+          subject: thread.subject,
+          snippet: thread.snippet,
+          receivedAt: thread.latestAt,
+        }),
+      })
+      onArchived(thread.threadId)
+    } catch {
+      alert("Network error. Please try again.")
+    } finally {
+      setArchiving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!confirm("Delete this conversation?")) return
     setDeleting(true)
-    // Delete the most recent received message ID we have
-    const msgToDelete = messages.find(m => !m.is_sent)
-    if (msgToDelete?.id) {
+    if (thread.latestReceivedId) {
       await fetch("/api/email/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gmailMessageId: msgToDelete.id }),
+        body: JSON.stringify({ gmailMessageId: thread.latestReceivedId }),
       }).catch(() => {})
     }
     setDeleting(false)
-    onDeleted?.(thread.threadId)
+    onDeleted(thread.threadId)
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="flex items-start justify-between border-b border-border p-4 shrink-0">
+    <div className="flex flex-col h-full">
+      {/* Pinned action bar */}
+      <div className="shrink-0 border-b border-border bg-card px-4 py-3 flex items-center gap-3">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          aria-label="Back to inbox"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
         <div className="flex-1 min-w-0">
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="mb-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground md:hidden"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Back
-            </button>
-          )}
-          <h2 className="text-base font-semibold text-foreground truncate">{thread.subject}</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {thread.messageCount} message{thread.messageCount !== 1 ? "s" : ""}
-          </p>
+          <span className="font-semibold text-sm text-foreground truncate block">{thread.subject}</span>
+          <span className="text-xs text-muted-foreground">{thread.messageCount} message{thread.messageCount !== 1 ? "s" : ""}</span>
         </div>
-        <div className="flex shrink-0 items-center gap-2 ml-3">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleDeleteThread}
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            onClick={handleDelete}
             disabled={deleting}
-            className="gap-1.5 text-xs text-destructive hover:text-destructive"
+            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
           >
-            {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-            DELETE
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setShowReply(!showReply)}
-            className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
+            {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+            Delete
+          </button>
+          <button
+            onClick={handleArchive}
+            disabled={archiving}
+            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
           >
-            <Reply className="h-3 w-3" />
+            {archiving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+            Archive
+          </button>
+          <button
+            onClick={() => setShowReply(r => !r)}
+            className="flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <Reply className="h-3.5 w-3.5" />
             Reply
-          </Button>
+          </button>
         </div>
       </div>
 
-      {/* Conversation messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+      {/* Scrollable conversation */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {loading ? (
-          <div className="space-y-4">
-            {[...Array(2)].map((_, i) => (
-              <div key={i} className="rounded-lg border border-border p-4">
-                <Skeleton className="h-3 w-1/3 mb-2" />
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className={cn("max-w-[75%] rounded-2xl p-4", i % 2 === 0 ? "mr-auto" : "ml-auto bg-primary/5")}>
+                <Skeleton className="h-3 w-24 mb-2" />
                 <Skeleton className="h-3 w-full mb-1" />
                 <Skeleton className="h-3 w-4/5" />
               </div>
             ))}
           </div>
         ) : messages.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">No messages found.</p>
+          <p className="text-sm text-muted-foreground text-center py-8">No messages found.</p>
         ) : (
-          messages.map((msg) => (
+          messages.map((msg, i) => (
             <div
-              key={msg.id || msg.received_at}
+              key={msg.id || i}
               className={cn(
-                "rounded-lg border p-4",
+                "max-w-[75%] rounded-2xl px-4 py-3",
                 msg.is_sent
-                  ? "border-primary/20 bg-primary/5 ml-8"
-                  : "border-border bg-card mr-8"
+                  ? "ml-auto bg-primary/10"        // athlete — right, blue tint
+                  : "mr-auto bg-muted"             // coach — left, muted gray
               )}
             >
-              <div className="mb-2 flex items-baseline justify-between gap-2">
-                <span className={cn(
-                  "text-xs font-semibold",
-                  msg.is_sent ? "text-primary" : "text-foreground"
-                )}>
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-[11px] font-semibold text-muted-foreground">
                   {msg.is_sent ? "Me" : msg.from_name || msg.from_email}
                 </span>
-                <span className="shrink-0 text-[11px] text-muted-foreground">
+                <span className="text-[10px] text-muted-foreground/70 ml-auto">
                   {formatDate(msg.received_at)}
                 </span>
               </div>
-              <p className="whitespace-pre-wrap text-sm text-foreground leading-relaxed">
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
                 {msg.body || msg.snippet || "(No content)"}
               </p>
             </div>
           ))
         )}
 
-        {sent && (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 text-center">
-            Reply sent.
-          </div>
-        )}
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Reply composer */}
-      {showReply && (
-        <div className="border-t border-border p-4 shrink-0">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Reply to {thread.latestFrom !== "Me" ? thread.latestFrom : thread.latestFromEmail}
-          </p>
-          <textarea
-            ref={replyTextareaRef}
-            className="w-full rounded-md border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-            rows={4}
-            placeholder="Type your reply..."
-            value={replyBody}
-            onChange={(e) => setReplyBody(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleReply()
-            }}
-          />
-          <div className="mt-2 flex items-center justify-between gap-2">
-            <p className="text-[10px] text-muted-foreground">Ctrl+Enter to send</p>
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" onClick={() => { setShowReply(false); setReplyBody("") }}>
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleReply}
-                disabled={sending || !replyBody.trim()}
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                {sending ? (
-                  <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" />Sending...</>
-                ) : (
-                  <><Send className="mr-1.5 h-3 w-3" />Send Reply</>
-                )}
-              </Button>
+        {/* Reply compose — inside scrollable area, like Gmail */}
+        {showReply && (
+          <div className="mt-2 rounded-2xl border border-primary/30 bg-card p-4 shadow-sm">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Reply to {thread.otherName}
+            </p>
+            <textarea
+              ref={replyTextareaRef}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              rows={4}
+              placeholder="Type your reply..."
+              value={replyBody}
+              onChange={(e) => setReplyBody(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleReply() }}
+            />
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-[10px] text-muted-foreground">Ctrl+Enter to send</span>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => { setShowReply(false); setReplyBody("") }}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleReply}
+                  disabled={sending || !replyBody.trim()}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {sending
+                    ? <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" />Sending...</>
+                    : <><Send className="mr-1.5 h-3 w-3" />Send Reply</>
+                  }
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        <div ref={bottomRef} />
+      </div>
     </div>
   )
 }
 
 // ─── Inbox View ──────────────────────────────────────────────────────────────
 
-function InboxView({ workspaceEmail }: { workspaceEmail?: string | null }) {
+function InboxView() {
   const [threads, setThreads] = useState<Thread[]>([])
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<Thread | null>(null)
-  const [mobileViewThread, setMobileViewThread] = useState(false)
+  const [selectedThread, setSelectedThread] = useState<Thread | null>(null)
   const isFirstLoad = useRef(true)
+  const listScrollRef = useRef<HTMLDivElement>(null)
+  const savedScrollTop = useRef(0)
 
   const loadInbox = useCallback(async () => {
     const firstLoad = isFirstLoad.current
@@ -365,13 +430,11 @@ function InboxView({ workspaceEmail }: { workspaceEmail?: string | null }) {
       const res = await fetch("/api/email/inbox")
       if (res.ok) {
         const data = await res.json()
-        const incomingThreads: Thread[] = data.threads || []
-        setThreads(incomingThreads)
-        // Keep selected thread in sync (update metadata but don't change selection)
-        setSelected(prev => {
+        const incoming: Thread[] = data.threads || []
+        setThreads(incoming)
+        setSelectedThread(prev => {
           if (!prev) return prev
-          const updated = incomingThreads.find(t => t.threadId === prev.threadId)
-          return updated || prev
+          return incoming.find(t => t.threadId === prev.threadId) || prev
         })
       }
     } finally {
@@ -388,10 +451,11 @@ function InboxView({ workspaceEmail }: { workspaceEmail?: string | null }) {
     return () => clearInterval(interval)
   }, [loadInbox])
 
-  const handleSelect = (thread: Thread) => {
-    setSelected(thread)
-    setMobileViewThread(true)
-    // Mark as read locally
+  const handleSelectThread = (thread: Thread) => {
+    // Save scroll position before navigating into thread
+    savedScrollTop.current = listScrollRef.current?.scrollTop || 0
+    setSelectedThread(thread)
+    // Mark unread locally
     if (thread.hasUnread) {
       setThreads(prev => prev.map(t =>
         t.threadId === thread.threadId ? { ...t, hasUnread: false, unreadCount: 0 } : t
@@ -399,34 +463,61 @@ function InboxView({ workspaceEmail }: { workspaceEmail?: string | null }) {
     }
   }
 
+  const handleBack = () => {
+    setSelectedThread(null)
+    // Restore scroll position
+    requestAnimationFrame(() => {
+      if (listScrollRef.current) {
+        listScrollRef.current.scrollTop = savedScrollTop.current
+      }
+    })
+  }
+
+  const handleArchived = (threadId: string) => {
+    setThreads(prev => prev.filter(t => t.threadId !== threadId))
+    setSelectedThread(null)
+  }
+
   const handleDeleted = (threadId: string) => {
     setThreads(prev => prev.filter(t => t.threadId !== threadId))
-    setSelected(null)
-    setMobileViewThread(false)
+    setSelectedThread(null)
   }
 
   if (loading) {
     return (
-      <div className="flex h-full gap-0">
-        <div className="w-full md:w-80 lg:w-96 border-r border-border">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="border-b border-border p-4">
-              <div className="flex justify-between mb-2">
-                <Skeleton className="h-3.5 w-1/2" />
+      <div className="h-full">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="flex items-center gap-3 border-b border-border px-4 py-3">
+            <Skeleton className="h-9 w-9 rounded-md shrink-0" />
+            <div className="flex-1">
+              <div className="flex justify-between mb-1.5">
+                <Skeleton className="h-3.5 w-32" />
                 <Skeleton className="h-3 w-10" />
               </div>
-              <Skeleton className="h-3 w-3/4 mb-1" />
-              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-48" />
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     )
   }
 
+  // Thread view — takes over entire content area
+  if (selectedThread) {
+    return (
+      <ConversationView
+        thread={selectedThread}
+        onBack={handleBack}
+        onArchived={handleArchived}
+        onDeleted={handleDeleted}
+      />
+    )
+  }
+
+  // List view — takes over entire content area
   if (threads.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="flex h-full flex-col items-center justify-center py-16 text-center px-4">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
           <Inbox className="h-8 w-8 text-muted-foreground/40" />
         </div>
@@ -438,78 +529,15 @@ function InboxView({ workspaceEmail }: { workspaceEmail?: string | null }) {
   }
 
   return (
-    <div className="flex h-full min-h-0">
-      {/* Thread list */}
-      <div className={cn(
-        "flex-col border-r border-border overflow-y-auto",
-        "w-full md:flex md:w-80 lg:w-96 shrink-0",
-        mobileViewThread ? "hidden md:flex" : "flex"
-      )}>
-        {threads.map((thread) => (
-          <button
-            key={thread.threadId}
-            onClick={() => handleSelect(thread)}
-            className={cn(
-              "w-full text-left border-b border-border px-4 py-3 transition-colors hover:bg-muted/50",
-              selected?.threadId === thread.threadId && "bg-primary/5 border-l-2 border-l-primary",
-              thread.hasUnread && "bg-blue-50/60"
-            )}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                {thread.hasUnread && (
-                  <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-blue-500" />
-                )}
-                <span className={cn(
-                  "truncate text-sm",
-                  thread.hasUnread ? "font-bold text-foreground" : "font-medium text-foreground"
-                )}>
-                  {thread.latestFrom}
-                </span>
-              </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                {thread.messageCount > 1 && (
-                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                    {thread.messageCount}
-                  </span>
-                )}
-                <span className="text-xs text-muted-foreground">{formatDate(thread.latestAt)}</span>
-              </div>
-            </div>
-            <p className={cn(
-              "mt-0.5 truncate text-xs",
-              thread.hasUnread ? "font-semibold text-foreground" : "text-muted-foreground"
-            )}>
-              {thread.subject}
-            </p>
-            {thread.snippet && (
-              <p className="mt-1 line-clamp-1 text-xs text-muted-foreground/80">{thread.snippet}</p>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* Conversation pane */}
-      <div className={cn(
-        "flex-1 overflow-hidden",
-        mobileViewThread ? "flex flex-col" : "hidden md:flex md:flex-col"
-      )}>
-        {selected ? (
-          <ConversationPane
-            thread={selected}
-            workspaceEmail={workspaceEmail}
-            onClose={() => setMobileViewThread(false)}
-            onDeleted={handleDeleted}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            <div className="flex flex-col items-center gap-3">
-              <MessageSquare className="h-10 w-10 text-muted-foreground/30" />
-              <p>Select a conversation</p>
-            </div>
-          </div>
-        )}
-      </div>
+    <div className="h-full overflow-y-auto" ref={listScrollRef}>
+      {threads.map(thread => (
+        <ThreadRow
+          key={thread.threadId}
+          thread={thread}
+          selected={false}
+          onClick={() => handleSelectThread(thread)}
+        />
+      ))}
     </div>
   )
 }
@@ -524,7 +552,6 @@ function FoldersView() {
   const [expandedSchools, setExpandedSchools] = useState<Record<string, boolean>>({})
   const [expandedCoaches, setExpandedCoaches] = useState<Record<string, boolean>>({})
   const [selected, setSelected] = useState<FolderEmail | null>(null)
-  const [mobileViewEmail, setMobileViewEmail] = useState(false)
   const [showReply, setShowReply] = useState(false)
   const [replyBody, setReplyBody] = useState("")
   const [sending, setSending] = useState(false)
@@ -540,9 +567,7 @@ function FoldersView() {
           const data = await res.json()
           setDivisions(data.divisions || [])
         }
-      } finally {
-        setLoading(false)
-      }
+      } finally { setLoading(false) }
     }
     load()
   }, [])
@@ -551,9 +576,8 @@ function FoldersView() {
     if (showReply) replyTextareaRef.current?.focus()
   }, [showReply])
 
-  const toggle = (setter: React.Dispatch<React.SetStateAction<Record<string, boolean>>>, key: string) => {
-    setter((prev) => ({ ...prev, [key]: !prev[key] }))
-  }
+  const toggle = (setter: React.Dispatch<React.SetStateAction<Record<string, boolean>>>, key: string) =>
+    setter(prev => ({ ...prev, [key]: !prev[key] }))
 
   const handleReply = async () => {
     if (!selected || !replyBody.trim() || !selected.from_email) return
@@ -580,18 +604,15 @@ function FoldersView() {
       }
     } catch {
       alert("Network error. Please try again.")
-    } finally {
-      setSending(false)
-    }
+    } finally { setSending(false) }
   }
 
   if (loading) {
     return (
       <div className="flex h-full gap-0">
-        <div className="w-full md:w-64 lg:w-72 border-r border-border p-4">
+        <div className="w-full md:w-64 border-r border-border p-4">
           <Skeleton className="h-4 w-1/2 mb-3" />
           <Skeleton className="h-3 w-2/3 mb-2 ml-4" />
-          <Skeleton className="h-3 w-1/2 mb-2 ml-8" />
         </div>
       </div>
     )
@@ -599,12 +620,12 @@ function FoldersView() {
 
   if (divisions.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="flex h-full flex-col items-center justify-center py-16 text-center px-4">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
           <FolderOpen className="h-8 w-8 text-muted-foreground/40" />
         </div>
         <p className="mt-4 text-sm font-medium text-muted-foreground">
-          No filed emails yet. Use FILE in your inbox to organize responses.
+          No filed emails yet. Use Archive in your inbox to organize responses.
         </p>
       </div>
     )
@@ -614,9 +635,8 @@ function FoldersView() {
     <div className="flex h-full min-h-0">
       {/* Folder tree */}
       <div className={cn(
-        "flex-col border-r border-border overflow-y-auto",
-        "w-full md:flex md:w-64 lg:w-72 shrink-0",
-        mobileViewEmail ? "hidden md:flex" : "flex"
+        "flex-col border-r border-border overflow-y-auto w-full md:flex md:w-64 shrink-0",
+        selected ? "hidden md:flex" : "flex"
       )}>
         <div className="p-3">
           {divisions.map((div) => {
@@ -624,10 +644,8 @@ function FoldersView() {
             const divOpen = expandedDivisions[divKey] !== false
             return (
               <div key={divKey} className="mb-1">
-                <button
-                  onClick={() => toggle(setExpandedDivisions, divKey)}
-                  className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs font-bold uppercase tracking-wider text-primary hover:bg-primary/5"
-                >
+                <button onClick={() => toggle(setExpandedDivisions, divKey)}
+                  className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs font-bold uppercase tracking-wider text-primary hover:bg-primary/5">
                   {divOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
                   <Folder className="h-3.5 w-3.5 shrink-0" />
                   {div.division}
@@ -637,10 +655,8 @@ function FoldersView() {
                   const confOpen = expandedConferences[confKey] !== false
                   return (
                     <div key={confKey} className="ml-4">
-                      <button
-                        onClick={() => toggle(setExpandedConferences, confKey)}
-                        className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs font-semibold text-foreground hover:bg-muted/50"
-                      >
+                      <button onClick={() => toggle(setExpandedConferences, confKey)}
+                        className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs font-semibold text-foreground hover:bg-muted/50">
                         {confOpen ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
                         <FolderOpen className="h-3 w-3 shrink-0 text-muted-foreground" />
                         <span className="truncate">{conf.conference}</span>
@@ -650,10 +666,8 @@ function FoldersView() {
                         const schoolOpen = expandedSchools[schoolKey]
                         return (
                           <div key={schoolKey} className="ml-4">
-                            <button
-                              onClick={() => toggle(setExpandedSchools, schoolKey)}
-                              className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs text-foreground hover:bg-muted/50"
-                            >
+                            <button onClick={() => toggle(setExpandedSchools, schoolKey)}
+                              className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs text-foreground hover:bg-muted/50">
                               {schoolOpen ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
                               <Building2 className="h-3 w-3 shrink-0 text-muted-foreground" />
                               <span className="truncate">{school.school_name}</span>
@@ -663,26 +677,20 @@ function FoldersView() {
                               const coachOpen = expandedCoaches[coachKey]
                               return (
                                 <div key={coachKey} className="ml-4">
-                                  <button
-                                    onClick={() => toggle(setExpandedCoaches, coachKey)}
-                                    className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-muted/50"
-                                  >
+                                  <button onClick={() => toggle(setExpandedCoaches, coachKey)}
+                                    className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-muted/50">
                                     {coachOpen ? <ChevronDown className="h-3 w-3 shrink-0" /> : <ChevronRight className="h-3 w-3 shrink-0" />}
                                     <User className="h-3 w-3 shrink-0" />
                                     <span className="truncate flex-1">{coach.coach_name}</span>
-                                    <span className="ml-auto shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">
-                                      {coach.emails.length}
-                                    </span>
+                                    <span className="ml-auto shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">{coach.emails.length}</span>
                                   </button>
                                   {coachOpen && coach.emails.map((email) => (
-                                    <button
-                                      key={email.id}
-                                      onClick={() => { setSelected(email); setMobileViewEmail(true); setShowReply(false); setSent(false) }}
+                                    <button key={email.id}
+                                      onClick={() => { setSelected(email); setShowReply(false); setSent(false) }}
                                       className={cn(
                                         "ml-4 flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-muted/50",
                                         selected?.id === email.id && "bg-primary/5 text-primary font-medium"
-                                      )}
-                                    >
+                                      )}>
                                       <Mail className="h-3 w-3 shrink-0" />
                                       <span className="truncate flex-1">{email.subject}</span>
                                       <span className="shrink-0 text-[10px]">{email.filed_at ? formatDate(email.filed_at) : ""}</span>
@@ -704,40 +712,25 @@ function FoldersView() {
       </div>
 
       {/* Reading pane */}
-      <div className={cn(
-        "flex-1 overflow-hidden flex-col",
-        mobileViewEmail ? "flex" : "hidden md:flex"
-      )}>
+      <div className={cn("flex-1 overflow-hidden flex-col min-h-0", selected ? "flex" : "hidden md:flex")}>
         {selected ? (
           <div className="flex h-full flex-col">
-            <div className="flex items-start justify-between border-b border-border p-4 shrink-0">
+            <div className="shrink-0 border-b border-border px-4 py-3 flex items-center gap-3">
+              <button onClick={() => setSelected(null)} className="md:hidden text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="h-4 w-4" />
+              </button>
               <div className="flex-1 min-w-0">
-                {mobileViewEmail && (
-                  <button
-                    onClick={() => setMobileViewEmail(false)}
-                    className="mb-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground md:hidden"
-                  >
-                    <ArrowLeft className="h-3.5 w-3.5" />
-                    Back
-                  </button>
-                )}
-                <h2 className="text-base font-semibold text-foreground truncate">{selected.subject}</h2>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  From <span className="font-medium text-foreground">{selected.coach_name || selected.from_name || selected.from_email}</span>
+                <h2 className="text-sm font-semibold text-foreground truncate">{selected.subject}</h2>
+                <p className="text-xs text-muted-foreground">
+                  {selected.coach_name || selected.from_name || selected.from_email}
+                  {selected.received_at && <> · {new Date(selected.received_at).toLocaleString()}</>}
                 </p>
-                {selected.received_at && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{new Date(selected.received_at).toLocaleString()}</p>
-                )}
               </div>
               {selected.from_email && (
-                <Button
-                  size="sm"
-                  onClick={() => setShowReply(!showReply)}
-                  className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 text-xs ml-3"
-                >
-                  <Reply className="h-3 w-3" />
-                  Reply
-                </Button>
+                <button onClick={() => setShowReply(r => !r)}
+                  className="flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
+                  <Reply className="h-3.5 w-3.5" /> Reply
+                </button>
               )}
             </div>
             <div className="flex-1 overflow-y-auto p-4">
@@ -749,39 +742,28 @@ function FoldersView() {
                   Reply sent successfully.
                 </div>
               )}
-            </div>
-            {showReply && (
-              <div className="border-t border-border p-4 shrink-0">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Reply to {selected.coach_name || selected.from_name || selected.from_email}
-                </p>
-                <textarea
-                  ref={replyTextareaRef}
-                  className="w-full rounded-md border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                  rows={4}
-                  placeholder="Type your reply..."
-                  value={replyBody}
-                  onChange={(e) => setReplyBody(e.target.value)}
-                />
-                <div className="mt-2 flex items-center justify-end gap-2">
-                  <Button size="sm" variant="outline" onClick={() => { setShowReply(false); setReplyBody("") }}>Cancel</Button>
-                  <Button
-                    size="sm"
-                    onClick={handleReply}
-                    disabled={sending || !replyBody.trim()}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    {sending ? <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" />Sending...</> : <><Send className="mr-1.5 h-3 w-3" />Send Reply</>}
-                  </Button>
+              {showReply && (
+                <div className="mt-4 rounded-2xl border border-primary/30 bg-card p-4">
+                  <textarea ref={replyTextareaRef}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                    rows={4} placeholder="Type your reply..." value={replyBody}
+                    onChange={(e) => setReplyBody(e.target.value)} />
+                  <div className="mt-2 flex justify-end gap-2">
+                    <Button size="sm" variant="outline" onClick={() => { setShowReply(false); setReplyBody("") }}>Cancel</Button>
+                    <Button size="sm" onClick={handleReply} disabled={sending || !replyBody.trim()}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90">
+                      {sending ? <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" />Sending...</> : <><Send className="mr-1.5 h-3 w-3" />Send</>}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            <div className="flex flex-col items-center gap-3">
+          <div className="flex h-full items-center justify-center">
+            <div className="flex flex-col items-center gap-3 text-center">
               <FolderOpen className="h-10 w-10 text-muted-foreground/30" />
-              <p>Select an email to read</p>
+              <p className="text-sm text-muted-foreground">Select an email to read</p>
             </div>
           </div>
         )}
@@ -817,14 +799,12 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
   ]
 
   return (
-    <div className="flex flex-col gap-0 -mx-4 -my-6 lg:-mx-8 lg:-my-8 h-[calc(100vh-5rem)]">
-      {/* Page header */}
-      <div className="border-b border-border bg-card px-4 pb-4 pt-6 lg:px-8 lg:pt-8 shrink-0">
+    <div className="flex flex-col -mx-4 -my-6 lg:-mx-8 lg:-my-8 h-[calc(100vh-5rem)]">
+      {/* Page header — pinned */}
+      <div className="shrink-0 border-b border-border bg-card px-4 pb-4 pt-6 lg:px-8 lg:pt-8">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
-              Email
-            </h1>
+            <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">Email</h1>
             <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
               <Mail className="h-3.5 w-3.5 text-accent" />
               FOLLOW UP. BUILD RELATIONSHIPS.
@@ -848,21 +828,18 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
         </div>
       </div>
 
-      {/* Layout: sidebar tabs + content */}
-      <div className="flex flex-1 min-h-0">
-        {/* Left sidebar */}
-        <nav className="flex w-[72px] flex-col border-r border-border bg-card py-2 md:w-44 shrink-0">
+      {/* Main — pinned sidebar + scrollable content */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Left nav — pinned */}
+        <nav className="flex w-[72px] shrink-0 flex-col border-r border-border bg-card py-2 md:w-44">
           {tabs.map(({ id, label, icon: Icon, badge }) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
+            <button key={id} onClick={() => setTab(id)}
               className={cn(
                 "relative flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors md:px-4",
                 tab === id
                   ? "bg-primary/10 text-primary font-semibold border-l-2 border-primary"
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              )}
-            >
+              )}>
               <Icon className="h-4 w-4 shrink-0" />
               <span className="hidden md:inline">{label}</span>
               {badge !== undefined && badge > 0 && (
@@ -877,9 +854,9 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
           ))}
         </nav>
 
-        {/* Content area */}
-        <div className="flex-1 min-w-0 bg-background overflow-hidden">
-          {tab === "inbox" && <InboxView workspaceEmail={recruitingEmail} />}
+        {/* Content — fills rest, overflow managed internally */}
+        <div className="flex-1 min-w-0 min-h-0 overflow-hidden bg-background">
+          {tab === "inbox" && <InboxView />}
           {tab === "folders" && <FoldersView />}
         </div>
       </div>

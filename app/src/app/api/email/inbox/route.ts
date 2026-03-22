@@ -48,7 +48,6 @@ export async function GET() {
   }
 
   try {
-    // Get all folders once, find inbox + sent
     const folders = await getZohoFolders(accountKey)
     if (folders.length === 0) {
       console.error('[email/inbox] No folders returned for account:', accountKey)
@@ -64,20 +63,18 @@ export async function GET() {
       return NextResponse.json({ threads: [], unreadCount: 0 })
     }
 
-    // Fetch inbox and sent messages in parallel
     const [inboxMsgs, sentMsgs] = await Promise.all([
       fetchFolderMessages(accountKey, inboxFolderId, 50),
       sentFolderId ? fetchFolderMessages(accountKey, sentFolderId, 50) : Promise.resolve([]),
     ])
 
-    // Tag each message and combine
     type TaggedMessage = { raw: any; isSent: boolean }
     const allMessages: TaggedMessage[] = [
       ...inboxMsgs.map(raw => ({ raw, isSent: false })),
       ...sentMsgs.map(raw => ({ raw, isSent: true })),
     ]
 
-    // Group by threadId (fall back to messageId if no threadId)
+    // Group by threadId
     const threadMap = new Map<string, TaggedMessage[]>()
     for (const msg of allMessages) {
       const tid = msg.raw.threadId || msg.raw.thread_id || msg.raw.messageId || msg.raw.message_id || ''
@@ -86,41 +83,77 @@ export async function GET() {
       threadMap.get(tid)!.push(msg)
     }
 
-    // Build thread summaries
     const threads = Array.from(threadMap.entries()).map(([threadId, msgs]) => {
-      // Sort messages within thread newest-first to find latest
-      const sorted = [...msgs].sort((a, b) => {
-        const at = parseInt(a.raw.receivedTime || a.raw.received_time || '0', 10)
-        const bt = parseInt(b.raw.receivedTime || b.raw.received_time || '0', 10)
-        return bt - at
-      })
-      const latest = sorted[0].raw
-      const latestIsSent = sorted[0].isSent
+      const byNewest = [...msgs].sort((a, b) =>
+        parseInt(b.raw.receivedTime || b.raw.received_time || '0', 10) -
+        parseInt(a.raw.receivedTime || a.raw.received_time || '0', 10)
+      )
 
-      const latestMs = parseInt(latest.receivedTime || latest.received_time || '0', 10)
+      const latestMsg = byNewest[0]
+      const latestMs = parseInt(latestMsg.raw.receivedTime || latestMsg.raw.received_time || '0', 10)
       const latestAt = latestMs ? new Date(latestMs).toISOString() : new Date().toISOString()
 
-      const fromRaw = latest.fromAddress || latest.from_address || ''
-      const { name: latestFrom, email: latestFromEmail } = parseFrom(fromRaw)
+      // Use actual subject from the most recent message (verbatim — coach may have changed it)
+      const subject = latestMsg.raw.subject || '(No subject)'
 
-      // Unread = inbox messages that are unread
+      // "Other person" = the participant who is NOT the athlete
+      const otherMsg = msgs.find(m => {
+        const { email } = parseFrom(m.raw.fromAddress || m.raw.from_address || '')
+        return email.toLowerCase() !== workspaceEmail
+      }) || byNewest[0]
+      const { name: otherName, email: otherEmail } = parseFrom(
+        otherMsg.raw.fromAddress || otherMsg.raw.from_address || ''
+      )
+
+      const snippet = latestMsg.raw.summary || latestMsg.raw.snippet || ''
       const unreadCount = msgs.filter(m => !m.isSent && !(m.raw.isRead ?? m.raw.is_read ?? true)).length
+      const latestReceivedMsg = byNewest.find(m => !m.isSent)
 
       return {
         threadId,
-        subject: latest.subject || '(No subject)',
+        subject,
         latestAt,
-        latestFrom: latestIsSent ? 'Me' : latestFrom,
-        latestFromEmail,
-        snippet: latest.summary || latest.snippet || '',
+        otherName: otherName || otherEmail,
+        otherEmail: otherEmail.toLowerCase(),
+        snippet,
         unreadCount,
         messageCount: msgs.length,
         hasUnread: unreadCount > 0,
+        latestReceivedId: latestReceivedMsg?.raw.messageId || latestReceivedMsg?.raw.message_id || '',
+        logoUrl: null as string | null,
+        schoolName: null as string | null,
       }
     })
 
     // Sort threads by latest activity, newest first
     threads.sort((a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime())
+
+    // Batch logo lookup — one query for all coach emails
+    const otherEmails = [...new Set(threads.map(t => t.otherEmail).filter(Boolean))]
+    if (otherEmails.length > 0) {
+      const { data: coachRows } = await admin
+        .from('coaches')
+        .select('email, programs(logo_url, school_name)')
+        .in('email', otherEmails)
+
+      if (coachRows) {
+        const logoMap = new Map<string, { logoUrl: string | null; schoolName: string | null }>()
+        for (const row of coachRows as any[]) {
+          const prog = Array.isArray(row.programs) ? row.programs[0] : row.programs
+          logoMap.set(row.email?.toLowerCase() || '', {
+            logoUrl: prog?.logo_url || null,
+            schoolName: prog?.school_name || null,
+          })
+        }
+        for (const thread of threads) {
+          const entry = logoMap.get(thread.otherEmail)
+          if (entry) {
+            thread.logoUrl = entry.logoUrl
+            thread.schoolName = entry.schoolName
+          }
+        }
+      }
+    }
 
     const unreadCount = threads.reduce((sum, t) => sum + t.unreadCount, 0)
     return NextResponse.json({ threads, unreadCount })
