@@ -159,7 +159,55 @@ async function runDiagnose(acctKey: string, results: Record<string, any>) {
     }
   }
 
-  // 2b. Messages in sent folder
+  // 2b. Messages in spam folder
+  try {
+    const folders = await getZohoFolders(acctKey)
+    const spamFolder = folders.find((f: any) =>
+      (f.folderName || '').toLowerCase() === 'spam'
+    )
+    if (spamFolder) {
+      const spamId = String(spamFolder.folderId || '')
+      const msgUrl = `${ZOHO_API_BASE}/accounts/${acctKey}/messages?folderId=${spamId}&limit=10`
+      const msgRes = await zohoFetch(msgUrl, {})
+      const msgData = await msgRes.json()
+      results.spamMessages = {
+        count: msgData?.data?.length ?? 0,
+        items: (msgData?.data || []).map((m: any) => ({
+          subject: m.subject,
+          fromAddress: m.fromAddress,
+          receivedTime: m.receivedTime,
+        })),
+      }
+    }
+  } catch (e: any) {
+    results.spamMessagesError = e?.message || String(e)
+  }
+
+  // 2c. Messages in trash folder
+  try {
+    const folders = await getZohoFolders(acctKey)
+    const trashFolder = folders.find((f: any) =>
+      (f.folderName || '').toLowerCase() === 'trash'
+    )
+    if (trashFolder) {
+      const trashId = String(trashFolder.folderId || '')
+      const msgUrl = `${ZOHO_API_BASE}/accounts/${acctKey}/messages?folderId=${trashId}&limit=10`
+      const msgRes = await zohoFetch(msgUrl, {})
+      const msgData = await msgRes.json()
+      results.trashMessages = {
+        count: msgData?.data?.length ?? 0,
+        items: (msgData?.data || []).map((m: any) => ({
+          subject: m.subject,
+          fromAddress: m.fromAddress,
+          receivedTime: m.receivedTime,
+        })),
+      }
+    }
+  } catch (e: any) {
+    results.trashMessagesError = e?.message || String(e)
+  }
+
+  // 2d. Messages in sent folder
   try {
     const folders = await getZohoFolders(acctKey)
     const sentFolder = folders.find((f: any) =>
