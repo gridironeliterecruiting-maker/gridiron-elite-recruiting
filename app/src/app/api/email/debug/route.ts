@@ -47,6 +47,9 @@ export async function GET(req: NextRequest) {
   } else if (step === 'send-test') {
     // Send a test email to create conversation material for threading test
     await runSendTest(accountKey, results)
+  } else if (step === 'test-zohomail') {
+    // Test if Zoho Mail API (different from Mail360) supports threading
+    await runTestZohoMail(accountKey, results)
   } else if (step === 'list-accounts') {
     // List all accounts to see what exists
     await runListAccounts(results)
@@ -372,6 +375,59 @@ async function runSendTest(accountKey: string, results: Record<string, any>) {
     }
   } catch (e: any) {
     results.sendTestError = e?.message || String(e)
+  }
+}
+
+async function runTestZohoMail(acctKey: string, results: Record<string, any>) {
+  // Try the Zoho Mail API (mail.zoho.com) instead of Mail360 (mail360.zoho.com)
+  // These are different products — Zoho Mail has native threading for Workspace users
+  const ZOHO_MAIL_BASE = 'https://mail.zoho.com/api'
+
+  // 1. Try listing accounts via Zoho Mail API
+  try {
+    const res = await zohoFetch(`${ZOHO_MAIL_BASE}/accounts`, {})
+    const data = await res.json()
+    results.zohoMailAccounts = {
+      httpStatus: res.status,
+      response: data,
+    }
+  } catch (e: any) {
+    results.zohoMailAccountsError = e?.message || String(e)
+  }
+
+  // 2. Try Mail360 threads API with the sent folder explicitly
+  try {
+    const folders = await getZohoFolders(acctKey)
+    const sentFolder = folders.find((f: any) =>
+      (f.folderName || '').toLowerCase() === 'sent'
+    )
+    if (sentFolder) {
+      const sentId = String(sentFolder.folderId || '')
+      const thrUrl = `${ZOHO_API_BASE}/accounts/${acctKey}/threads?folderId=${sentId}&limit=50`
+      const thrRes = await zohoFetch(thrUrl, {})
+      const thrData = await thrRes.json()
+      results.threadsSent = {
+        count: thrData?.data?.length ?? 0,
+        fullResponse: thrData,
+      }
+    }
+  } catch (e: any) {
+    results.threadsSentError = e?.message || String(e)
+  }
+
+  // 3. Try the Zoho Mail API threads endpoint directly
+  try {
+    // Zoho Mail API uses numeric accountId, not string account_key
+    // Let's try with the account_key anyway to see what happens
+    const thrUrl = `${ZOHO_MAIL_BASE}/accounts/${acctKey}/threads?limit=50`
+    const thrRes = await zohoFetch(thrUrl, {})
+    const thrData = await thrRes.json()
+    results.zohoMailThreads = {
+      httpStatus: thrRes.status,
+      response: thrData,
+    }
+  } catch (e: any) {
+    results.zohoMailThreadsError = e?.message || String(e)
   }
 }
 
