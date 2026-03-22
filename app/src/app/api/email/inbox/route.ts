@@ -1,43 +1,31 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { zohoFetch } from '@/lib/workspace'
+import { zohoFetch, getZohoFolders, findFolderId } from '@/lib/workspace'
 
 export const dynamic = 'force-dynamic'
 
 const ZOHO_API_BASE = 'https://mail360.zoho.com/api'
 
-/**
- * Look up the numeric folderId for the Inbox folder on a given account.
- * Zoho Mail360 requires folderId (numeric) — "folder=Inbox" is not valid.
- */
-async function getInboxFolderId(accountKey: string): Promise<string | null> {
-  const res = await zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/folders`, {})
+async function fetchFolderMessages(accountKey: string, folderId: string, limit = 50): Promise<any[]> {
+  const res = await zohoFetch(
+    `${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${folderId}&limit=${limit}`,
+    {}
+  )
   if (!res.ok) {
     const err = await res.text()
-    console.error('[email/inbox] Zoho folders error:', res.status, err)
-    return null
+    console.error('[email/inbox] Zoho messages error:', res.status, err, 'folderId:', folderId)
+    return []
   }
   const data = await res.json()
-  const folders: any[] = data.data || []
-  if (folders.length === 0) {
-    console.error('[email/inbox] Zoho returned no folders for account:', accountKey)
-    return null
-  }
-  // Find the Inbox — Zoho uses folderName or name, and folderType or type for identification
-  const inbox = folders.find((f: any) =>
-    f.folderName?.toLowerCase() === 'inbox' ||
-    f.name?.toLowerCase() === 'inbox' ||
-    f.folderType?.toLowerCase() === 'inbox' ||
-    f.type?.toLowerCase() === 'inbox'
-  )
-  if (!inbox) {
-    // Log all folder names to diagnose
-    const names = folders.map((f: any) => f.folderName || f.name || JSON.stringify(f)).join(', ')
-    console.error('[email/inbox] Inbox folder not found. Available folders:', names)
-    return null
-  }
-  return String(inbox.folderId || inbox.id || '')
+  return data.data || []
+}
+
+function parseFrom(fromRaw: string): { name: string; email: string } {
+  const match = fromRaw.match(/^(.*?)\s*<(.+?)>$/)
+  const name = match ? match[1].trim().replace(/^"|"$/g, '') : fromRaw
+  const email = match ? match[2] : fromRaw
+  return { name: name || email, email }
 }
 
 export async function GET() {
@@ -53,61 +41,91 @@ export async function GET() {
     .single()
 
   const accountKey = (profile as any)?.zoho_account_key as string | null
+  const workspaceEmail = ((profile as any)?.workspace_email as string | null)?.toLowerCase() || ''
+
   if (!accountKey) {
-    return NextResponse.json({ items: [], unreadCount: 0 })
+    return NextResponse.json({ threads: [], unreadCount: 0 })
   }
 
   try {
-    // Step 1: Get the Inbox folder ID (Zoho requires numeric folderId, not folder name)
-    const folderId = await getInboxFolderId(accountKey)
-    if (!folderId) {
-      return NextResponse.json({ items: [], unreadCount: 0 })
+    // Get all folders once, find inbox + sent
+    const folders = await getZohoFolders(accountKey)
+    if (folders.length === 0) {
+      console.error('[email/inbox] No folders returned for account:', accountKey)
+      return NextResponse.json({ threads: [], unreadCount: 0 })
     }
 
-    // Step 2: Fetch messages using correct folderId parameter + zohoFetch (auto-retry on token expiry)
-    const listRes = await zohoFetch(
-      `${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${folderId}&limit=25`,
-      {}
-    )
+    const inboxFolderId = findFolderId(folders, 'inbox')
+    const sentFolderId = findFolderId(folders, 'sent', 'sent items', 'sent mail')
 
-    if (!listRes.ok) {
-      const err = await listRes.text()
-      console.error('[email/inbox] Zoho messages error:', listRes.status, err)
-      return NextResponse.json({ items: [], unreadCount: 0 })
+    if (!inboxFolderId) {
+      const names = folders.map((f: any) => f.folderName || f.name).join(', ')
+      console.error('[email/inbox] Inbox folder not found. Available:', names)
+      return NextResponse.json({ threads: [], unreadCount: 0 })
     }
 
-    const listData = await listRes.json()
-    const messages: any[] = listData.data || []
+    // Fetch inbox and sent messages in parallel
+    const [inboxMsgs, sentMsgs] = await Promise.all([
+      fetchFolderMessages(accountKey, inboxFolderId, 50),
+      sentFolderId ? fetchFolderMessages(accountKey, sentFolderId, 50) : Promise.resolve([]),
+    ])
 
-    if (messages.length === 0) {
-      return NextResponse.json({ items: [], unreadCount: 0 })
+    // Tag each message and combine
+    type TaggedMessage = { raw: any; isSent: boolean }
+    const allMessages: TaggedMessage[] = [
+      ...inboxMsgs.map(raw => ({ raw, isSent: false })),
+      ...sentMsgs.map(raw => ({ raw, isSent: true })),
+    ]
+
+    // Group by threadId (fall back to messageId if no threadId)
+    const threadMap = new Map<string, TaggedMessage[]>()
+    for (const msg of allMessages) {
+      const tid = msg.raw.threadId || msg.raw.thread_id || msg.raw.messageId || msg.raw.message_id || ''
+      if (!tid) continue
+      if (!threadMap.has(tid)) threadMap.set(tid, [])
+      threadMap.get(tid)!.push(msg)
     }
 
-    const items = messages.map((m: any) => {
-      const fromRaw: string = m.fromAddress || m.from_address || ''
-      const match = fromRaw.match(/^(.*?)\s*<(.+?)>$/)
-      const fromName = match ? match[1].trim().replace(/^"|"$/g, '') : fromRaw
-      const fromEmail = match ? match[2] : fromRaw
+    // Build thread summaries
+    const threads = Array.from(threadMap.entries()).map(([threadId, msgs]) => {
+      // Sort messages within thread newest-first to find latest
+      const sorted = [...msgs].sort((a, b) => {
+        const at = parseInt(a.raw.receivedTime || a.raw.received_time || '0', 10)
+        const bt = parseInt(b.raw.receivedTime || b.raw.received_time || '0', 10)
+        return bt - at
+      })
+      const latest = sorted[0].raw
+      const latestIsSent = sorted[0].isSent
 
-      const receivedMs = parseInt(m.receivedTime || m.received_time || '0', 10)
-      const receivedAt = receivedMs ? new Date(receivedMs).toISOString() : new Date().toISOString()
+      const latestMs = parseInt(latest.receivedTime || latest.received_time || '0', 10)
+      const latestAt = latestMs ? new Date(latestMs).toISOString() : new Date().toISOString()
+
+      const fromRaw = latest.fromAddress || latest.from_address || ''
+      const { name: latestFrom, email: latestFromEmail } = parseFrom(fromRaw)
+
+      // Unread = inbox messages that are unread
+      const unreadCount = msgs.filter(m => !m.isSent && !(m.raw.isRead ?? m.raw.is_read ?? true)).length
 
       return {
-        id: m.messageId || m.message_id || '',
-        thread_id: m.threadId || m.thread_id || m.messageId || m.message_id || '',
-        from_name: fromName || fromEmail,
-        from_email: fromEmail,
-        subject: m.subject || '(No subject)',
-        snippet: m.summary || m.snippet || '',
-        received_at: receivedAt,
-        is_read: m.isRead ?? m.is_read ?? true,
+        threadId,
+        subject: latest.subject || '(No subject)',
+        latestAt,
+        latestFrom: latestIsSent ? 'Me' : latestFrom,
+        latestFromEmail,
+        snippet: latest.summary || latest.snippet || '',
+        unreadCount,
+        messageCount: msgs.length,
+        hasUnread: unreadCount > 0,
       }
     })
 
-    const unreadCount = items.filter((i) => !i.is_read).length
-    return NextResponse.json({ items, unreadCount })
+    // Sort threads by latest activity, newest first
+    threads.sort((a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime())
+
+    const unreadCount = threads.reduce((sum, t) => sum + t.unreadCount, 0)
+    return NextResponse.json({ threads, unreadCount })
   } catch (err: any) {
     console.error('[email/inbox] Unexpected error:', err?.message || err)
-    return NextResponse.json({ items: [], unreadCount: 0 })
+    return NextResponse.json({ threads: [], unreadCount: 0 })
   }
 }

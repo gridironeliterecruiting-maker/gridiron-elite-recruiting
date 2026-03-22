@@ -21,25 +21,39 @@ import {
   Building2,
   Trash2,
   Plus,
+  MessageSquare,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { RecruitingEmailBadge } from "@/components/recruiting-email-badge"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface InboxItem {
-  id: string          // gmail_message_id
-  thread_id: string
+interface Thread {
+  threadId: string
+  subject: string
+  latestAt: string
+  latestFrom: string
+  latestFromEmail: string
+  snippet: string
+  unreadCount: number
+  messageCount: number
+  hasUnread: boolean
+}
+
+interface ThreadMessage {
+  id: string
   from_name: string
   from_email: string
   subject: string
+  body: string
   snippet: string
   received_at: string
+  is_sent: boolean
   is_read: boolean
 }
 
 interface FolderEmail {
-  id: string          // gmail_message_id
+  id: string
   thread_id: string | null
   from_name: string | null
   from_email: string | null
@@ -77,17 +91,6 @@ type Tab = "inbox" | "folders"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function decodeHtmlEntities(str: string): string {
-  return str
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code)))
-}
-
 function formatDate(ts: string | null): string {
   if (!ts) return ""
   const d = new Date(ts)
@@ -98,61 +101,83 @@ function formatDate(ts: string | null): string {
   return d.toLocaleDateString([], { month: "short", day: "numeric" })
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+// ─── Conversation Pane ────────────────────────────────────────────────────────
 
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-        <Inbox className="h-8 w-8 text-muted-foreground/40" />
-      </div>
-      <p className="mt-4 text-sm font-medium text-muted-foreground">{message}</p>
-    </div>
-  )
-}
-
-// ─── Reading Pane ─────────────────────────────────────────────────────────────
-
-interface ReadingPaneProps {
-  item: InboxItem | FolderEmail
+interface ConversationPaneProps {
+  thread: Thread
+  workspaceEmail?: string | null
   onClose?: () => void
-  onFiled?: (id: string) => void
-  onDeleted?: (id: string) => void
-  showFileButton?: boolean
+  onFiled?: (msgId: string) => void
+  onDeleted?: (threadId: string) => void
 }
 
-function ReadingPane({ item, onClose, onFiled, onDeleted, showFileButton = true }: ReadingPaneProps) {
+function ConversationPane({ thread, workspaceEmail, onClose, onDeleted }: ConversationPaneProps) {
+  const [messages, setMessages] = useState<ThreadMessage[]>([])
+  const [loading, setLoading] = useState(true)
   const [showReply, setShowReply] = useState(false)
   const [replyBody, setReplyBody] = useState("")
   const [sending, setSending] = useState(false)
-  const [filing, setFiling] = useState(false)
-  const [deleting, setDeleting] = useState(false)
   const [sent, setSent] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const replyTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
 
+  const loadThread = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/email/thread/${encodeURIComponent(thread.threadId)}`)
+      if (res.ok) {
+        const data = await res.json()
+        setMessages(data.messages || [])
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [thread.threadId])
+
+  useEffect(() => {
+    loadThread()
+  }, [loadThread])
+
+  // Scroll to bottom when messages load or new message sent
+  useEffect(() => {
+    if (!loading) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [loading, messages.length])
+
+  // Auto-focus reply textarea when reply opens
   useEffect(() => {
     if (showReply) {
       replyTextareaRef.current?.focus()
     }
   }, [showReply])
 
-  const fromName = "from_name" in item ? item.from_name : (item as FolderEmail).coach_name
-  const fromEmail = "from_email" in item ? item.from_email : null
-  const receivedAt = "received_at" in item ? item.received_at : (item as FolderEmail).received_at
-  const threadId = "thread_id" in item ? item.thread_id : null
+  // Mark thread as read when opened
+  useEffect(() => {
+    const unreadMsg = messages.find(m => !m.is_read && !m.is_sent)
+    if (unreadMsg?.id) {
+      fetch(`/api/email/inbox/${unreadMsg.id}/read`, { method: "PATCH" }).catch(() => {})
+    }
+  }, [messages])
 
   const handleReply = async () => {
-    if (!replyBody.trim() || !fromEmail) return
+    if (!replyBody.trim()) return
+    // Find the latest received message to reply to
+    const latestReceived = [...messages].reverse().find(m => !m.is_sent)
+    const toEmail = latestReceived?.from_email || thread.latestFromEmail
+    const toName = latestReceived?.from_name || thread.latestFrom
+
     setSending(true)
     try {
       const res = await fetch("/api/email/reply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          gmailMessageId: item.id,
-          threadId,
-          toEmail: fromEmail,
-          toName: fromName || undefined,
+          gmailMessageId: latestReceived?.id || '',
+          threadId: thread.threadId,
+          toEmail,
+          toName,
           replyBody,
         }),
       })
@@ -160,6 +185,8 @@ function ReadingPane({ item, onClose, onFiled, onDeleted, showFileButton = true 
         setSent(true)
         setReplyBody("")
         setShowReply(false)
+        // Reload thread after a short delay to include the sent message
+        setTimeout(() => { loadThread(); setSent(false) }, 1500)
       } else {
         const err = await res.json()
         alert(err.error || "Failed to send reply")
@@ -171,61 +198,26 @@ function ReadingPane({ item, onClose, onFiled, onDeleted, showFileButton = true 
     }
   }
 
-  const handleFile = async () => {
-    setFiling(true)
-    try {
-      const folderItem = item as FolderEmail
-      const res = await fetch("/api/email/file", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          gmailMessageId: item.id,
-          threadId,
-          fromEmail,
-          fromName: fromName || undefined,
-          subject: item.subject,
-          snippet: item.snippet,
-          receivedAt: receivedAt || undefined,
-          programName: folderItem.program_name || undefined,
-        }),
-      })
-      if (res.ok) {
-        onFiled?.(item.id)
-      } else {
-        alert("Failed to file email")
-      }
-    } catch {
-      alert("Network error. Please try again.")
-    } finally {
-      setFiling(false)
-    }
-  }
-
-  const handleDelete = async () => {
-    if (!confirm("Move this email to trash?")) return
+  const handleDeleteThread = async () => {
+    if (!confirm("Delete this entire conversation?")) return
     setDeleting(true)
-    try {
-      const res = await fetch("/api/email/delete", {
+    // Delete the most recent received message ID we have
+    const msgToDelete = messages.find(m => !m.is_sent)
+    if (msgToDelete?.id) {
+      await fetch("/api/email/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gmailMessageId: item.id }),
-      })
-      if (res.ok) {
-        onDeleted?.(item.id)
-      } else {
-        alert("Failed to delete email")
-      }
-    } catch {
-      alert("Network error. Please try again.")
-    } finally {
-      setDeleting(false)
+        body: JSON.stringify({ gmailMessageId: msgToDelete.id }),
+      }).catch(() => {})
     }
+    setDeleting(false)
+    onDeleted?.(thread.threadId)
   }
 
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-start justify-between border-b border-border p-4">
+      <div className="flex items-start justify-between border-b border-border p-4 shrink-0">
         <div className="flex-1 min-w-0">
           {onClose && (
             <button
@@ -236,100 +228,120 @@ function ReadingPane({ item, onClose, onFiled, onDeleted, showFileButton = true 
               Back
             </button>
           )}
-          <h2 className="text-base font-semibold text-foreground truncate">{item.subject}</h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            From <span className="font-medium text-foreground">{fromName || fromEmail}</span>
-            {fromEmail && fromName && <> · <span className="text-xs">{fromEmail}</span></>}
+          <h2 className="text-base font-semibold text-foreground truncate">{thread.subject}</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {thread.messageCount} message{thread.messageCount !== 1 ? "s" : ""}
           </p>
-          {receivedAt && (
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {new Date(receivedAt).toLocaleString()}
-            </p>
-          )}
         </div>
         <div className="flex shrink-0 items-center gap-2 ml-3">
-          {showFileButton && onFiled && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleFile}
-              disabled={filing}
-              className="gap-1.5 text-xs"
-            >
-              {filing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Archive className="h-3 w-3" />}
-              FILE
-            </Button>
-          )}
           <Button
             size="sm"
             variant="outline"
-            onClick={handleDelete}
+            onClick={handleDeleteThread}
             disabled={deleting}
             className="gap-1.5 text-xs text-destructive hover:text-destructive"
           >
             {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
             DELETE
           </Button>
-          {fromEmail && (
-            <Button
-              size="sm"
-              onClick={() => setShowReply(!showReply)}
-              className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
-            >
-              <Reply className="h-3 w-3" />
-              Reply
-            </Button>
-          )}
+          <Button
+            size="sm"
+            onClick={() => setShowReply(!showReply)}
+            className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
+          >
+            <Reply className="h-3 w-3" />
+            Reply
+          </Button>
         </div>
       </div>
 
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {item.snippet ? (
-          <div className="prose prose-sm max-w-none text-foreground">
-            <p className="whitespace-pre-wrap text-sm leading-relaxed">{decodeHtmlEntities(item.snippet)}</p>
+      {/* Conversation messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+        {loading ? (
+          <div className="space-y-4">
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="rounded-lg border border-border p-4">
+                <Skeleton className="h-3 w-1/3 mb-2" />
+                <Skeleton className="h-3 w-full mb-1" />
+                <Skeleton className="h-3 w-4/5" />
+              </div>
+            ))}
           </div>
+        ) : messages.length === 0 ? (
+          <p className="text-sm text-muted-foreground italic">No messages found.</p>
         ) : (
-          <p className="text-sm text-muted-foreground italic">No preview available.</p>
+          messages.map((msg) => (
+            <div
+              key={msg.id || msg.received_at}
+              className={cn(
+                "rounded-lg border p-4",
+                msg.is_sent
+                  ? "border-primary/20 bg-primary/5 ml-8"
+                  : "border-border bg-card mr-8"
+              )}
+            >
+              <div className="mb-2 flex items-baseline justify-between gap-2">
+                <span className={cn(
+                  "text-xs font-semibold",
+                  msg.is_sent ? "text-primary" : "text-foreground"
+                )}>
+                  {msg.is_sent ? "Me" : msg.from_name || msg.from_email}
+                </span>
+                <span className="shrink-0 text-[11px] text-muted-foreground">
+                  {formatDate(msg.received_at)}
+                </span>
+              </div>
+              <p className="whitespace-pre-wrap text-sm text-foreground leading-relaxed">
+                {msg.body || msg.snippet || "(No content)"}
+              </p>
+            </div>
+          ))
         )}
 
         {sent && (
-          <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-            Reply sent successfully.
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 text-center">
+            Reply sent.
           </div>
         )}
+        <div ref={bottomRef} />
       </div>
 
       {/* Reply composer */}
       {showReply && (
-        <div className="border-t border-border p-4">
+        <div className="border-t border-border p-4 shrink-0">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Reply to {fromName || fromEmail}
+            Reply to {thread.latestFrom !== "Me" ? thread.latestFrom : thread.latestFromEmail}
           </p>
           <textarea
             ref={replyTextareaRef}
             className="w-full rounded-md border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-            rows={5}
+            rows={4}
             placeholder="Type your reply..."
             value={replyBody}
             onChange={(e) => setReplyBody(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleReply()
+            }}
           />
-          <div className="mt-2 flex items-center justify-end gap-2">
-            <Button size="sm" variant="outline" onClick={() => setShowReply(false)}>
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleReply}
-              disabled={sending || !replyBody.trim()}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              {sending ? (
-                <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" />Sending...</>
-              ) : (
-                <><Send className="mr-1.5 h-3 w-3" />Send Reply</>
-              )}
-            </Button>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <p className="text-[10px] text-muted-foreground">Ctrl+Enter to send</p>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => { setShowReply(false); setReplyBody("") }}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleReply}
+                disabled={sending || !replyBody.trim()}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {sending ? (
+                  <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" />Sending...</>
+                ) : (
+                  <><Send className="mr-1.5 h-3 w-3" />Send Reply</>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -339,23 +351,28 @@ function ReadingPane({ item, onClose, onFiled, onDeleted, showFileButton = true 
 
 // ─── Inbox View ──────────────────────────────────────────────────────────────
 
-function InboxView() {
-  const [items, setItems] = useState<InboxItem[]>([])
+function InboxView({ workspaceEmail }: { workspaceEmail?: string | null }) {
+  const [threads, setThreads] = useState<Thread[]>([])
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<InboxItem | null>(null)
-  const [mobileViewEmail, setMobileViewEmail] = useState(false)
+  const [selected, setSelected] = useState<Thread | null>(null)
+  const [mobileViewThread, setMobileViewThread] = useState(false)
   const isFirstLoad = useRef(true)
 
   const loadInbox = useCallback(async () => {
-    // Only show loading skeleton on first load — background refreshes must not
-    // unmount the reading pane or they will destroy any reply draft in progress.
     const firstLoad = isFirstLoad.current
     if (firstLoad) setLoading(true)
     try {
       const res = await fetch("/api/email/inbox")
       if (res.ok) {
         const data = await res.json()
-        setItems(data.items || [])
+        const incomingThreads: Thread[] = data.threads || []
+        setThreads(incomingThreads)
+        // Keep selected thread in sync (update metadata but don't change selection)
+        setSelected(prev => {
+          if (!prev) return prev
+          const updated = incomingThreads.find(t => t.threadId === prev.threadId)
+          return updated || prev
+        })
       }
     } finally {
       if (firstLoad) {
@@ -371,35 +388,34 @@ function InboxView() {
     return () => clearInterval(interval)
   }, [loadInbox])
 
-  const handleSelect = async (item: InboxItem) => {
-    setSelected(item)
-    setMobileViewEmail(true)
-    if (!item.is_read) {
-      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, is_read: true } : i)))
-      await fetch(`/api/email/inbox/${item.id}/read`, { method: "PATCH" })
+  const handleSelect = (thread: Thread) => {
+    setSelected(thread)
+    setMobileViewThread(true)
+    // Mark as read locally
+    if (thread.hasUnread) {
+      setThreads(prev => prev.map(t =>
+        t.threadId === thread.threadId ? { ...t, hasUnread: false, unreadCount: 0 } : t
+      ))
     }
   }
 
-  const handleFiled = (id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id))
+  const handleDeleted = (threadId: string) => {
+    setThreads(prev => prev.filter(t => t.threadId !== threadId))
     setSelected(null)
-    setMobileViewEmail(false)
-  }
-
-  const handleDeleted = (id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id))
-    setSelected(null)
-    setMobileViewEmail(false)
+    setMobileViewThread(false)
   }
 
   if (loading) {
     return (
       <div className="flex h-full gap-0">
         <div className="w-full md:w-80 lg:w-96 border-r border-border">
-          {[...Array(5)].map((_, i) => (
+          {[...Array(4)].map((_, i) => (
             <div key={i} className="border-b border-border p-4">
-              <Skeleton className="h-4 w-3/4 mb-2" />
-              <Skeleton className="h-3 w-1/2 mb-1" />
+              <div className="flex justify-between mb-2">
+                <Skeleton className="h-3.5 w-1/2" />
+                <Skeleton className="h-3 w-10" />
+              </div>
+              <Skeleton className="h-3 w-3/4 mb-1" />
               <Skeleton className="h-3 w-full" />
             </div>
           ))}
@@ -408,75 +424,88 @@ function InboxView() {
     )
   }
 
-  if (items.length === 0) {
-    return <EmptyState message="Your inbox is empty. Send your email address to a coach and their reply will appear here." />
+  if (threads.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+          <Inbox className="h-8 w-8 text-muted-foreground/40" />
+        </div>
+        <p className="mt-4 text-sm font-medium text-muted-foreground">
+          Your inbox is empty. Send your recruiting email to coaches and their replies will appear here.
+        </p>
+      </div>
+    )
   }
 
   return (
     <div className="flex h-full min-h-0">
-      {/* Email list */}
+      {/* Thread list */}
       <div className={cn(
         "flex-col border-r border-border overflow-y-auto",
         "w-full md:flex md:w-80 lg:w-96 shrink-0",
-        mobileViewEmail ? "hidden md:flex" : "flex"
+        mobileViewThread ? "hidden md:flex" : "flex"
       )}>
-        {items.map((item) => (
+        {threads.map((thread) => (
           <button
-            key={item.id}
-            onClick={() => handleSelect(item)}
+            key={thread.threadId}
+            onClick={() => handleSelect(thread)}
             className={cn(
               "w-full text-left border-b border-border px-4 py-3 transition-colors hover:bg-muted/50",
-              selected?.id === item.id && "bg-primary/5 border-l-2 border-l-primary",
-              !item.is_read && "bg-blue-50/60"
+              selected?.threadId === thread.threadId && "bg-primary/5 border-l-2 border-l-primary",
+              thread.hasUnread && "bg-blue-50/60"
             )}
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                {!item.is_read && (
-                  <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-blue-500" aria-label="Unread" />
+                {thread.hasUnread && (
+                  <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-blue-500" />
                 )}
                 <span className={cn(
                   "truncate text-sm",
-                  !item.is_read ? "font-bold text-foreground" : "font-medium text-foreground"
+                  thread.hasUnread ? "font-bold text-foreground" : "font-medium text-foreground"
                 )}>
-                  {item.from_name || item.from_email}
+                  {thread.latestFrom}
                 </span>
               </div>
-              <span className="shrink-0 text-xs text-muted-foreground">
-                {formatDate(item.received_at)}
-              </span>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {thread.messageCount > 1 && (
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {thread.messageCount}
+                  </span>
+                )}
+                <span className="text-xs text-muted-foreground">{formatDate(thread.latestAt)}</span>
+              </div>
             </div>
             <p className={cn(
               "mt-0.5 truncate text-xs",
-              !item.is_read ? "font-semibold text-foreground" : "text-muted-foreground"
+              thread.hasUnread ? "font-semibold text-foreground" : "text-muted-foreground"
             )}>
-              {item.subject}
+              {thread.subject}
             </p>
-            {item.snippet && (
-              <p className="mt-1 line-clamp-1 text-xs text-muted-foreground/80">{decodeHtmlEntities(item.snippet)}</p>
+            {thread.snippet && (
+              <p className="mt-1 line-clamp-1 text-xs text-muted-foreground/80">{thread.snippet}</p>
             )}
           </button>
         ))}
       </div>
 
-      {/* Reading pane */}
+      {/* Conversation pane */}
       <div className={cn(
         "flex-1 overflow-hidden",
-        mobileViewEmail ? "flex flex-col" : "hidden md:flex md:flex-col"
+        mobileViewThread ? "flex flex-col" : "hidden md:flex md:flex-col"
       )}>
         {selected ? (
-          <ReadingPane
-            item={selected}
-            onClose={() => setMobileViewEmail(false)}
-            onFiled={handleFiled}
+          <ConversationPane
+            thread={selected}
+            workspaceEmail={workspaceEmail}
+            onClose={() => setMobileViewThread(false)}
             onDeleted={handleDeleted}
-            showFileButton
           />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             <div className="flex flex-col items-center gap-3">
-              <MailOpen className="h-10 w-10 text-muted-foreground/30" />
-              <p>Select an email to read</p>
+              <MessageSquare className="h-10 w-10 text-muted-foreground/30" />
+              <p>Select a conversation</p>
             </div>
           </div>
         )}
@@ -496,6 +525,11 @@ function FoldersView() {
   const [expandedCoaches, setExpandedCoaches] = useState<Record<string, boolean>>({})
   const [selected, setSelected] = useState<FolderEmail | null>(null)
   const [mobileViewEmail, setMobileViewEmail] = useState(false)
+  const [showReply, setShowReply] = useState(false)
+  const [replyBody, setReplyBody] = useState("")
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+  const replyTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -513,8 +547,42 @@ function FoldersView() {
     load()
   }, [])
 
+  useEffect(() => {
+    if (showReply) replyTextareaRef.current?.focus()
+  }, [showReply])
+
   const toggle = (setter: React.Dispatch<React.SetStateAction<Record<string, boolean>>>, key: string) => {
     setter((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const handleReply = async () => {
+    if (!selected || !replyBody.trim() || !selected.from_email) return
+    setSending(true)
+    try {
+      const res = await fetch("/api/email/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gmailMessageId: selected.id,
+          threadId: selected.thread_id,
+          toEmail: selected.from_email,
+          toName: selected.from_name || undefined,
+          replyBody,
+        }),
+      })
+      if (res.ok) {
+        setSent(true)
+        setReplyBody("")
+        setShowReply(false)
+      } else {
+        const err = await res.json()
+        alert(err.error || "Failed to send reply")
+      }
+    } catch {
+      alert("Network error. Please try again.")
+    } finally {
+      setSending(false)
+    }
   }
 
   if (loading) {
@@ -530,7 +598,16 @@ function FoldersView() {
   }
 
   if (divisions.length === 0) {
-    return <EmptyState message="No filed emails yet. Use the FILE button in your inbox to organize emails." />
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+          <FolderOpen className="h-8 w-8 text-muted-foreground/40" />
+        </div>
+        <p className="mt-4 text-sm font-medium text-muted-foreground">
+          No filed emails yet. Use FILE in your inbox to organize responses.
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -545,7 +622,6 @@ function FoldersView() {
           {divisions.map((div) => {
             const divKey = div.division
             const divOpen = expandedDivisions[divKey] !== false
-
             return (
               <div key={divKey} className="mb-1">
                 <button
@@ -556,11 +632,9 @@ function FoldersView() {
                   <Folder className="h-3.5 w-3.5 shrink-0" />
                   {div.division}
                 </button>
-
                 {divOpen && div.conferences.map((conf) => {
                   const confKey = `${divKey}-${conf.conference}`
                   const confOpen = expandedConferences[confKey] !== false
-
                   return (
                     <div key={confKey} className="ml-4">
                       <button
@@ -571,11 +645,9 @@ function FoldersView() {
                         <FolderOpen className="h-3 w-3 shrink-0 text-muted-foreground" />
                         <span className="truncate">{conf.conference}</span>
                       </button>
-
                       {confOpen && conf.schools.map((school) => {
                         const schoolKey = `${confKey}-${school.program_id || school.school_name}`
                         const schoolOpen = expandedSchools[schoolKey]
-
                         return (
                           <div key={schoolKey} className="ml-4">
                             <button
@@ -586,11 +658,9 @@ function FoldersView() {
                               <Building2 className="h-3 w-3 shrink-0 text-muted-foreground" />
                               <span className="truncate">{school.school_name}</span>
                             </button>
-
                             {schoolOpen && school.coaches.map((coach) => {
                               const coachKey = `${schoolKey}-${coach.coach_id || coach.coach_name}`
                               const coachOpen = expandedCoaches[coachKey]
-
                               return (
                                 <div key={coachKey} className="ml-4">
                                   <button
@@ -604,11 +674,10 @@ function FoldersView() {
                                       {coach.emails.length}
                                     </span>
                                   </button>
-
                                   {coachOpen && coach.emails.map((email) => (
                                     <button
                                       key={email.id}
-                                      onClick={() => { setSelected(email); setMobileViewEmail(true) }}
+                                      onClick={() => { setSelected(email); setMobileViewEmail(true); setShowReply(false); setSent(false) }}
                                       className={cn(
                                         "ml-4 flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-muted/50",
                                         selected?.id === email.id && "bg-primary/5 text-primary font-medium"
@@ -616,7 +685,7 @@ function FoldersView() {
                                     >
                                       <Mail className="h-3 w-3 shrink-0" />
                                       <span className="truncate flex-1">{email.subject}</span>
-                                      <span className="shrink-0 text-[10px]">{formatDate(email.filed_at)}</span>
+                                      <span className="shrink-0 text-[10px]">{email.filed_at ? formatDate(email.filed_at) : ""}</span>
                                     </button>
                                   ))}
                                 </div>
@@ -636,32 +705,78 @@ function FoldersView() {
 
       {/* Reading pane */}
       <div className={cn(
-        "flex-1 overflow-hidden",
-        mobileViewEmail ? "flex flex-col" : "hidden md:flex md:flex-col"
+        "flex-1 overflow-hidden flex-col",
+        mobileViewEmail ? "flex" : "hidden md:flex"
       )}>
         {selected ? (
-          <ReadingPane
-            item={selected}
-            onClose={() => setMobileViewEmail(false)}
-            onDeleted={(id) => {
-              setDivisions((prev) => prev.map((div) => ({
-                ...div,
-                conferences: div.conferences.map((conf) => ({
-                  ...conf,
-                  schools: conf.schools.map((school) => ({
-                    ...school,
-                    coaches: school.coaches.map((coach) => ({
-                      ...coach,
-                      emails: coach.emails.filter((e) => e.id !== id),
-                    })),
-                  })),
-                })),
-              })))
-              setSelected(null)
-              setMobileViewEmail(false)
-            }}
-            showFileButton={false}
-          />
+          <div className="flex h-full flex-col">
+            <div className="flex items-start justify-between border-b border-border p-4 shrink-0">
+              <div className="flex-1 min-w-0">
+                {mobileViewEmail && (
+                  <button
+                    onClick={() => setMobileViewEmail(false)}
+                    className="mb-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground md:hidden"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Back
+                  </button>
+                )}
+                <h2 className="text-base font-semibold text-foreground truncate">{selected.subject}</h2>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  From <span className="font-medium text-foreground">{selected.coach_name || selected.from_name || selected.from_email}</span>
+                </p>
+                {selected.received_at && (
+                  <p className="text-xs text-muted-foreground mt-0.5">{new Date(selected.received_at).toLocaleString()}</p>
+                )}
+              </div>
+              {selected.from_email && (
+                <Button
+                  size="sm"
+                  onClick={() => setShowReply(!showReply)}
+                  className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 text-xs ml-3"
+                >
+                  <Reply className="h-3 w-3" />
+                  Reply
+                </Button>
+              )}
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                {selected.snippet || "(No preview available)"}
+              </p>
+              {sent && (
+                <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                  Reply sent successfully.
+                </div>
+              )}
+            </div>
+            {showReply && (
+              <div className="border-t border-border p-4 shrink-0">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Reply to {selected.coach_name || selected.from_name || selected.from_email}
+                </p>
+                <textarea
+                  ref={replyTextareaRef}
+                  className="w-full rounded-md border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  rows={4}
+                  placeholder="Type your reply..."
+                  value={replyBody}
+                  onChange={(e) => setReplyBody(e.target.value)}
+                />
+                <div className="mt-2 flex items-center justify-end gap-2">
+                  <Button size="sm" variant="outline" onClick={() => { setShowReply(false); setReplyBody("") }}>Cancel</Button>
+                  <Button
+                    size="sm"
+                    onClick={handleReply}
+                    disabled={sending || !replyBody.trim()}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    {sending ? <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" />Sending...</> : <><Send className="mr-1.5 h-3 w-3" />Send Reply</>}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             <div className="flex flex-col items-center gap-3">
@@ -704,7 +819,7 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
   return (
     <div className="flex flex-col gap-0 -mx-4 -my-6 lg:-mx-8 lg:-my-8 h-[calc(100vh-5rem)]">
       {/* Page header */}
-      <div className="border-b border-border bg-card px-4 pb-4 pt-6 lg:px-8 lg:pt-8">
+      <div className="border-b border-border bg-card px-4 pb-4 pt-6 lg:px-8 lg:pt-8 shrink-0">
         <div className="flex items-end justify-between gap-4">
           <div>
             <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
@@ -720,7 +835,7 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
             <Button
               onClick={() => {
                 const segs = window.location.pathname.split('/').filter(Boolean)
-                const appRoutes = ['hub','coaches','pipeline','outreach','profile','email']
+                const appRoutes = ['hub', 'coaches', 'pipeline', 'outreach', 'profile', 'email']
                 const base = segs.length >= 2 && appRoutes.includes(segs[1]) ? `/${segs[0]}` : ''
                 window.location.href = `${base}/outreach`
               }}
@@ -763,8 +878,8 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
         </nav>
 
         {/* Content area */}
-        <div className="flex-1 min-w-0 bg-background">
-          {tab === "inbox" && <InboxView />}
+        <div className="flex-1 min-w-0 bg-background overflow-hidden">
+          {tab === "inbox" && <InboxView workspaceEmail={recruitingEmail} />}
           {tab === "folders" && <FoldersView />}
         </div>
       </div>

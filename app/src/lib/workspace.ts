@@ -157,6 +157,35 @@ export async function checkZohoHealth(): Promise<{ ok: boolean; error?: string }
 }
 
 /**
+ * Get all Zoho Mail360 folders for an account.
+ * Returns raw folder objects from Zoho — callers find specific folders by name/type.
+ */
+export async function getZohoFolders(accountKey: string): Promise<any[]> {
+  const res = await zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/folders`, {})
+  if (!res.ok) {
+    const err = await res.text()
+    console.error('[workspace] Zoho folders error:', res.status, err)
+    return []
+  }
+  const data = await res.json()
+  return data.data || []
+}
+
+/**
+ * Find a specific folder ID by matching common name/type fields.
+ */
+export function findFolderId(folders: any[], ...names: string[]): string | null {
+  const lower = names.map(n => n.toLowerCase())
+  const found = folders.find((f: any) =>
+    lower.includes((f.folderName || '').toLowerCase()) ||
+    lower.includes((f.name || '').toLowerCase()) ||
+    lower.includes((f.folderType || '').toLowerCase()) ||
+    lower.includes((f.type || '').toLowerCase())
+  )
+  return found ? String(found.folderId || found.id || '') : null
+}
+
+/**
  * Create a native Zoho Mail360 mailbox.
  * Returns the account_key used for all subsequent per-mailbox API calls.
  */
