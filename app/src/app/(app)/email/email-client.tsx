@@ -814,8 +814,7 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
       } catch { /* non-critical */ }
     }
     load()
-    const interval = setInterval(load, 30000)
-    return () => clearInterval(interval)
+    // No polling — unread count updates via Supabase Realtime (same as inbox)
   }, [])
 
   const tabs: { id: Tab; label: string; icon: React.ElementType; badge?: number }[] = [
