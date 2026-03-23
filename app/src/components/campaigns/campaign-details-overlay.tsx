@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import {
   ArrowLeft,
   Users,
+  Mail,
   MailOpen,
   Loader2,
   Pause,
@@ -507,29 +508,25 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
                   ))}
                 </div>
 
-                {/* Email Sequence */}
+                {/* Email Sent */}
                 {campaign.emails.length > 0 && (
                   <div>
                     <h2 className="mb-4 font-display text-base font-bold uppercase tracking-wider text-foreground">
-                      Email Sequence
+                      Email Sent
                     </h2>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {campaign.emails.map((email) => (
-                        <Card key={email.id} className="flex items-center gap-3 p-4">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary">
-                            {email.step_number}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold text-foreground">{email.subject}</p>
-                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                              {email.delay_days === 0
-                                ? 'Send immediately'
-                                : `Send after ${email.delay_days} day${email.delay_days > 1 ? 's' : ''}`}
-                            </p>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
+                    <Card className="flex items-center gap-3 p-4">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Mail className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-foreground">{campaign.emails[0].subject}</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {campaign.emails[0].delay_days === 0
+                            ? 'Sent immediately'
+                            : `Sent after ${campaign.emails[0].delay_days} day${campaign.emails[0].delay_days > 1 ? 's' : ''}`}
+                        </p>
+                      </div>
+                    </Card>
                   </div>
                 )}
 
