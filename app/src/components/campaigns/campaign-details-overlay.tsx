@@ -74,6 +74,7 @@ interface CampaignDetails {
   emails: Array<{
     id: string
     step_number: number
+    name?: string
     subject: string
     body: string
     delay_days: number
