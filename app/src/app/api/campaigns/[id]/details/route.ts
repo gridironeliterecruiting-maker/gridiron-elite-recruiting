@@ -29,7 +29,7 @@ export async function GET(
     // Get campaign emails
     const { data: emails } = await supabase
       .from('campaign_emails')
-      .select('id, step_number, subject, body, delay_days')
+      .select('id, step_number, name, subject, body, delay_days')
       .eq('campaign_id', id)
       .order('step_number')
 

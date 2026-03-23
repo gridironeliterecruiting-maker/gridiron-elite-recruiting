@@ -52,6 +52,7 @@ export async function POST(request: Request) {
       const emailInserts = templates.map((t: { subject: string; body: string; delayDays: number | null; name: string }, index: number) => ({
         campaign_id: campaign.id,
         step_number: index + 1,
+        name: t.name || null,
         subject: t.subject,
         body: t.body,
         delay_days: t.delayDays ?? 0,

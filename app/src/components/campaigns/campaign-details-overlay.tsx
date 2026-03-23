@@ -519,7 +519,7 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
                         <Mail className="h-5 w-5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-foreground">{campaign.emails[0].subject}</p>
+                        <p className="truncate text-sm font-semibold text-foreground">{campaign.emails[0].name || campaign.emails[0].subject}</p>
                         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           {campaign.emails[0].delay_days === 0
                             ? 'Sent immediately'
