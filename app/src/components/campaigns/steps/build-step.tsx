@@ -3,24 +3,21 @@
 import { useState, useRef, useEffect } from "react"
 import {
   Mail,
-  Clock,
   ChevronRight,
   X,
   Bold,
   Italic,
   Underline,
   List,
-  AlignLeft,
   Minus,
   Plus,
-  Trash2,
   Check,
-  Library,
   Save,
+  PenLine,
+  CircleCheck,
+  Circle,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { CustomTemplateCreator } from "./custom-template-creator"
 import type { CampaignGoal, EmailTemplate } from "../types"
 
 interface BuildStepProps {
@@ -53,24 +50,6 @@ const PLAYER_GOAL_TEMPLATES: Record<CampaignGoal, EmailTemplate[]> = {
       body: "Dear Coach ((Coach Last Name)),\n\nMy name is ((Player First Name)) ((Player Last Name)). I'm a ((Player Position)) from ((Player High School)) in ((Player City)), ((Player State)), Class of ((Player Grad Year)).\n\nI'm very interested in your program at ((School Name)). Here is my film:\n((Player Film Link))\n\nGPA: ((Player GPA))\n\nThank you for your time!\n\n((Player First Name)) ((Player Last Name))\n((Player Phone))\n((Player Email))",
       delayDays: null
     },
-    {
-      name: "Follow-Up #1",
-      subject: "Following Up — ((Player First Name)) ((Player Last Name)), ((Player Position))",
-      body: "Coach ((Coach Last Name)),\n\nI wanted to follow up on my previous email about my interest in ((School Name)).\n\nFilm: ((Player Film Link))\n\nThank you for considering me!\n\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
-      delayDays: 7
-    },
-    {
-      name: "Follow-Up #2",
-      subject: "Quick Update — ((Player First Name)) ((Player Last Name))",
-      body: "Hi Coach ((Coach Last Name)),\n\nI'm still very interested in ((School Name)) and wanted to share a quick update.\n\nFilm: ((Player Film Link))\nGPA: ((Player GPA)) | Class of ((Player Grad Year))\n\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
-      delayDays: 14
-    },
-    {
-      name: "Final Follow-Up",
-      subject: "One Last Note — ((Player First Name)) ((Player Last Name))",
-      body: "Coach ((Coach Last Name)),\n\nThis will be my last email unless I hear back from you. I remain very interested in ((School Name)).\n\nFilm: ((Player Film Link))\n\nBest of luck with your season!\n\n((Player First Name)) ((Player Last Name))\n((Player Phone))\n((Player Email))",
-      delayDays: 21
-    }
   ],
   evaluate_film: [
     {
@@ -114,12 +93,6 @@ const COACH_GOAL_TEMPLATES: Record<CampaignGoal, EmailTemplate[]> = {
       body: "Dear Coach ((Coach Last Name)),\n\nMy name is ((My First Name)), a coach at ((Player High School)). I'm reaching out to introduce you to one of my players, ((Player First Name)) ((Player Last Name)), a ((Player Position)) in the Class of ((Player Grad Year)).\n\nFilm: ((Player Film Link))\nGPA: ((Player GPA))\n\nI believe ((Player First Name)) would be a great fit for your program at ((School Name)). Please reach out if you'd like to learn more.\n\nThank you,\n((My First Name))",
       delayDays: null
     },
-    {
-      name: "Follow-Up Recommendation",
-      subject: "Following Up — ((Player First Name)) ((Player Last Name))",
-      body: "Coach ((Coach Last Name)),\n\nI wanted to follow up on my previous email about ((Player First Name)) ((Player Last Name)). ((Player First Name)) is very interested in ((School Name)) and I strongly believe in their potential.\n\nFilm: ((Player Film Link))\n\nThank you,\n((My First Name))",
-      delayDays: 7
-    }
   ],
   evaluate_film: [
     {
@@ -189,12 +162,36 @@ const COACH_MERGE_TAGS = [
 ]
 
 export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange, onNext, onBack }: BuildStepProps) {
-  const [editingIndex, setEditingIndex] = useState<number | null>(null)
-  const [showAddOverlay, setShowAddOverlay] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null)
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [availableTemplates, setAvailableTemplates] = useState<DatabaseTemplate[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(true)
-  const [showCustomCreator, setShowCustomCreator] = useState(false)
   const [audience, setAudience] = useState<'player' | 'coach'>('player')
+
+  // Build the list of templates to show for the current goal
+  const goalDefaults = audience === 'coach' ? COACH_GOAL_TEMPLATES : PLAYER_GOAL_TEMPLATES
+  const defaultTemplates: EmailTemplate[] = goalDefaults[goal] || goalDefaults.get_response
+
+  // User-saved templates from DB
+  const userTemplates: EmailTemplate[] = availableTemplates
+    .filter(t => !t.is_system)
+    .map(t => ({
+      name: t.name,
+      subject: t.subject,
+      body: t.body,
+      delayDays: null,
+    }))
+
+  // The "Write Custom Email" option
+  const customTemplate: EmailTemplate = {
+    name: "Write Custom Email",
+    subject: "",
+    body: "",
+    delayDays: null,
+  }
+
+  // Full display list: defaults + user saved + custom
+  const displayTemplates = [...defaultTemplates, ...userTemplates, customTemplate]
 
   // Load templates from database — also captures audience so we show the right defaults
   useEffect(() => {
@@ -205,8 +202,6 @@ export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange,
           const { templates: dbTemplates, audience: dbAudience } = await response.json()
           setAvailableTemplates(dbTemplates || [])
           if (dbAudience === 'coach') setAudience('coach')
-        } else {
-          console.error('Failed to load templates')
         }
       } catch (error) {
         console.error('Error loading templates:', error)
@@ -217,94 +212,60 @@ export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange,
     loadTemplates()
   }, [])
 
-  // Initialize templates from audience-appropriate defaults if empty
+  // If the parent already has a template selected (e.g. going back from step 4),
+  // find it in the display list and restore the selection
   useEffect(() => {
-    if (templates.length === 0) {
-      const goalTemplates = audience === 'coach' ? COACH_GOAL_TEMPLATES : PLAYER_GOAL_TEMPLATES
-      onTemplatesChange(goalTemplates[goal] || goalTemplates.get_response)
-    }
-  }, [goal, audience]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const updateTemplate = (index: number, updates: Partial<EmailTemplate>) => {
-    let updated = templates.map((t: EmailTemplate, i: number) => (i === index ? { ...t, ...updates } : t))
-    // Auto-sort by delayDays (null/first email stays at 0)
-    updated.sort((a, b) => (a.delayDays ?? -1) - (b.delayDays ?? -1))
-    onTemplatesChange(updated)
-    // Update editing index if it moved
-    if (editingIndex !== null) {
-      const editedTemplate = templates[index]
-      const merged = { ...editedTemplate, ...updates }
-      const newIndex = updated.findIndex(
-        (t) => t.name === merged.name && t.subject === merged.subject
-      )
-      if (newIndex !== index) setEditingIndex(newIndex >= 0 ? newIndex : null)
-    }
-  }
-
-  const deleteTemplate = (index: number) => {
-    const updated = templates.filter((_, i) => i !== index)
-    onTemplatesChange(updated)
-    if (editingIndex === index) setEditingIndex(null)
-    else if (editingIndex !== null && editingIndex > index) setEditingIndex(editingIndex - 1)
-  }
-
-  const addTemplates = (newTemplates: EmailTemplate[]) => {
-    // Calculate delay: one day more than the last template
-    const maxDelay = templates.reduce((max, t) => Math.max(max, t.delayDays ?? 0), 0)
-    let nextDelay = maxDelay + 1
-
-    const withDelays = newTemplates.map((t) => {
-      const template = { ...t, delayDays: templates.length === 0 && nextDelay === 1 ? null : nextDelay }
-      nextDelay++
-      return template
-    })
-
-    let updated = [...templates, ...withDelays]
-    updated.sort((a, b) => (a.delayDays ?? -1) - (b.delayDays ?? -1))
-    onTemplatesChange(updated)
-    setShowAddOverlay(false)
-  }
-
-  const handleCreateCustomTemplate = async (template: { name: string; subject: string; body: string }) => {
-    try {
-      const response = await fetch('/api/templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(template)
-      })
-
-      if (response.ok) {
-        const { template: newTemplate } = await response.json()
-        // Refresh the available templates list (remove any with same name for overwrite)
-        setAvailableTemplates(prev => [newTemplate, ...prev.filter(t => t.name.toLowerCase() !== newTemplate.name.toLowerCase())])
-        setShowCustomCreator(false)
-        // Optionally, automatically add it to the sequence
-        addTemplates([{
-          name: newTemplate.name,
-          subject: newTemplate.subject,
-          body: newTemplate.body,
-          delayDays: null
-        }])
-      } else {
-        throw new Error('Failed to create template')
+    if (templates.length > 0 && selectedIndex === null) {
+      const existingName = templates[0].name
+      const idx = displayTemplates.findIndex(t => t.name === existingName)
+      if (idx >= 0) {
+        setSelectedIndex(idx)
       }
-    } catch (error) {
-      console.error('Error creating template:', error)
-      throw error
     }
+  }, [templates, displayTemplates.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSelect = (index: number) => {
+    setSelectedIndex(index)
+    const template = displayTemplates[index]
+    onTemplatesChange([{ ...template, delayDays: null }])
   }
 
-  const canProceed = templates.length > 0 && templates.every((t) => t.subject && t.body)
+  const handleRowClick = (index: number) => {
+    // Open overlay + auto-select
+    handleSelect(index)
+    setEditingTemplate({ ...displayTemplates[index] })
+  }
+
+  const handleCheckClick = (e: React.MouseEvent, index: number) => {
+    e.stopPropagation()
+    handleSelect(index)
+  }
+
+  const handleEditorSave = (updates: Partial<EmailTemplate>) => {
+    if (selectedIndex === null) return
+    const updated = { ...displayTemplates[selectedIndex], ...updates, delayDays: null }
+    onTemplatesChange([updated])
+    setEditingTemplate(null)
+  }
+
+  const isCustom = (index: number) => index === displayTemplates.length - 1
+
+  // Can proceed if a template is selected AND it has subject + body
+  // (custom email must be filled in)
+  const canProceed = selectedIndex !== null &&
+    templates.length > 0 &&
+    templates[0].subject?.trim() &&
+    templates[0].body?.trim()
 
   return (
     <div className="px-5 pb-5">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h3 className="mb-2 font-display text-lg font-bold uppercase tracking-tight text-foreground">
-            Build Your Email Sequence
+            Choose Your Template
           </h3>
           <p className="text-sm text-muted-foreground">
-            Create the emails that will be sent to coaches. Click to edit, drag to reorder.
+            Browse the recommended templates for your goal. Customize for a personal touch.
           </p>
         </div>
         {recruitingEmail && (
@@ -315,56 +276,66 @@ export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange,
         )}
       </div>
 
-      {/* Template Cards */}
-      <div className="mb-4 flex flex-col gap-3">
-        {templates.map((template: EmailTemplate, index: number) => (
-          <Card
-            key={index}
-            className="cursor-pointer border border-border bg-card p-4 transition-all hover:border-primary/20"
-            onClick={() => setEditingIndex(index)}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex shrink-0 items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-                  {index + 1}
-                </div>
-                <Mail className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h4 className="font-medium text-foreground">{template.name}</h4>
-                <p className="truncate text-xs text-muted-foreground">{template.subject}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                {template.delayDays !== null && (
-                  <Badge variant="secondary" className="gap-1 text-[10px]">
-                    <Clock className="h-3 w-3" />
-                    Day {template.delayDays}
-                  </Badge>
-                )}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    deleteTemplate(index)
-                  }}
-                  className="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+      {/* Template Selection List */}
+      <div className="mb-6 flex flex-col gap-2">
+        {loadingTemplates ? (
+          <p className="text-center text-sm text-muted-foreground py-8">Loading templates...</p>
+        ) : (
+          displayTemplates.map((template, index) => {
+            const isSelected = selectedIndex === index
+            const isCustomRow = isCustom(index)
 
-      {/* Add Template Button */}
-      <button
-        type="button"
-        onClick={() => setShowAddOverlay(true)}
-        className="mb-6 w-full rounded-lg border border-dashed border-border bg-card py-3 text-sm text-muted-foreground transition-all hover:border-primary hover:bg-primary/[0.02] hover:text-foreground"
-      >
-        + Add Custom Email or a Template
-      </button>
+            return (
+              <Card
+                key={`${template.name}-${index}`}
+                className={`cursor-pointer border p-4 transition-all hover:border-primary/20 ${
+                  isSelected
+                    ? "border-green-500/40 bg-green-50/30 dark:bg-green-950/10"
+                    : "border-border bg-card"
+                }`}
+                onClick={() => handleRowClick(index)}
+              >
+                <div className="flex items-center gap-3">
+                  {/* Green checkmark / empty circle */}
+                  <button
+                    type="button"
+                    onClick={(e) => handleCheckClick(e, index)}
+                    className="shrink-0 transition-colors"
+                    aria-label={isSelected ? "Selected" : "Select template"}
+                  >
+                    {isSelected ? (
+                      <CircleCheck className="h-6 w-6 text-green-600" />
+                    ) : (
+                      <Circle className="h-6 w-6 text-muted-foreground/40" />
+                    )}
+                  </button>
+
+                  {/* Template icon */}
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    {isCustomRow ? <PenLine className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
+                  </div>
+
+                  {/* Template info */}
+                  <div className="min-w-0 flex-1">
+                    <h4 className={`text-sm ${isSelected ? "font-bold text-foreground" : "font-medium text-foreground"}`}>
+                      {template.name}
+                    </h4>
+                    {!isCustomRow && template.subject && (
+                      <p className="truncate text-xs text-muted-foreground">{template.subject}</p>
+                    )}
+                    {isCustomRow && (
+                      <p className="text-xs text-muted-foreground">Start from scratch with a blank email</p>
+                    )}
+                  </div>
+
+                  {/* Chevron to indicate clickable */}
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40" />
+                </div>
+              </Card>
+            )
+          })
+        )}
+      </div>
 
       {/* Navigation */}
       <div className="flex items-center justify-between">
@@ -386,14 +357,13 @@ export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange,
       </div>
 
       {/* Template Editor Overlay */}
-      {editingIndex !== null && (
+      {editingTemplate && selectedIndex !== null && (
         <TemplateEditorOverlay
-          key={editingIndex}
-          template={templates[editingIndex]}
-          index={editingIndex}
+          key={selectedIndex}
+          template={editingTemplate}
           mergeTags={audience === 'coach' ? COACH_MERGE_TAGS : PLAYER_MERGE_TAGS}
-          onUpdate={(updates) => updateTemplate(editingIndex, updates)}
-          onClose={() => setEditingIndex(null)}
+          onUpdate={(updates) => handleEditorSave(updates)}
+          onClose={() => setEditingTemplate(null)}
           existingTemplateNames={availableTemplates.filter(t => !t.is_system).map(t => t.name)}
           onSaveAsTemplate={async (templateData) => {
             try {
@@ -404,7 +374,6 @@ export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange,
               })
               if (response.ok) {
                 const { template: newTemplate } = await response.json()
-                // Remove any existing template with the same name (overwrite case)
                 setAvailableTemplates(prev => [newTemplate, ...prev.filter(t => t.name.toLowerCase() !== newTemplate.name.toLowerCase())])
               } else {
                 throw new Error('Failed to save template')
@@ -416,258 +385,6 @@ export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange,
           }}
         />
       )}
-
-      {/* Add Template Overlay */}
-      {showAddOverlay && (
-        <AddTemplateOverlay
-          existingNames={templates.map((t) => t.name)}
-          availableTemplates={availableTemplates}
-          loadingTemplates={loadingTemplates}
-          onAdd={addTemplates}
-          onClose={() => setShowAddOverlay(false)}
-          onDelete={async (id) => {
-            const response = await fetch(`/api/templates/${id}`, { method: 'DELETE' })
-            if (!response.ok) throw new Error('Failed to delete')
-            setAvailableTemplates(prev => prev.filter(t => t.id !== id))
-          }}
-          onCreateNew={() => {
-            setShowAddOverlay(false)
-            setShowCustomCreator(true)
-          }}
-        />
-      )}
-
-      {/* Custom Template Creator */}
-      {showCustomCreator && (
-        <CustomTemplateCreator
-          onSave={handleCreateCustomTemplate}
-          onClose={() => setShowCustomCreator(false)}
-        />
-      )}
-    </div>
-  )
-}
-
-// ─── Add Template Overlay ───────────────────────────────────────
-function AddTemplateOverlay({
-  existingNames,
-  availableTemplates,
-  loadingTemplates,
-  onAdd,
-  onClose,
-  onCreateNew,
-  onDelete,
-}: {
-  existingNames: string[]
-  availableTemplates: DatabaseTemplate[]
-  loadingTemplates: boolean
-  onAdd: (templates: EmailTemplate[]) => void
-  onClose: () => void
-  onCreateNew: () => void
-  onDelete: (id: string) => Promise<void>
-}) {
-  const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
-  const [deleting, setDeleting] = useState(false)
-
-  const toggleTemplate = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  const handleAdd = () => {
-    const toAdd = Array.from(selected)
-      .map(id => availableTemplates.find(t => t.id === id))
-      .filter(Boolean)
-      .map(t => ({
-        name: t!.name,
-        subject: t!.subject,
-        body: t!.body,
-        delayDays: null
-      }))
-    onAdd(toAdd)
-  }
-
-  const handleDelete = async (id: string) => {
-    setDeleting(true)
-    try {
-      await onDelete(id)
-      setSelected((prev) => { const next = new Set(prev); next.delete(id); return next })
-    } catch {
-      // Error logged by parent
-    }
-    setDeleting(false)
-    setConfirmDeleteId(null)
-  }
-
-  // Separate system and user templates
-  const systemTemplates = availableTemplates.filter(t => t.is_system)
-  const userTemplates = availableTemplates.filter(t => !t.is_system)
-
-  return (
-    <div className="animate-in slide-in-from-right-8 fade-in fixed inset-0 z-[70] overflow-y-auto duration-200">
-      <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute inset-y-0 right-0 flex w-full max-w-lg flex-col overflow-hidden bg-card shadow-2xl sm:rounded-l-2xl">
-      <div className="flex items-center gap-4 border-b border-border px-5 py-4">
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-border hover:text-foreground"
-          aria-label="Close"
-        >
-          <X className="h-4 w-4" />
-        </button>
-        <h3 className="flex-1 font-display text-lg font-bold uppercase tracking-tight text-foreground">
-          Template Library
-        </h3>
-        <button
-          type="button"
-          onClick={handleAdd}
-          disabled={selected.size === 0}
-          className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          Add ({selected.size})
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        {/* Create Custom Template Button */}
-        <button
-          type="button"
-          onClick={onCreateNew}
-          className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-primary bg-primary/[0.03] py-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
-        >
-          <Library className="h-4 w-4" />
-          Create Custom Email
-        </button>
-
-        {loadingTemplates ? (
-          <p className="text-center text-sm text-muted-foreground">Loading templates...</p>
-        ) : (
-          <>
-            {/* User Templates */}
-            {userTemplates.length > 0 && (
-              <>
-                <h4 className="mb-2 text-xs font-semibold text-muted-foreground">Your Templates</h4>
-                <div className="mb-4 flex flex-col gap-2">
-                  {userTemplates.map((template) => {
-                    const isSelected = selected.has(template.id)
-                    const alreadyInSequence = existingNames.includes(template.name)
-                    const isConfirmingDelete = confirmDeleteId === template.id
-                    return (
-                      <div key={template.id} className="relative">
-                        <button
-                          type="button"
-                          onClick={() => !alreadyInSequence && toggleTemplate(template.id)}
-                          disabled={alreadyInSequence}
-                          className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all ${
-                            alreadyInSequence
-                              ? "border-border bg-secondary/30 opacity-50 cursor-not-allowed"
-                              : isSelected
-                                ? "border-primary/30 bg-primary/[0.03]"
-                                : "border-border bg-card hover:border-primary/20"
-                          }`}
-                        >
-                          <div
-                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                              isSelected
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-border"
-                            }`}
-                          >
-                            {isSelected && <Check className="h-3 w-3" />}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <h5 className="font-medium text-foreground">{template.name}</h5>
-                            <p className="truncate text-xs text-muted-foreground">{template.subject}</p>
-                          </div>
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(template.id) }}
-                            onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setConfirmDeleteId(template.id) } }}
-                            className="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </div>
-                        </button>
-                        {/* Delete confirmation */}
-                        {isConfirmingDelete && (
-                          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-card/95 backdrop-blur-sm border border-border">
-                            <div className="text-center px-4">
-                              <p className="text-sm font-medium text-foreground mb-3">Delete &ldquo;{template.name}&rdquo;?</p>
-                              <div className="flex justify-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setConfirmDeleteId(null)}
-                                  className="rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-border hover:text-foreground"
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDelete(template.id)}
-                                  disabled={deleting}
-                                  className="rounded-md bg-[hsl(0,72%,51%)] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[hsl(0,72%,45%)] disabled:opacity-40"
-                                >
-                                  {deleting ? 'Deleting...' : 'Delete'}
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </>
-            )}
-
-            {/* System Templates */}
-            <h4 className="mb-2 text-xs font-semibold text-muted-foreground">Recommended Templates</h4>
-            <div className="flex flex-col gap-2">
-              {systemTemplates.map((template) => {
-                const isSelected = selected.has(template.id)
-                const alreadyInSequence = existingNames.includes(template.name)
-                return (
-                  <button
-                    key={template.id}
-                    type="button"
-                    onClick={() => !alreadyInSequence && toggleTemplate(template.id)}
-                    disabled={alreadyInSequence}
-                    className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-all ${
-                      alreadyInSequence
-                        ? "border-border bg-secondary/30 opacity-50 cursor-not-allowed"
-                        : isSelected
-                          ? "border-primary/30 bg-primary/[0.03]"
-                          : "border-border bg-card hover:border-primary/20"
-                    }`}
-                  >
-                    <div
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                        isSelected
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border"
-                      }`}
-                    >
-                      {isSelected && <Check className="h-3 w-3" />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h5 className="font-medium text-foreground">{template.name}</h5>
-                      <p className="truncate text-xs text-muted-foreground">{template.subject}</p>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
     </div>
   )
 }
@@ -675,7 +392,6 @@ function AddTemplateOverlay({
 // ─── Template Editor Overlay ────────────────────────────────────
 function TemplateEditorOverlay({
   template,
-  index,
   mergeTags,
   onUpdate,
   onClose,
@@ -683,7 +399,6 @@ function TemplateEditorOverlay({
   existingTemplateNames,
 }: {
   template: EmailTemplate
-  index: number
   mergeTags: string[]
   onUpdate: (updates: Partial<EmailTemplate>) => void
   onClose: () => void
@@ -693,7 +408,6 @@ function TemplateEditorOverlay({
   const [name, setName] = useState(template.name)
   const [subject, setSubject] = useState(template.subject)
   const [body, setBody] = useState(template.body || '')
-  const [delayDays, setDelayDays] = useState(template.delayDays ?? 0)
   const [showSaveAs, setShowSaveAs] = useState(false)
   const [saveAsName, setSaveAsName] = useState('')
   const [savingAs, setSavingAs] = useState(false)
@@ -701,7 +415,7 @@ function TemplateEditorOverlay({
   const bodyRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSave = () => {
-    onUpdate({ name, subject, body, delayDays: index === 0 ? null : delayDays })
+    onUpdate({ name, subject, body, delayDays: null })
     onClose()
   }
 
@@ -724,7 +438,7 @@ function TemplateEditorOverlay({
       // Error already logged by parent — still close and apply changes
     }
     // Apply changes to the current campaign using the new template name
-    onUpdate({ name: trimmedName, subject, body, delayDays: index === 0 ? null : delayDays })
+    onUpdate({ name: trimmedName, subject, body, delayDays: null })
     onClose()
   }
 
@@ -735,7 +449,6 @@ function TemplateEditorOverlay({
     const currentBody = body || ''
     const newBody = currentBody.slice(0, start) + `((${tag}))` + currentBody.slice(end)
     setBody(newBody)
-    // Reset cursor position after React re-render
     setTimeout(() => {
       if (bodyRef.current) {
         bodyRef.current.selectionStart = start + tag.length + 4
@@ -895,38 +608,6 @@ function TemplateEditorOverlay({
             />
           </div>
 
-          {/* Delay Days */}
-          {index > 0 && (
-            <div className="mb-6">
-              <label className="mb-2 block text-xs font-medium text-foreground">
-                Send After (Days)
-              </label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDelayDays(Math.max(1, delayDays - 1))}
-                  className="rounded border border-border bg-secondary px-2 py-1 transition-colors hover:bg-border hover:text-foreground"
-                >
-                  <Minus className="h-3 w-3" />
-                </button>
-                <input
-                  type="number"
-                  value={delayDays}
-                  onChange={(e) => setDelayDays(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-16 rounded-md border border-border bg-card px-2 py-1 text-center text-sm text-foreground"
-                />
-                <button
-                  type="button"
-                  onClick={() => setDelayDays(delayDays + 1)}
-                  className="rounded border border-border bg-secondary px-2 py-1 transition-colors hover:bg-border hover:text-foreground"
-                >
-                  <Plus className="h-3 w-3" />
-                </button>
-                <span className="text-xs text-muted-foreground">days after previous email</span>
-              </div>
-            </div>
-          )}
-
           {/* Subject Line */}
           <div className="mb-6">
             <label htmlFor="subject" className="mb-2 block text-xs font-medium text-foreground">
@@ -937,7 +618,7 @@ function TemplateEditorOverlay({
               type="text"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="e.g., ((First Name)), I'm interested in your program"
+              placeholder="e.g., ((Player First Name)), I'm interested in your program"
               className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
@@ -973,40 +654,34 @@ function TemplateEditorOverlay({
                 >
                   <Underline className="h-3 w-3" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => applyFormat("list")}
-                  className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                  title="Bullet List"
-                >
-                  <List className="h-3 w-3" />
-                </button>
               </div>
             </div>
-
-            {/* Merge Tags */}
-            <div className="mb-3 flex flex-wrap gap-1">
-              {mergeTags.map((label) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => insertMergeTag(label)}
-                  className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
             <textarea
               ref={bodyRef}
               id="body"
+              rows={14}
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              rows={12}
-              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               placeholder="Write your email here..."
+              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
             />
+          </div>
+
+          {/* Merge Tags */}
+          <div className="mt-6">
+            <h4 className="mb-2 text-xs font-medium text-foreground">Insert Merge Tag</h4>
+            <div className="flex flex-wrap gap-1.5">
+              {mergeTags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => insertMergeTag(tag)}
+                  className="rounded-full border border-border bg-secondary/50 px-2.5 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-foreground"
+                >
+                  {`((${tag}))`}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>

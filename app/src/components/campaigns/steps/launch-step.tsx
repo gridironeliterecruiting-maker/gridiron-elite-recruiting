@@ -286,31 +286,18 @@ export function LaunchStep({
           </button>
         </Card>
 
-        {/* Sequence */}
+        {/* Template Selected */}
         <Card className="flex items-start gap-4 p-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Mail className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Email Sequence</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Template Selected</p>
             <p className="mt-1 text-sm text-foreground">
-              You have scheduled{" "}
-              <span className="font-bold text-primary">{templates.length} sequential email{templates.length !== 1 ? "s" : ""}</span>
-              {" "}in this campaign.
+              You have selected the{" "}
+              <span className="font-bold text-primary">{templates[0]?.name || "—"}</span>
+              {" "}template for this campaign.
             </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {templates.map((t, i) => (
-                <span
-                  key={i}
-                  className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary/50 px-2 py-0.5 text-[10px] text-muted-foreground"
-                >
-                  {i + 1}. {t.name}
-                  {t.delayDays !== null && (
-                    <span className="text-muted-foreground/60">· {t.delayDays}d</span>
-                  )}
-                </span>
-              ))}
-            </div>
           </div>
           <button
             type="button"
