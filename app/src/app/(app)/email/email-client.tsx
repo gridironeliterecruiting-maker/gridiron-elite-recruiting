@@ -360,12 +360,12 @@ function ConversationView({ thread, onBack, onArchived, onDeleted }: {
                 "max-w-[75%] rounded-2xl px-4 py-3",
                 msg.is_sent
                   ? "ml-auto bg-primary/10"        // athlete — right, blue tint
-                  : "mr-auto bg-muted"             // coach — left, muted gray
+                  : "mr-auto bg-red-50 dark:bg-red-950/20"  // coach — left, light red
               )}
             >
               <div className="flex items-baseline gap-2 mb-1">
                 <span className="text-[11px] font-semibold text-muted-foreground">
-                  {msg.is_sent ? "Me" : msg.from_name || msg.from_email}
+                  {msg.is_sent ? "Me" : thread.otherName || msg.from_name || msg.from_email}
                 </span>
                 <span className="text-[10px] text-muted-foreground/70 ml-auto">
                   {formatDate(msg.received_at)}
