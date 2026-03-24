@@ -465,7 +465,11 @@ function InboxView() {
 
     // Get user ID for RLS-filtered Realtime subscription
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
+      if (!user) {
+        console.warn('[email] No user session — skipping Realtime subscription')
+        return
+      }
+      console.log('[email] Subscribing to Realtime for user:', user.id)
       channel = supabase
         .channel('email-notifications')
         .on(
@@ -476,12 +480,15 @@ function InboxView() {
             table: 'email_notifications',
             filter: `user_id=eq.${user.id}`,
           },
-          () => {
+          (payload) => {
+            console.log('[email] Realtime event received:', payload)
             // New email arrived — refresh inbox immediately
             loadInbox()
           }
         )
-        .subscribe()
+        .subscribe((status) => {
+          console.log('[email] Realtime subscription status:', status)
+        })
     })
 
     return () => {
