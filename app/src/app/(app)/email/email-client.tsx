@@ -144,7 +144,6 @@ function ThreadRow({ thread, selected, onClick }: {
           )}>
             {thread.otherName}
           </span>
-          <span className="shrink-0 text-[10px] text-muted-foreground/60">{thread.messageCount} msg{thread.messageCount !== 1 ? "s" : ""}</span>
           <span className="shrink-0 text-xs text-muted-foreground">{formatDate(thread.latestAt)}</span>
         </div>
         <div className="flex items-center gap-1.5 mt-0.5">
@@ -157,6 +156,7 @@ function ThreadRow({ thread, selected, onClick }: {
           )}>
             {thread.subject}
           </span>
+          <span className="shrink-0 ml-2 text-[10px] text-muted-foreground/60">{thread.messageCount} msg{thread.messageCount !== 1 ? "s" : ""}</span>
         </div>
       </div>
     </button>
