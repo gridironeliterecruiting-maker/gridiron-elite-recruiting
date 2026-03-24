@@ -461,20 +461,31 @@ function InboxView() {
     // Subscribe to Supabase Realtime for instant inbox updates via webhook
     // No polling — webhooks handle real-time updates
     const supabase = createBrowserSupabase()
-    const channel = supabase
-      .channel('email-notifications')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'email_notifications' },
-        () => {
-          // New email arrived — refresh inbox immediately
-          loadInbox()
-        }
-      )
-      .subscribe()
+    let channel: ReturnType<typeof supabase.channel> | null = null
+
+    // Get user ID for RLS-filtered Realtime subscription
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      channel = supabase
+        .channel('email-notifications')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'email_notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            // New email arrived — refresh inbox immediately
+            loadInbox()
+          }
+        )
+        .subscribe()
+    })
 
     return () => {
-      supabase.removeChannel(channel)
+      if (channel) supabase.removeChannel(channel)
     }
   }, [loadInbox])
 
