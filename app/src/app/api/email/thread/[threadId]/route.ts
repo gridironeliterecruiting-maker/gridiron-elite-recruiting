@@ -60,6 +60,10 @@ function stripQuotedReply(text: string): string {
   const idx3 = text.search(/\n?\s*-{2,}\s*Original Message\s*-{2,}/i)
   if (idx3 > 0) return text.substring(0, idx3).trim()
 
+  // Gmail dash-wrapped quote header: "---- On Sun, 22 Mar 2026 ... wrote ----"
+  const idx3b = text.search(/\n?\s*-{2,}\s*On\s+\w{3},?\s+\d{1,2}\s+\w{3}\s+\d{4}/i)
+  if (idx3b > 0) return text.substring(0, idx3b).trim()
+
   // Email signature separator: "-- " or "---" or longer dashes followed by metadata
   const idx4 = text.search(/\n\s*-{2,}\s*\n/)
   if (idx4 > 0) return text.substring(0, idx4).trim()
