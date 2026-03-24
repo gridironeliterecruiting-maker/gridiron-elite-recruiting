@@ -60,6 +60,14 @@ function stripQuotedReply(text: string): string {
   const idx3 = text.search(/\n?\s*-{2,}\s*Original Message\s*-{2,}/i)
   if (idx3 > 0) return text.substring(0, idx3).trim()
 
+  // Email signature separator: "-- " or "---" or longer dashes followed by metadata
+  const idx4 = text.search(/\n\s*-{2,}\s*\n/)
+  if (idx4 > 0) return text.substring(0, idx4).trim()
+
+  // "From:" header block (forwarded/reply metadata without dashes)
+  const idx5 = text.search(/\n\s*From:\s+.+\n\s*(Sent|Date|To):/i)
+  if (idx5 > 0) return text.substring(0, idx5).trim()
+
   return text
 }
 
