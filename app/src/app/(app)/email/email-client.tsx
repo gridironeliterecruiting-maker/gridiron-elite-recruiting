@@ -361,8 +361,8 @@ function ConversationView({ thread, onBack, onArchived, onDeleted }: {
               className={cn(
                 "max-w-[75%] rounded-2xl px-4 py-3",
                 msg.is_sent
-                  ? "ml-auto bg-primary/10"        // athlete — right, blue tint
-                  : "mr-auto bg-red-50 dark:bg-red-950/20"  // coach — left, light red
+                  ? "ml-auto bg-primary/10 border border-primary/30"        // athlete — right, blue tint + blue border
+                  : "mr-auto bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30"  // coach — left, light red + red border
               )}
             >
               <div className="flex items-baseline gap-2 mb-1">
