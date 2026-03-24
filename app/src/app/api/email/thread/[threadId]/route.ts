@@ -85,7 +85,7 @@ function stripHtml(html: string): string {
   cleaned = stripQuotedReply(cleaned)
 
   return cleaned
-    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\n{2,}/g, '\n')
     .trim()
 }
 

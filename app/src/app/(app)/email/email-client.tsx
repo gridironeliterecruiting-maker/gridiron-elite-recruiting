@@ -82,9 +82,10 @@ function formatDate(ts: string | null): string {
   const d = new Date(ts)
   const now = new Date()
   const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000)
-  if (diffDays === 0) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-  if (diffDays < 7) return d.toLocaleDateString([], { weekday: "short" })
-  return d.toLocaleDateString([], { month: "short", day: "numeric" })
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+  if (diffDays === 0) return time
+  if (diffDays < 7) return `${d.toLocaleDateString([], { weekday: "short" })} ${time}`
+  return `${d.toLocaleDateString([], { month: "short", day: "numeric" })} ${time}`
 }
 
 // ─── Program Logo (matches coaches/pipeline pages exactly) ────────────────────
@@ -143,6 +144,7 @@ function ThreadRow({ thread, selected, onClick }: {
           )}>
             {thread.otherName}
           </span>
+          <span className="shrink-0 text-[10px] text-muted-foreground/60">{thread.messageCount} msg{thread.messageCount !== 1 ? "s" : ""}</span>
           <span className="shrink-0 text-xs text-muted-foreground">{formatDate(thread.latestAt)}</span>
         </div>
         <div className="flex items-center gap-1.5 mt-0.5">
