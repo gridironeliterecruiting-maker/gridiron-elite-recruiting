@@ -373,8 +373,8 @@ function ConversationView({ thread, onBack, onArchived, onDeleted }: {
                   {formatDate(msg.received_at)}
                 </span>
               </div>
-              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                {msg.body || msg.snippet || "(No content)"}
+              <p className="text-sm text-foreground leading-normal whitespace-pre-line">
+                {(msg.body || msg.snippet || "(No content)").replace(/\n{2,}/g, '\n')}
               </p>
             </div>
           ))
