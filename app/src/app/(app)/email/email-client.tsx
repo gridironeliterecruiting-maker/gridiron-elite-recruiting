@@ -459,54 +459,30 @@ function InboxView() {
   useEffect(() => {
     loadInbox()
 
-    // Subscribe to Supabase Realtime for instant inbox updates via webhook
-    // No polling — webhooks handle real-time updates
-    // Use direct supabase-js client (not SSR client) for Realtime WebSocket compatibility
-    const realtimeClient = createDirectSupabase(
+    // Subscribe to Supabase Realtime for instant inbox updates
+    // Following Zoho Mail360 + Supabase integration pattern exactly:
+    // Direct supabase-js client, simple postgres_changes subscription
+    const supabase = createDirectSupabase(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
-    let channel: ReturnType<typeof realtimeClient.channel> | null = null
 
-    // Get user ID for RLS-filtered Realtime subscription
-    const ssrClient = createBrowserSupabase()
-    ssrClient.auth.getUser().then(({ data: { user } }) => {
-      if (!user) {
-        console.warn('[email] No user session — skipping Realtime subscription')
-        return
-      }
-      console.log('[email] Subscribing to Realtime for user:', user.id)
-
-      // Set auth token on the realtime client
-      ssrClient.auth.getSession().then(({ data: { session } }) => {
-        if (session?.access_token) {
-          realtimeClient.realtime.setAuth(session.access_token)
+    const channel = supabase
+      .channel('realtime-emails')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'email_notifications' },
+        (payload) => {
+          console.log('[email] New email received!', payload.new)
+          loadInbox()
         }
-
-        channel = realtimeClient
-          .channel('email-notifications')
-          .on(
-            'postgres_changes',
-            {
-              event: 'INSERT',
-              schema: 'public',
-              table: 'email_notifications',
-              filter: `user_id=eq.${user.id}`,
-            },
-            (payload) => {
-              console.log('[email] Realtime event received:', payload)
-              // New email arrived — refresh inbox immediately
-              loadInbox()
-            }
-          )
-          .subscribe((status) => {
-            console.log('[email] Realtime subscription status:', status)
-          })
+      )
+      .subscribe((status) => {
+        console.log('[email] Realtime subscription status:', status)
       })
-    })
 
     return () => {
-      if (channel) realtimeClient.removeChannel(channel)
+      supabase.removeChannel(channel)
     }
   }, [loadInbox])
 
