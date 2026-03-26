@@ -30,21 +30,32 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
       return
     }
 
-    setStatus("Connecting to Realtime...")
-    console.log('[email] Creating channel...')
+    setStatus("Waiting 5 seconds before connecting...")
+    console.log('[email] Waiting 5 seconds...')
 
-    const channel = supabase
-      .channel('test-connection')
-      .on('broadcast', { event: 'test' }, (payload) => {
-        console.log('[email] Broadcast received:', payload)
-      })
-      .subscribe((s) => {
-        console.log('[email] Subscription status:', s)
-        setStatus('Subscription status: ' + s)
-      })
+    const timer = setTimeout(() => {
+      setStatus("Connecting to Realtime...")
+      console.log('[email] Creating channel...')
+
+      const channel = supabase
+        .channel('test-connection')
+        .on('broadcast', { event: 'test' }, (payload) => {
+          console.log('[email] Broadcast received:', payload)
+        })
+        .subscribe((s) => {
+          console.log('[email] Subscription status:', s)
+          setStatus('Subscription status: ' + s)
+        })
+
+      // Store for cleanup
+      ;(window as any).__testChannel = channel
+    }, 5000)
 
     return () => {
-      supabase.removeChannel(channel)
+      clearTimeout(timer)
+      if ((window as any).__testChannel) {
+        supabase.removeChannel((window as any).__testChannel)
+      }
     }
   }, [])
 
