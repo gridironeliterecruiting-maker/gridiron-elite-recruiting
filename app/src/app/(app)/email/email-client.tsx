@@ -24,7 +24,17 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient as createBrowserSupabase } from "@/lib/supabase/client"
-import { createClient as createRealtimeOnly } from "@supabase/supabase-js"
+import { createClient } from "@supabase/supabase-js"
+
+// Realtime client — created once at module level per Supabase docs.
+// Uses plain createClient (not createBrowserClient) to avoid SSR cookie/auth overhead.
+const realtimeClient = typeof window !== 'undefined'
+  ? createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false, storageKey: 'sb-realtime', storage: { getItem: () => null, setItem: () => {}, removeItem: () => {} } } }
+    )
+  : null
 import { RecruitingEmailBadge } from "@/components/recruiting-email-badge"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -460,29 +470,9 @@ function InboxView() {
     loadInbox()
 
     // Subscribe to Supabase Realtime broadcast for instant inbox updates
-    // Edge Function sends broadcast when new email arrives via Zoho webhook
-    //
-    // IMPORTANT: Use a separate Realtime-only client (no auth/cookies).
-    // The SSR client's cookie-based auth triggers middleware loops that
-    // kill the WebSocket connection. Broadcast channels don't need auth.
-    const realtimeClient = createRealtimeOnly(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-          storageKey: 'sb-realtime-only',
-          storage: {
-            getItem: () => null,
-            setItem: () => {},
-            removeItem: () => {},
-          },
-        },
-      }
-    )
+    // Uses module-level realtimeClient (plain createClient, no SSR auth)
+    if (!realtimeClient) return
 
-    // Get user ID from SSR client (cookie-based auth), then subscribe via Realtime client
     const ssrClient = createBrowserSupabase()
     let channel: ReturnType<typeof realtimeClient.channel> | null = null
 
