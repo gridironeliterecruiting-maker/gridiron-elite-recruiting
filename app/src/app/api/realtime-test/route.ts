@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 
-// Simple HTML page that tests Supabase Realtime WebSocket directly
-// No SSR, no createBrowserClient, no @supabase/ssr — just raw supabase-js
 export async function GET() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+
   const html = `<!DOCTYPE html>
 <html>
 <head><title>Realtime Test</title></head>
@@ -17,11 +18,13 @@ const log = (msg) => {
   console.log(msg)
 }
 
+const SUPABASE_URL = "${supabaseUrl}"
+const SUPABASE_KEY = "${supabaseKey}"
+
 log('Creating Supabase client...')
-const supabase = createClient(
-  '${process.env.NEXT_PUBLIC_SUPABASE_URL}',
-  '${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}'
-)
+log('URL: ' + SUPABASE_URL)
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 log('Subscribing to channel test-room...')
 const channel = supabase
