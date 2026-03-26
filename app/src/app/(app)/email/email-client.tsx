@@ -459,30 +459,37 @@ function InboxView() {
   useEffect(() => {
     loadInbox()
 
-    // Subscribe to Supabase Realtime for instant inbox updates
-    // Following Zoho Mail360 + Supabase integration pattern exactly:
-    // Direct supabase-js client, simple postgres_changes subscription
+    // Subscribe to Supabase Realtime broadcast for instant inbox updates
+    // Edge Function sends broadcast when new email arrives via Zoho webhook
     const supabase = createDirectSupabase(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
+    let channel: ReturnType<typeof supabase.channel> | null = null
 
-    const channel = supabase
-      .channel('realtime-emails')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'email_notifications' },
-        (payload) => {
-          console.log('[email] New email received!', payload.new)
+    // Get user ID to listen on the user-specific broadcast channel
+    const ssrClient = createBrowserSupabase()
+    ssrClient.auth.getUser().then(({ data: { user } }) => {
+      if (!user) {
+        console.warn('[email] No user session — skipping Realtime subscription')
+        return
+      }
+      const channelName = `new-email-${user.id}`
+      console.log('[email] Subscribing to broadcast channel:', channelName)
+
+      channel = supabase
+        .channel(channelName)
+        .on('broadcast', { event: 'new_email' }, (payload) => {
+          console.log('[email] New email broadcast received!', payload)
           loadInbox()
-        }
-      )
-      .subscribe((status) => {
-        console.log('[email] Realtime subscription status:', status)
-      })
+        })
+        .subscribe((status) => {
+          console.log('[email] Realtime subscription status:', status)
+        })
+    })
 
     return () => {
-      supabase.removeChannel(channel)
+      if (channel) supabase.removeChannel(channel)
     }
   }, [loadInbox])
 
