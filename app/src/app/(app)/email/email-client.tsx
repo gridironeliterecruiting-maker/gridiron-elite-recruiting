@@ -24,6 +24,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient as createBrowserSupabase } from "@/lib/supabase/client"
+import { createClient as createRealtimeOnly } from "@supabase/supabase-js"
 import { RecruitingEmailBadge } from "@/components/recruiting-email-badge"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -460,11 +461,21 @@ function InboxView() {
 
     // Subscribe to Supabase Realtime broadcast for instant inbox updates
     // Edge Function sends broadcast when new email arrives via Zoho webhook
-    // Use single SSR client to avoid multiple GoTrueClient instances
-    const supabase = createBrowserSupabase()
-    let channel: ReturnType<typeof supabase.channel> | null = null
+    //
+    // IMPORTANT: Use a separate Realtime-only client (no auth/cookies).
+    // The SSR client's cookie-based auth triggers middleware loops that
+    // kill the WebSocket connection. Broadcast channels don't need auth.
+    const realtimeClient = createRealtimeOnly(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false } }
+    )
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    // Get user ID from SSR client (cookie-based auth), then subscribe via Realtime client
+    const ssrClient = createBrowserSupabase()
+    let channel: ReturnType<typeof realtimeClient.channel> | null = null
+
+    ssrClient.auth.getUser().then(({ data: { user } }) => {
       if (!user) {
         console.warn('[email] No user session — skipping Realtime subscription')
         return
@@ -472,7 +483,7 @@ function InboxView() {
       const channelName = `new-email-${user.id}`
       console.log('[email] Subscribing to broadcast channel:', channelName)
 
-      channel = supabase
+      channel = realtimeClient
         .channel(channelName)
         .on('broadcast', { event: 'new_email' }, (payload) => {
           console.log('[email] New email broadcast received!', payload)
@@ -484,10 +495,7 @@ function InboxView() {
     })
 
     return () => {
-      if (channel) {
-        const sb = createBrowserSupabase()
-        sb.removeChannel(channel)
-      }
+      if (channel) realtimeClient.removeChannel(channel)
     }
   }, [loadInbox])
 
