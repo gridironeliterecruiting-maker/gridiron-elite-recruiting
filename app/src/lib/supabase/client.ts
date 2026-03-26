@@ -1,10 +1,8 @@
 import { createBrowserClient } from '@supabase/ssr'
 
-// WebSocket wrapper that ignores the protocol parameter to prevent
-// invalid Sec-WebSocket-Protocol: undefined header
+// WebSocket wrapper that filters out undefined protocol parameter
 class SafeWebSocket extends WebSocket {
   constructor(url: string | URL, protocols?: string | string[]) {
-    // Only pass protocols if they are defined and not empty
     if (protocols && protocols !== 'undefined' && protocols.length > 0) {
       super(url, protocols)
     } else {
