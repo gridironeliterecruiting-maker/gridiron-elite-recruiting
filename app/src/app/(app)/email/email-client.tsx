@@ -27,12 +27,11 @@ import { createClient as createBrowserSupabase } from "@/lib/supabase/client"
 import { createClient } from "@supabase/supabase-js"
 
 // Realtime client — created once at module level per Supabase docs.
-// Uses plain createClient (not createBrowserClient) to avoid SSR cookie/auth overhead.
+// Plain createClient with zero options, exactly as documented.
 const realtimeClient = typeof window !== 'undefined'
   ? createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false, storageKey: 'sb-realtime', storage: { getItem: () => null, setItem: () => {}, removeItem: () => {} } } }
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
   : null
 import { RecruitingEmailBadge } from "@/components/recruiting-email-badge"
