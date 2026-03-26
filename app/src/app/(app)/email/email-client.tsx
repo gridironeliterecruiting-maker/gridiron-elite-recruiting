@@ -24,7 +24,6 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient as createBrowserSupabase } from "@/lib/supabase/client"
-import { createClient as createDirectSupabase } from "@supabase/supabase-js"
 import { RecruitingEmailBadge } from "@/components/recruiting-email-badge"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -461,15 +460,11 @@ function InboxView() {
 
     // Subscribe to Supabase Realtime broadcast for instant inbox updates
     // Edge Function sends broadcast when new email arrives via Zoho webhook
-    const supabase = createDirectSupabase(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
+    // Use single SSR client to avoid multiple GoTrueClient instances
+    const supabase = createBrowserSupabase()
     let channel: ReturnType<typeof supabase.channel> | null = null
 
-    // Get user ID to listen on the user-specific broadcast channel
-    const ssrClient = createBrowserSupabase()
-    ssrClient.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) {
         console.warn('[email] No user session — skipping Realtime subscription')
         return
@@ -489,7 +484,10 @@ function InboxView() {
     })
 
     return () => {
-      if (channel) supabase.removeChannel(channel)
+      if (channel) {
+        const sb = createBrowserSupabase()
+        sb.removeChannel(channel)
+      }
     }
   }, [loadInbox])
 
