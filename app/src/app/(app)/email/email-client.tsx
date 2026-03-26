@@ -468,7 +468,18 @@ function InboxView() {
     const realtimeClient = createRealtimeOnly(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false } }
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          storageKey: 'sb-realtime-only',
+          storage: {
+            getItem: () => null,
+            setItem: () => {},
+            removeItem: () => {},
+          },
+        },
+      }
     )
 
     // Get user ID from SSR client (cookie-based auth), then subscribe via Realtime client
