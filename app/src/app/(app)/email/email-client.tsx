@@ -3,11 +3,21 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@supabase/supabase-js"
 
-// Single Realtime client at module level — per Supabase docs
+// Realtime-only client — no auth activity at all
 const supabase = typeof window !== 'undefined'
   ? createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+        global: {
+          headers: {},
+        },
+      }
     )
   : null
 
