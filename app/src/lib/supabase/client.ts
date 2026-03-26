@@ -9,6 +9,14 @@ export function createClient() {
         persistSession: true,
         autoRefreshToken: true,
       },
+      // Fix WebSocket CHANNEL_ERROR: supabase-js passes undefined as protocol
+      // to WebSocket constructor, causing invalid Sec-WebSocket-Protocol header.
+      // https://github.com/supabase/supabase-js/issues/1473
+      ...(typeof window !== 'undefined' && {
+        realtime: {
+          transport: ((url: string) => new WebSocket(url)) as unknown as typeof WebSocket,
+        },
+      }),
     }
   )
 }
