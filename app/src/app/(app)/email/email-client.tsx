@@ -457,21 +457,28 @@ function InboxView() {
 
   useEffect(() => {
     loadInbox()
+  }, [loadInbox])
 
-    // Subscribe to Supabase Realtime broadcast for instant inbox updates.
-    // Database trigger on email_notifications broadcasts via realtime.broadcast_changes().
-    // Per Supabase docs: setAuth() before subscribing to establish Realtime auth.
+  // Separate useEffect for Realtime — runs after initial render completes
+  // This prevents the WebSocket from competing with page load HTTP requests
+  // for browser connection slots to supabase.co
+  useEffect(() => {
     const supabase = createBrowserSupabase()
     let channel: ReturnType<typeof supabase.channel> | null = null
+    let mounted = true
 
     const setupRealtime = async () => {
+      // Wait for initial page load to complete — free up connection slots
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      if (!mounted) return
+
       // Set auth token on Realtime connection before subscribing
       await supabase.realtime.setAuth()
+      if (!mounted) return
 
       channel = supabase
         .channel('email-notifications:updates', { config: { private: true } })
         .on('broadcast', { event: 'INSERT' }, () => {
-          // New email arrived — refresh inbox immediately
           loadInbox()
         })
         .subscribe((status) => {
@@ -482,6 +489,7 @@ function InboxView() {
     setupRealtime()
 
     return () => {
+      mounted = false
       if (channel) supabase.removeChannel(channel)
     }
   }, [loadInbox])
