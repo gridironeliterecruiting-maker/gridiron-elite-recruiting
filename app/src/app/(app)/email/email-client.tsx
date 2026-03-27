@@ -450,29 +450,27 @@ function InboxView({ initialThreads }: { initialThreads: Thread[] }) {
     } catch { /* non-critical */ }
   }, [])
 
-  // Realtime subscription — following Supabase documented pattern exactly:
-  // createBrowserClient singleton + private broadcast channel + setAuth()
+  // Realtime subscription — matching official Supabase UI component pattern:
+  // github.com/supabase/supabase/apps/ui-library/registry/default/blocks/realtime-chat
+  // Public channel, no setAuth(), no private config, simple subscribe
   useEffect(() => {
     const supabase = createBrowserSupabase()
-    let channel: ReturnType<typeof supabase.channel> | null = null
 
-    const setupRealtime = async () => {
-      await supabase.realtime.setAuth()
-
-      channel = supabase
-        .channel('email-notifications:updates', { config: { private: true } })
-        .on('broadcast', { event: 'INSERT' }, () => {
-          loadInbox()
-        })
-        .subscribe((status) => {
+    const channel = supabase
+      .channel('email-notifications:updates')
+      .on('broadcast', { event: 'INSERT' }, () => {
+        loadInbox()
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[email] Realtime connected!')
+        } else {
           console.log('[email] Realtime status:', status)
-        })
-    }
-
-    setupRealtime()
+        }
+      })
 
     return () => {
-      if (channel) supabase.removeChannel(channel)
+      supabase.removeChannel(channel)
     }
   }, [loadInbox])
 
