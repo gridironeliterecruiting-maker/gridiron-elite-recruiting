@@ -425,17 +425,17 @@ function ConversationView({ thread, onBack, onArchived, onDeleted }: {
 
 // ─── Inbox View ──────────────────────────────────────────────────────────────
 
-function InboxView() {
-  const [threads, setThreads] = useState<Thread[]>([])
-  const [loading, setLoading] = useState(true)
+function InboxView({ initialThreads }: { initialThreads: Thread[] }) {
+  // Initial data comes from server component — no client-side fetch on mount.
+  // This follows the Supabase documented pattern: server fetches, client subscribes.
+  const [threads, setThreads] = useState<Thread[]>(initialThreads)
+  const [loading, setLoading] = useState(false)
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null)
-  const isFirstLoad = useRef(true)
   const listScrollRef = useRef<HTMLDivElement>(null)
   const savedScrollTop = useRef(0)
 
+  // loadInbox is only used for Realtime refresh — NOT for initial load
   const loadInbox = useCallback(async () => {
-    const firstLoad = isFirstLoad.current
-    if (firstLoad) setLoading(true)
     try {
       const res = await fetch("/api/email/inbox")
       if (res.ok) {
@@ -447,34 +447,17 @@ function InboxView() {
           return incoming.find(t => t.threadId === prev.threadId) || prev
         })
       }
-    } finally {
-      if (firstLoad) {
-        isFirstLoad.current = false
-        setLoading(false)
-      }
-    }
+    } catch { /* non-critical */ }
   }, [])
 
-  useEffect(() => {
-    loadInbox()
-  }, [loadInbox])
-
-  // Separate useEffect for Realtime — runs after initial render completes
-  // This prevents the WebSocket from competing with page load HTTP requests
-  // for browser connection slots to supabase.co
+  // Realtime subscription — following Supabase documented pattern exactly:
+  // createBrowserClient singleton + private broadcast channel + setAuth()
   useEffect(() => {
     const supabase = createBrowserSupabase()
     let channel: ReturnType<typeof supabase.channel> | null = null
-    let mounted = true
 
     const setupRealtime = async () => {
-      // Wait for initial page load to complete — free up connection slots
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      if (!mounted) return
-
-      // Set auth token on Realtime connection before subscribing
       await supabase.realtime.setAuth()
-      if (!mounted) return
 
       channel = supabase
         .channel('email-notifications:updates', { config: { private: true } })
@@ -489,7 +472,6 @@ function InboxView() {
     setupRealtime()
 
     return () => {
-      mounted = false
       if (channel) supabase.removeChannel(channel)
     }
   }, [loadInbox])
@@ -817,23 +799,14 @@ function FoldersView() {
 
 // ─── Main EmailClient ─────────────────────────────────────────────────────────
 
-export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | null }) {
+export function EmailClient({ recruitingEmail, initialThreads = [], initialUnreadCount = 0 }: {
+  recruitingEmail?: string | null
+  initialThreads?: Thread[]
+  initialUnreadCount?: number
+}) {
   const [tab, setTab] = useState<Tab>("inbox")
-  const [unreadCount, setUnreadCount] = useState(0)
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch("/api/email/inbox")
-        if (res.ok) {
-          const data = await res.json()
-          setUnreadCount(data.unreadCount || 0)
-        }
-      } catch { /* non-critical */ }
-    }
-    load()
-    // No polling — unread count updates via Supabase Realtime (same as inbox)
-  }, [])
+  const [unreadCount, setUnreadCount] = useState(initialUnreadCount)
+  // No client-side fetch on mount — initial data comes from server component
 
   const tabs: { id: Tab; label: string; icon: React.ElementType; badge?: number }[] = [
     { id: "inbox", label: "Inbox", icon: Inbox, badge: unreadCount },
@@ -898,7 +871,7 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
 
         {/* Content — fills rest, overflow managed internally */}
         <div className="flex-1 min-w-0 min-h-0 overflow-hidden bg-background">
-          {tab === "inbox" && <InboxView />}
+          {tab === "inbox" && <InboxView initialThreads={initialThreads} />}
           {tab === "folders" && <FoldersView />}
         </div>
       </div>
