@@ -140,9 +140,18 @@ export function RecruitingDrive({ playerId, readOnly = false }: RecruitingDriveP
     }
   }
 
+  /** Build the recruit drive URL, embedding the current program slug as a brand param */
+  function buildRecruitUrl(slug: string): string {
+    const segs = window.location.pathname.split('/').filter(Boolean)
+    const appRoutes = ['hub', 'coaches', 'pipeline', 'outreach', 'profile', 'email']
+    const programSlug = segs.length >= 2 && appRoutes.includes(segs[1]) ? segs[0] : null
+    const base = `${window.location.origin}/recruit/${slug}`
+    return programSlug ? `${base}?brand=${encodeURIComponent(programSlug)}` : base
+  }
+
   async function handleCopyShareLink() {
     if (!shareSlug) return
-    const url = `${window.location.origin}/recruit/${shareSlug}`
+    const url = buildRecruitUrl(shareSlug)
     try {
       await navigator.clipboard.writeText(url)
     } catch {
@@ -792,7 +801,7 @@ export function RecruitingDrive({ playerId, readOnly = false }: RecruitingDriveP
             </Button>
             {shareSlug && (
               <a
-                href={`/recruit/${shareSlug}`}
+                href={typeof window !== "undefined" ? buildRecruitUrl(shareSlug) : `/recruit/${shareSlug}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="shrink-0"

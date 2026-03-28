@@ -8,10 +8,12 @@ export const dynamic = "force-dynamic"
 
 interface RecruitPageProps {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ brand?: string }>
 }
 
-export default async function RecruitPage({ params }: RecruitPageProps) {
+export default async function RecruitPage({ params, searchParams }: RecruitPageProps) {
   const { slug } = await params
+  const { brand } = await searchParams
   const admin = createAdminClient()
 
   // Look up athlete by share slug
@@ -25,24 +27,18 @@ export default async function RecruitPage({ params }: RecruitPageProps) {
     notFound()
   }
 
-  // Branding comes from the ATHLETE's program membership — not the viewer's cookie.
-  // This ensures the recruiting drive always shows the correct program branding
-  // regardless of who is viewing it or what site they're logged into.
+  // Branding is determined by the `brand` query parameter embedded in the URL.
+  // When the recruit link is generated from a program page (e.g. /prairie-ia/profile),
+  // the link includes ?brand=prairie-ia. When generated from the main site, no param
+  // is added and default Runway Recruit branding is used.
+  // This approach is permanent — branding travels with the URL, not cookies or DB lookups.
   let programBranding: { logo_url: string | null; primary_color: string | null; accent_color: string | null; school_name: string | null; mascot: string | null } | null = null
 
-  // Find the athlete's program via program_members
-  const { data: membership } = await admin
-    .from("program_members")
-    .select("program_id")
-    .eq("user_id", profile.id)
-    .eq("role", "player")
-    .maybeSingle()
-
-  if (membership?.program_id) {
+  if (brand) {
     const { data: prog } = await admin
       .from("managed_programs")
       .select("logo_url, primary_color, accent_color, school_name, mascot")
-      .eq("id", membership.program_id)
+      .eq("landing_slug", brand)
       .maybeSingle()
     programBranding = prog
   }
