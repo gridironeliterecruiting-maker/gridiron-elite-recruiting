@@ -7,6 +7,7 @@ import { ActivePlayerProvider, type PlayerInfo } from '@/components/ActivePlayer
 import { getActivePlayerId } from '@/lib/active-player'
 import { UnauthorizedPage } from '@/components/unauthorized-page'
 import { EmailNotificationToast } from '@/components/email-notification-toast'
+import { ScrollToTop } from '@/components/scroll-to-top'
 
 /** Convert a hex color (#RRGGBB) to the raw HSL string Tailwind expects ("H S% L%"). */
 function hexToHsl(hex: string): string {
@@ -277,6 +278,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         style={Object.keys(styleOverrides).length > 0 ? styleOverrides as React.CSSProperties : undefined}
       >
         <NavBar profile={profile} coachBranding={programBranding} basePath={basePath} />
+        <ScrollToTop />
         <EmailNotificationToast />
         <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
           {children}
