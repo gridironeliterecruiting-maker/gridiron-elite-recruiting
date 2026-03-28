@@ -807,7 +807,7 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
   ]
 
   return (
-    <div className="fixed inset-0 top-[3.5rem] flex flex-col overflow-hidden bg-background z-10">
+    <div className="fixed inset-0 top-[3.5rem] flex flex-col overflow-hidden bg-background z-10 mx-auto max-w-7xl px-4 pt-6 lg:px-8 lg:pt-8">
       {/* Page header — pinned */}
       <div className="shrink-0 border-b border-border bg-card px-4 pb-4 pt-6 lg:px-8 lg:pt-8">
         <div className="flex items-end justify-between gap-4">
