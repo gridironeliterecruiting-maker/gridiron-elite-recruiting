@@ -146,8 +146,40 @@ export async function GET() {
       }
     }
 
-    const unreadCount = threads.reduce((sum, t) => sum + t.unreadCount, 0)
-    return NextResponse.json({ threads, unreadCount })
+    // Check which threads are archived — filter them out of inbox
+    const { data: filedRows } = await admin
+      .from('filed_emails')
+      .select('from_email, subject, program_name')
+      .eq('user_id', user.id)
+
+    const archivedKeys = new Set<string>()
+    const archivedProgramMap = new Map<string, string>() // key -> programName
+    if (filedRows) {
+      for (const row of filedRows) {
+        const key = `${(row.from_email || '').toLowerCase()}::${normalizeSubject(row.subject || '')}`
+        archivedKeys.add(key)
+        if (row.program_name) archivedProgramMap.set(key, row.program_name)
+      }
+    }
+
+    // Split threads into inbox vs archived
+    const inboxThreads: typeof threads = []
+    const archivedThreads: (typeof threads[0] & { programName: string | null })[] = []
+
+    for (const thread of threads) {
+      const key = `${thread.otherEmail.toLowerCase()}::${normalizeSubject(thread.subject)}`
+      if (archivedKeys.has(key)) {
+        archivedThreads.push({
+          ...thread,
+          programName: archivedProgramMap.get(key) || thread.schoolName || null,
+        })
+      } else {
+        inboxThreads.push(thread)
+      }
+    }
+
+    const unreadCount = inboxThreads.reduce((sum, t) => sum + t.unreadCount, 0)
+    return NextResponse.json({ threads: inboxThreads, archivedThreads, unreadCount })
   } catch (err: any) {
     console.error('[inbox] unexpected error:', err?.message || err)
     return NextResponse.json({ threads: [], unreadCount: 0 })

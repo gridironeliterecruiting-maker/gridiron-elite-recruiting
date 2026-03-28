@@ -49,22 +49,15 @@ interface ThreadMessage {
 
 type Tab = "inbox" | "folders"
 
+// Archived thread = same as Thread but with programName attached
+interface ArchivedThread extends Thread {
+  programName: string | null
+}
+
 interface ArchiveProgram {
   programName: string
-  programId: string | null
-  logoUrl: string | null
-  threadCount: number
-  threads: {
-    id: string
-    threadId: string | null
-    subject: string
-    snippet: string
-    otherName: string
-    otherEmail: string
-    receivedAt: string | null
-    filedAt: string
-    messageCount: number
-  }[]
+  threads: ArchivedThread[]
+  unreadCount: number
 }
 
 // Nav state: "inbox" or a program name from archives
@@ -424,7 +417,10 @@ function ConversationView({ thread, onBack, onArchived, onDeleted }: {
 
 // ─── Inbox View ──────────────────────────────────────────────────────────────
 
-function InboxView({ onUnreadCountChange, onArchived: onArchivedCallback }: { onUnreadCountChange?: (count: number) => void; onArchived?: () => void }) {
+function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate }: {
+  onUnreadCountChange?: (count: number) => void
+  onArchivedThreadsUpdate?: (threads: ArchivedThread[]) => void
+}) {
   const [threads, setThreads] = useState<Thread[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null)
@@ -442,6 +438,7 @@ function InboxView({ onUnreadCountChange, onArchived: onArchivedCallback }: { on
       if (res.ok) {
         const data = await res.json()
         const incoming: Thread[] = data.threads || []
+        const archived: ArchivedThread[] = data.archivedThreads || []
 
         // Detect new email — compare latest thread ID
         if (!firstLoad && incoming.length > 0) {
@@ -463,6 +460,9 @@ function InboxView({ onUnreadCountChange, onArchived: onArchivedCallback }: { on
         // Update unread count in parent
         const unreadCount = incoming.reduce((sum, t) => sum + t.unreadCount, 0)
         onUnreadCountChange?.(unreadCount)
+
+        // Pass archived threads to parent for the Archives nav
+        onArchivedThreadsUpdate?.(archived)
       }
     } finally {
       if (firstLoad) {
@@ -470,7 +470,7 @@ function InboxView({ onUnreadCountChange, onArchived: onArchivedCallback }: { on
         setLoading(false)
       }
     }
-  }, [onUnreadCountChange])
+  }, [onUnreadCountChange, onArchivedThreadsUpdate])
 
   // Initial load
   useEffect(() => {
@@ -517,7 +517,8 @@ function InboxView({ onUnreadCountChange, onArchived: onArchivedCallback }: { on
   const handleArchived = (threadId: string) => {
     setThreads(prev => prev.filter(t => t.threadId !== threadId))
     setSelectedThread(null)
-    onArchivedCallback?.()
+    // Re-fetch inbox so archived threads list updates
+    loadInbox()
   }
 
   const handleDeleted = (threadId: string) => {
@@ -590,9 +591,30 @@ function InboxView({ onUnreadCountChange, onArchived: onArchivedCallback }: { on
   )
 }
 
-// ─── Archive Program View ─────────────────────────────────────────────────────
+// ─── Archive Program View — identical functionality to InboxView ──────────────
 
 function ArchiveProgramView({ program }: { program: ArchiveProgram }) {
+  const [selectedThread, setSelectedThread] = useState<Thread | null>(null)
+  const listScrollRef = useRef<HTMLDivElement>(null)
+  const savedScrollTop = useRef(0)
+
+  const handleSelectThread = (thread: Thread) => {
+    savedScrollTop.current = listScrollRef.current?.scrollTop || 0
+    setSelectedThread(thread)
+    if (thread.hasUnread) {
+      // Local unread clear — same as inbox
+    }
+  }
+
+  const handleBack = () => {
+    setSelectedThread(null)
+    requestAnimationFrame(() => {
+      if (listScrollRef.current) {
+        listScrollRef.current.scrollTop = savedScrollTop.current
+      }
+    })
+  }
+
   if (program.threads.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-16 text-center px-4">
@@ -606,25 +628,28 @@ function ArchiveProgramView({ program }: { program: ArchiveProgram }) {
     )
   }
 
+  // Thread detail — full ConversationView, identical to inbox
+  if (selectedThread) {
+    return (
+      <ConversationView
+        thread={selectedThread}
+        onBack={handleBack}
+        onArchived={() => {}} // already archived
+        onDeleted={() => setSelectedThread(null)}
+      />
+    )
+  }
+
+  // Thread list — same ThreadRow as inbox
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto" ref={listScrollRef}>
       {program.threads.map(thread => (
-        <div
-          key={thread.id}
-          className="flex items-center gap-3 px-4 py-3 border-b border-border text-left"
-        >
-          <ThreadLogo logoUrl={program.logoUrl} schoolName={program.programName} otherName={thread.otherName} />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-sm font-medium text-foreground">
-                {thread.otherName}
-              </span>
-              <span className="shrink-0 text-xs text-muted-foreground">{formatDate(thread.receivedAt)}</span>
-            </div>
-            <p className="text-xs text-muted-foreground truncate mt-0.5">{thread.subject}</p>
-            <p className="text-xs text-muted-foreground/60 truncate mt-0.5">{thread.snippet}</p>
-          </div>
-        </div>
+        <ThreadRow
+          key={thread.threadId}
+          thread={thread}
+          selected={false}
+          onClick={() => handleSelectThread(thread)}
+        />
       ))}
     </div>
   )
@@ -636,24 +661,25 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
   const [nav, setNav] = useState<NavSelection>({ type: "inbox" })
   const [unreadCount, setUnreadCount] = useState(0)
   const [archivePrograms, setArchivePrograms] = useState<ArchiveProgram[]>([])
-  const [archivesLoading, setArchivesLoading] = useState(true)
 
-  // Load archive programs for the sidebar
-  const loadArchives = useCallback(async () => {
-    try {
-      const res = await fetch("/api/email/archives")
-      if (res.ok) {
-        const data = await res.json()
-        setArchivePrograms(data.programs || [])
-      }
-    } finally {
-      setArchivesLoading(false)
+  // Build archive programs from archived threads returned by inbox API
+  const handleArchivedThreadsUpdate = useCallback((archivedThreads: ArchivedThread[]) => {
+    const programMap = new Map<string, ArchivedThread[]>()
+    for (const t of archivedThreads) {
+      const key = t.programName || t.schoolName || t.otherName || 'Other'
+      const existing = programMap.get(key) || []
+      existing.push(t)
+      programMap.set(key, existing)
     }
+    const programs: ArchiveProgram[] = [...programMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, threads]) => ({
+        programName: name,
+        threads,
+        unreadCount: threads.reduce((sum, t) => sum + t.unreadCount, 0),
+      }))
+    setArchivePrograms(programs)
   }, [])
-
-  useEffect(() => {
-    loadArchives()
-  }, [loadArchives])
 
   const isInbox = nav.type === "inbox"
   const selectedProgram = nav.type === "archive"
@@ -727,12 +753,7 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
             </div>
 
             {/* Program list */}
-            {archivesLoading ? (
-              <div className="px-3 py-2 md:px-4">
-                <Skeleton className="h-3 w-20 mb-2" />
-                <Skeleton className="h-3 w-16" />
-              </div>
-            ) : archivePrograms.length === 0 ? (
+            {archivePrograms.length === 0 ? (
               <p className="hidden md:block px-4 py-2 text-[10px] text-muted-foreground/50">
                 No archived emails yet
               </p>
@@ -750,15 +771,15 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
                         : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                     )}
                   >
-                    {prog.logoUrl ? (
-                      <img src={prog.logoUrl} alt="" className="h-4 w-4 shrink-0 rounded object-contain" />
-                    ) : (
-                      <Mail className="h-4 w-4 shrink-0" />
-                    )}
                     <span className="hidden md:inline truncate text-xs">{prog.programName}</span>
-                    <span className="ml-auto hidden md:inline shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                      {prog.threadCount}
-                    </span>
+                    {prog.unreadCount > 0 && (
+                      <Badge className="ml-auto hidden h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 p-0 text-[10px] font-bold text-white md:flex">
+                        {prog.unreadCount > 99 ? "99+" : prog.unreadCount}
+                      </Badge>
+                    )}
+                    {prog.unreadCount > 0 && (
+                      <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500 md:hidden" />
+                    )}
                   </button>
                 )
               })
@@ -771,7 +792,7 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
           {isInbox && (
             <InboxView
               onUnreadCountChange={setUnreadCount}
-              onArchived={loadArchives}
+              onArchivedThreadsUpdate={handleArchivedThreadsUpdate}
             />
           )}
           {selectedProgram && <ArchiveProgramView program={selectedProgram} />}
