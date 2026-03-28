@@ -428,9 +428,7 @@ function InboxView({ onUnreadCountChange }: { onUnreadCountChange?: (count: numb
   const [threads, setThreads] = useState<Thread[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
   const isFirstLoad = useRef(true)
-  const prevLatestIdRef = useRef<string | null>(null)
   const listScrollRef = useRef<HTMLDivElement>(null)
   const savedScrollTop = useRef(0)
 
@@ -442,17 +440,6 @@ function InboxView({ onUnreadCountChange }: { onUnreadCountChange?: (count: numb
       if (res.ok) {
         const data = await res.json()
         const incoming: Thread[] = data.threads || []
-
-        // Detect new email — compare latest thread ID
-        if (!firstLoad && incoming.length > 0) {
-          const newLatestId = incoming[0].threadId
-          if (prevLatestIdRef.current && newLatestId !== prevLatestIdRef.current) {
-            setToast(`New email from ${incoming[0].otherName}`)
-          }
-        }
-        if (incoming.length > 0) {
-          prevLatestIdRef.current = incoming[0].threadId
-        }
 
         setThreads(incoming)
         setSelectedThread(prev => {
@@ -485,12 +472,6 @@ function InboxView({ onUnreadCountChange }: { onUnreadCountChange?: (count: numb
     return () => clearInterval(interval)
   }, [loadInbox])
 
-  // Auto-dismiss toast after 5 seconds
-  useEffect(() => {
-    if (!toast) return
-    const timer = setTimeout(() => setToast(null), 5000)
-    return () => clearTimeout(timer)
-  }, [toast])
 
   const handleSelectThread = (thread: Thread) => {
     // Save scroll position before navigating into thread
@@ -570,13 +551,7 @@ function InboxView({ onUnreadCountChange }: { onUnreadCountChange?: (count: numb
   }
 
   return (
-    <div className="relative h-full overflow-y-auto" ref={listScrollRef}>
-      {/* Toast notification for new email */}
-      {toast && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top fade-in bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg text-sm font-medium">
-          {toast}
-        </div>
-      )}
+    <div className="h-full overflow-y-auto" ref={listScrollRef}>
       {threads.map(thread => (
         <ThreadRow
           key={thread.threadId}
@@ -832,7 +807,7 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
   ]
 
   return (
-    <div className="flex flex-col -mx-4 -my-6 lg:-mx-8 lg:-my-8 h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="flex flex-col -mx-4 -my-6 lg:-mx-8 lg:-my-8 h-[calc(100vh-3.5rem)] overflow-hidden">
       {/* Page header — pinned */}
       <div className="shrink-0 border-b border-border bg-card px-4 pb-4 pt-6 lg:px-8 lg:pt-8">
         <div className="flex items-end justify-between gap-4">
