@@ -149,7 +149,9 @@ function ThreadRow({ thread, selected, onClick }: {
           )}>
             {thread.subject}
           </span>
-          <span className="shrink-0 ml-2 text-[10px] text-muted-foreground/60">{thread.messageCount} msg{thread.messageCount !== 1 ? "s" : ""}</span>
+          {thread.hasUnread && thread.unreadCount > 0 && (
+            <span className="shrink-0 ml-2 text-[10px] font-bold text-blue-600">{thread.unreadCount} new</span>
+          )}
         </div>
       </div>
     </button>
