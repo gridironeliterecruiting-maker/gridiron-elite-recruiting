@@ -849,10 +849,12 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
             <InboxView
               onUnreadCountChange={setUnreadCount}
               onArchivedThreadsUpdate={handleArchivedThreadsUpdate}
+              isActive={isInbox}
             />
           </div>
           {selectedProgram && (
             <ArchiveProgramView
+              key={selectedProgram.programName}
               program={selectedProgram}
               onMovedToInbox={() => {/* next poll cycle will update */}}
               onUnreadCleared={(count) => {
