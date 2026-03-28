@@ -155,11 +155,12 @@ function ThreadRow({ thread, selected, onClick }: {
 
 // ─── Conversation View ────────────────────────────────────────────────────────
 
-function ConversationView({ thread, onBack, onArchived, onDeleted }: {
+function ConversationView({ thread, onBack, onArchived, onDeleted, isArchived = false }: {
   thread: Thread
   onBack: () => void
   onArchived: (threadId: string) => void
   onDeleted: (threadId: string) => void
+  isArchived?: boolean
 }) {
   const [messages, setMessages] = useState<ThreadMessage[]>([])
   const [loading, setLoading] = useState(true)
@@ -252,21 +253,31 @@ function ConversationView({ thread, onBack, onArchived, onDeleted }: {
   const handleArchive = async () => {
     setArchiving(true)
     try {
-      await fetch("/api/email/file", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messageId: thread.latestReceivedId,
-          threadId: thread.threadId,
-          fromEmail: thread.otherEmail,
-          fromName: thread.otherName,
-          subject: thread.subject,
-          snippet: thread.snippet,
-          receivedAt: thread.latestAt,
-          coachName: thread.otherName,
-          programName: thread.schoolName || null,
-        }),
-      })
+      if (isArchived) {
+        // Move back to inbox — delete from filed_emails
+        await fetch("/api/email/unarchive", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fromEmail: thread.otherEmail }),
+        })
+      } else {
+        // Archive — add to filed_emails
+        await fetch("/api/email/file", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messageId: thread.latestReceivedId,
+            threadId: thread.threadId,
+            fromEmail: thread.otherEmail,
+            fromName: thread.otherName,
+            subject: thread.subject,
+            snippet: thread.snippet,
+            receivedAt: thread.latestAt,
+            coachName: thread.otherName,
+            programName: thread.schoolName || null,
+          }),
+        })
+      }
       onArchived(thread.threadId)
     } catch {
       alert("Network error. Please try again.")
@@ -319,8 +330,8 @@ function ConversationView({ thread, onBack, onArchived, onDeleted }: {
             disabled={archiving}
             className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
           >
-            {archiving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
-            Archive
+            {archiving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isArchived ? <Inbox className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+            {isArchived ? "Move to Inbox" : "Archive"}
           </button>
           <button
             onClick={() => setShowReply(r => !r)}
@@ -593,17 +604,20 @@ function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate }: {
 
 // ─── Archive Program View — identical functionality to InboxView ──────────────
 
-function ArchiveProgramView({ program }: { program: ArchiveProgram }) {
+function ArchiveProgramView({ program, onMovedToInbox }: { program: ArchiveProgram; onMovedToInbox?: () => void }) {
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null)
+  const [threads, setThreads] = useState(program.threads)
   const listScrollRef = useRef<HTMLDivElement>(null)
   const savedScrollTop = useRef(0)
+
+  // Keep threads in sync when program data updates from polling
+  useEffect(() => {
+    setThreads(program.threads)
+  }, [program.threads])
 
   const handleSelectThread = (thread: Thread) => {
     savedScrollTop.current = listScrollRef.current?.scrollTop || 0
     setSelectedThread(thread)
-    if (thread.hasUnread) {
-      // Local unread clear — same as inbox
-    }
   }
 
   const handleBack = () => {
@@ -615,7 +629,13 @@ function ArchiveProgramView({ program }: { program: ArchiveProgram }) {
     })
   }
 
-  if (program.threads.length === 0) {
+  const handleMovedToInbox = (threadId: string) => {
+    setThreads(prev => prev.filter(t => t.threadId !== threadId))
+    setSelectedThread(null)
+    onMovedToInbox?.()
+  }
+
+  if (threads.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-16 text-center px-4">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
@@ -634,8 +654,9 @@ function ArchiveProgramView({ program }: { program: ArchiveProgram }) {
       <ConversationView
         thread={selectedThread}
         onBack={handleBack}
-        onArchived={() => {}} // already archived
-        onDeleted={() => setSelectedThread(null)}
+        onArchived={handleMovedToInbox}
+        onDeleted={(id) => { setThreads(prev => prev.filter(t => t.threadId !== id)); setSelectedThread(null) }}
+        isArchived
       />
     )
   }
@@ -789,13 +810,14 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
 
         {/* Content — fills rest, overflow managed internally */}
         <div className="flex-1 min-w-0 min-h-0 overflow-hidden bg-background">
-          {isInbox && (
+          {/* InboxView always mounted to keep 30s polling alive for archive updates */}
+          <div className={isInbox ? "" : "hidden"}>
             <InboxView
               onUnreadCountChange={setUnreadCount}
               onArchivedThreadsUpdate={handleArchivedThreadsUpdate}
             />
-          )}
-          {selectedProgram && <ArchiveProgramView program={selectedProgram} />}
+          </div>
+          {selectedProgram && <ArchiveProgramView program={selectedProgram} onMovedToInbox={() => {/* next poll cycle will update */}} />}
         </div>
       </div>
     </div>
