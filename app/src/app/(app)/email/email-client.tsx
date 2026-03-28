@@ -507,11 +507,16 @@ function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate }: {
     // Save scroll position before navigating into thread
     savedScrollTop.current = listScrollRef.current?.scrollTop || 0
     setSelectedThread(thread)
-    // Mark unread locally
+    // Mark unread locally and update parent badge immediately
     if (thread.hasUnread) {
-      setThreads(prev => prev.map(t =>
-        t.threadId === thread.threadId ? { ...t, hasUnread: false, unreadCount: 0 } : t
-      ))
+      setThreads(prev => {
+        const updated = prev.map(t =>
+          t.threadId === thread.threadId ? { ...t, hasUnread: false, unreadCount: 0 } : t
+        )
+        const newUnread = updated.reduce((sum, t) => sum + t.unreadCount, 0)
+        onUnreadCountChange?.(newUnread)
+        return updated
+      })
     }
   }
 
@@ -604,7 +609,7 @@ function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate }: {
 
 // ─── Archive Program View — identical functionality to InboxView ──────────────
 
-function ArchiveProgramView({ program, onMovedToInbox }: { program: ArchiveProgram; onMovedToInbox?: () => void }) {
+function ArchiveProgramView({ program, onMovedToInbox, onUnreadCleared }: { program: ArchiveProgram; onMovedToInbox?: () => void; onUnreadCleared?: (count: number) => void }) {
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null)
   const [threads, setThreads] = useState(program.threads)
   const listScrollRef = useRef<HTMLDivElement>(null)
@@ -618,6 +623,14 @@ function ArchiveProgramView({ program, onMovedToInbox }: { program: ArchiveProgr
   const handleSelectThread = (thread: Thread) => {
     savedScrollTop.current = listScrollRef.current?.scrollTop || 0
     setSelectedThread(thread)
+    // Clear unread locally and update program badge immediately
+    if (thread.hasUnread) {
+      const cleared = thread.unreadCount
+      setThreads(prev => prev.map(t =>
+        t.threadId === thread.threadId ? { ...t, hasUnread: false, unreadCount: 0 } : t
+      ))
+      onUnreadCleared?.(cleared)
+    }
   }
 
   const handleBack = () => {
@@ -817,7 +830,20 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
               onArchivedThreadsUpdate={handleArchivedThreadsUpdate}
             />
           </div>
-          {selectedProgram && <ArchiveProgramView program={selectedProgram} onMovedToInbox={() => {/* next poll cycle will update */}} />}
+          {selectedProgram && (
+            <ArchiveProgramView
+              program={selectedProgram}
+              onMovedToInbox={() => {/* next poll cycle will update */}}
+              onUnreadCleared={(count) => {
+                // Immediately deduct from the program's badge
+                setArchivePrograms(prev => prev.map(p =>
+                  p.programName === selectedProgram.programName
+                    ? { ...p, unreadCount: Math.max(0, p.unreadCount - count) }
+                    : p
+                ))
+              }}
+            />
+          )}
         </div>
       </div>
     </div>
