@@ -5,59 +5,46 @@ import { Mail } from "lucide-react"
 
 /**
  * Site-wide email notification toast.
- * Polls /api/email/inbox every 30 seconds to detect new emails.
- * Shows a toast notification on any page when a new email arrives.
- * Does NOT refresh the page — purely informational.
+ * Polls OUR database (email_notifications table) every 30 seconds.
+ * Never hits Zoho — fast, free, unlimited.
+ * Shows a toast when a new email notification is detected.
  */
 export function EmailNotificationToast() {
   const [toast, setToast] = useState<string | null>(null)
-  const prevLatestIdRef = useRef<string | null>(null)
-  const prevArchivedLatestIdRef = useRef<string | null>(null)
+  const prevLatestAtRef = useRef<string | null>(null)
   const initializedRef = useRef(false)
 
   useEffect(() => {
     const checkForNewEmail = async () => {
       try {
-        const res = await fetch("/api/email/inbox")
+        const url = prevLatestAtRef.current
+          ? `/api/email/check-new?since=${encodeURIComponent(prevLatestAtRef.current)}`
+          : "/api/email/check-new"
+        const res = await fetch(url)
         if (!res.ok) return
         const data = await res.json()
-        const threads = data.threads || []
-        const archivedThreads = data.archivedThreads || []
-
-        // Combine both for "latest" detection
-        const allThreads = [...threads, ...archivedThreads]
-          .sort((a: any, b: any) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime())
-
-        const latestInbox = threads[0]?.threadId || null
-        const latestArchived = archivedThreads[0]?.threadId || null
 
         if (!initializedRef.current) {
-          prevLatestIdRef.current = latestInbox
-          prevArchivedLatestIdRef.current = latestArchived
+          // First check — record baseline, don't show toast
+          prevLatestAtRef.current = data.latestAt
           initializedRef.current = true
           return
         }
 
-        // Check inbox for new email
-        if (latestInbox && prevLatestIdRef.current && latestInbox !== prevLatestIdRef.current) {
-          setToast(`New email from ${threads[0].otherName}`)
-        }
-        // Check archived threads for new email
-        else if (latestArchived && prevArchivedLatestIdRef.current && latestArchived !== prevArchivedLatestIdRef.current) {
-          setToast(`New email from ${archivedThreads[0].otherName}`)
+        if (data.newCount > 0 && data.latestAt !== prevLatestAtRef.current) {
+          // Parse sender name from email address
+          const from = data.latestFrom || "a coach"
+          const name = from.includes("<") ? from.split("<")[0].trim().replace(/"/g, "") : from.split("@")[0]
+          setToast(`New email from ${name}`)
         }
 
-        prevLatestIdRef.current = latestInbox
-        prevArchivedLatestIdRef.current = latestArchived
+        prevLatestAtRef.current = data.latestAt
       } catch {
         // Non-critical — silently ignore
       }
     }
 
-    // Initial baseline check
     checkForNewEmail()
-
-    // Poll every 30 seconds
     const interval = setInterval(checkForNewEmail, 30000)
     return () => clearInterval(interval)
   }, [])

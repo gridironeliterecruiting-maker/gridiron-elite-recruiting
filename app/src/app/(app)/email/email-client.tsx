@@ -428,9 +428,10 @@ function ConversationView({ thread, onBack, onArchived, onDeleted, isArchived = 
 
 // ─── Inbox View ──────────────────────────────────────────────────────────────
 
-function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate }: {
+function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate, isActive }: {
   onUnreadCountChange?: (count: number) => void
   onArchivedThreadsUpdate?: (threads: ArchivedThread[]) => void
+  isActive?: boolean
 }) {
   const [threads, setThreads] = useState<Thread[]>([])
   const [loading, setLoading] = useState(true)
@@ -441,6 +442,7 @@ function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate }: {
   const listScrollRef = useRef<HTMLDivElement>(null)
   const savedScrollTop = useRef(0)
 
+  // Full inbox refresh — calls Zoho. Only on initial load or when new email detected.
   const loadInbox = useCallback(async () => {
     const firstLoad = isFirstLoad.current
     if (firstLoad) setLoading(true)
@@ -451,28 +453,14 @@ function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate }: {
         const incoming: Thread[] = data.threads || []
         const archived: ArchivedThread[] = data.archivedThreads || []
 
-        // Detect new email — compare latest thread ID
-        if (!firstLoad && incoming.length > 0) {
-          const newLatestId = incoming[0].threadId
-          if (prevLatestIdRef.current && newLatestId !== prevLatestIdRef.current) {
-            setToast(`New email from ${incoming[0].otherName}`)
-          }
-        }
-        if (incoming.length > 0) {
-          prevLatestIdRef.current = incoming[0].threadId
-        }
-
         setThreads(incoming)
         setSelectedThread(prev => {
           if (!prev) return prev
           return incoming.find(t => t.threadId === prev.threadId) || prev
         })
 
-        // Update unread count in parent
         const unreadCount = incoming.reduce((sum, t) => sum + t.unreadCount, 0)
         onUnreadCountChange?.(unreadCount)
-
-        // Pass archived threads to parent for the Archives nav
         onArchivedThreadsUpdate?.(archived)
       }
     } finally {
@@ -483,18 +471,51 @@ function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate }: {
     }
   }, [onUnreadCountChange, onArchivedThreadsUpdate])
 
-  // Initial load
+  // Initial load — one Zoho call
   useEffect(() => {
     loadInbox()
   }, [loadInbox])
 
-  // Silent polling every 30 seconds — no page refresh, no disruption
+  // Poll OUR database every 30s — never hits Zoho. Only triggers
+  // a Zoho refresh when a genuinely new email notification is found.
+  const lastCheckedRef = useRef<string | null>(null)
   useEffect(() => {
-    const interval = setInterval(() => {
-      loadInbox()
-    }, 30000)
+    const checkNew = async () => {
+      try {
+        const url = lastCheckedRef.current
+          ? `/api/email/check-new?since=${encodeURIComponent(lastCheckedRef.current)}`
+          : "/api/email/check-new"
+        const res = await fetch(url)
+        if (!res.ok) return
+        const data = await res.json()
+
+        if (lastCheckedRef.current && data.newCount > 0) {
+          // New email detected in our DB — now refresh from Zoho
+          const from = data.latestFrom || ""
+          const name = from.includes("<") ? from.split("<")[0].trim().replace(/"/g, "") : from.split("@")[0]
+          setToast(`New email from ${name}`)
+          loadInbox()
+        }
+
+        if (data.latestAt) lastCheckedRef.current = data.latestAt
+      } catch {
+        // Non-critical
+      }
+    }
+
+    // Initial baseline (don't trigger refresh — loadInbox already ran)
+    fetch("/api/email/check-new").then(r => r.json()).then(d => {
+      if (d.latestAt) lastCheckedRef.current = d.latestAt
+    }).catch(() => {})
+
+    const interval = setInterval(checkNew, 30000)
     return () => clearInterval(interval)
   }, [loadInbox])
+
+  // Reset thread view when nav switches back to inbox
+  useEffect(() => {
+    if (isActive) setSelectedThread(null)
+  }, [isActive])
 
   // Auto-dismiss toast after 5 seconds
   useEffect(() => {
