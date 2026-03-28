@@ -12,6 +12,7 @@ import { Mail } from "lucide-react"
 export function EmailNotificationToast() {
   const [toast, setToast] = useState<string | null>(null)
   const prevLatestIdRef = useRef<string | null>(null)
+  const prevArchivedLatestIdRef = useRef<string | null>(null)
   const initializedRef = useRef(false)
 
   useEffect(() => {
@@ -21,22 +22,33 @@ export function EmailNotificationToast() {
         if (!res.ok) return
         const data = await res.json()
         const threads = data.threads || []
-        if (threads.length === 0) return
+        const archivedThreads = data.archivedThreads || []
 
-        const latestId = threads[0].threadId
+        // Combine both for "latest" detection
+        const allThreads = [...threads, ...archivedThreads]
+          .sort((a: any, b: any) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime())
+
+        const latestInbox = threads[0]?.threadId || null
+        const latestArchived = archivedThreads[0]?.threadId || null
 
         if (!initializedRef.current) {
-          // First check — just record the baseline, don't show toast
-          prevLatestIdRef.current = latestId
+          prevLatestIdRef.current = latestInbox
+          prevArchivedLatestIdRef.current = latestArchived
           initializedRef.current = true
           return
         }
 
-        if (prevLatestIdRef.current && latestId !== prevLatestIdRef.current) {
+        // Check inbox for new email
+        if (latestInbox && prevLatestIdRef.current && latestInbox !== prevLatestIdRef.current) {
           setToast(`New email from ${threads[0].otherName}`)
         }
+        // Check archived threads for new email
+        else if (latestArchived && prevArchivedLatestIdRef.current && latestArchived !== prevArchivedLatestIdRef.current) {
+          setToast(`New email from ${archivedThreads[0].otherName}`)
+        }
 
-        prevLatestIdRef.current = latestId
+        prevLatestIdRef.current = latestInbox
+        prevArchivedLatestIdRef.current = latestArchived
       } catch {
         // Non-critical — silently ignore
       }

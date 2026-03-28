@@ -824,7 +824,7 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
         {/* Content — fills rest, overflow managed internally */}
         <div className="flex-1 min-w-0 min-h-0 overflow-hidden bg-background">
           {/* InboxView always mounted to keep 30s polling alive for archive updates */}
-          <div className={isInbox ? "" : "hidden"}>
+          <div className={isInbox ? "h-full" : "hidden"}>
             <InboxView
               onUnreadCountChange={setUnreadCount}
               onArchivedThreadsUpdate={handleArchivedThreadsUpdate}
