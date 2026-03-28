@@ -799,7 +799,18 @@ function FoldersView() {
 export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | null }) {
   const [tab, setTab] = useState<Tab>("inbox")
   const [unreadCount, setUnreadCount] = useState(0)
-  // Unread count is updated by InboxView's polling — no separate fetch needed
+
+  // Lock page scroll while email page is open — prevent footer from showing
+  useEffect(() => {
+    const prevBody = document.body.style.overflow
+    const prevHtml = document.documentElement.style.overflow
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prevBody
+      document.documentElement.style.overflow = prevHtml
+    }
+  }, [])
 
   const tabs: { id: Tab; label: string; icon: React.ElementType; badge?: number }[] = [
     { id: "inbox", label: "Inbox", icon: Inbox, badge: unreadCount },
@@ -807,7 +818,7 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
   ]
 
   return (
-    <div className="fixed inset-0 top-[3.5rem] flex flex-col overflow-hidden bg-background z-10 mx-auto max-w-7xl px-4 pt-6 lg:px-8 lg:pt-8">
+    <div className="flex flex-col -mx-4 -my-6 lg:-mx-8 lg:-my-8 h-[calc(100vh-3.5rem)] overflow-hidden">
       {/* Page header — pinned */}
       <div className="shrink-0 border-b border-border bg-card px-4 pb-4 pt-6 lg:px-8 lg:pt-8">
         <div className="flex items-end justify-between gap-4">
