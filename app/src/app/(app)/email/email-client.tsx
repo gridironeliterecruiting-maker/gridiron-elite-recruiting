@@ -23,7 +23,6 @@ import {
   ChevronLeft,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { createClient as createBrowserSupabase } from "@/lib/supabase/client"
 import { RecruitingEmailBadge } from "@/components/recruiting-email-badge"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -425,54 +424,73 @@ function ConversationView({ thread, onBack, onArchived, onDeleted }: {
 
 // ─── Inbox View ──────────────────────────────────────────────────────────────
 
-function InboxView({ initialThreads }: { initialThreads: Thread[] }) {
-  // Initial data comes from server component — no client-side fetch on mount.
-  // This follows the Supabase documented pattern: server fetches, client subscribes.
-  const [threads, setThreads] = useState<Thread[]>(initialThreads)
-  const [loading, setLoading] = useState(false)
+function InboxView({ onUnreadCountChange }: { onUnreadCountChange?: (count: number) => void }) {
+  const [threads, setThreads] = useState<Thread[]>([])
+  const [loading, setLoading] = useState(true)
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  const isFirstLoad = useRef(true)
+  const prevLatestIdRef = useRef<string | null>(null)
   const listScrollRef = useRef<HTMLDivElement>(null)
   const savedScrollTop = useRef(0)
 
-  // loadInbox is only used for Realtime refresh — NOT for initial load
   const loadInbox = useCallback(async () => {
+    const firstLoad = isFirstLoad.current
+    if (firstLoad) setLoading(true)
     try {
       const res = await fetch("/api/email/inbox")
       if (res.ok) {
         const data = await res.json()
         const incoming: Thread[] = data.threads || []
+
+        // Detect new email — compare latest thread ID
+        if (!firstLoad && incoming.length > 0) {
+          const newLatestId = incoming[0].threadId
+          if (prevLatestIdRef.current && newLatestId !== prevLatestIdRef.current) {
+            setToast(`New email from ${incoming[0].otherName}`)
+          }
+        }
+        if (incoming.length > 0) {
+          prevLatestIdRef.current = incoming[0].threadId
+        }
+
         setThreads(incoming)
         setSelectedThread(prev => {
           if (!prev) return prev
           return incoming.find(t => t.threadId === prev.threadId) || prev
         })
+
+        // Update unread count in parent
+        const unreadCount = incoming.reduce((sum, t) => sum + t.unreadCount, 0)
+        onUnreadCountChange?.(unreadCount)
       }
-    } catch { /* non-critical */ }
-  }, [])
-
-  // Realtime subscription — matching official Supabase UI component pattern:
-  // github.com/supabase/supabase/apps/ui-library/registry/default/blocks/realtime-chat
-  // Public channel, no setAuth(), no private config, simple subscribe
-  useEffect(() => {
-    const supabase = createBrowserSupabase()
-
-    const channel = supabase
-      .channel('email-notifications:updates')
-      .on('broadcast', { event: 'INSERT' }, () => {
-        loadInbox()
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('[email] Realtime connected!')
-        } else {
-          console.log('[email] Realtime status:', status)
-        }
-      })
-
-    return () => {
-      supabase.removeChannel(channel)
+    } finally {
+      if (firstLoad) {
+        isFirstLoad.current = false
+        setLoading(false)
+      }
     }
+  }, [onUnreadCountChange])
+
+  // Initial load
+  useEffect(() => {
+    loadInbox()
   }, [loadInbox])
+
+  // Silent polling every 30 seconds — no page refresh, no disruption
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadInbox()
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [loadInbox])
+
+  // Auto-dismiss toast after 5 seconds
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(null), 5000)
+    return () => clearTimeout(timer)
+  }, [toast])
 
   const handleSelectThread = (thread: Thread) => {
     // Save scroll position before navigating into thread
@@ -552,7 +570,13 @@ function InboxView({ initialThreads }: { initialThreads: Thread[] }) {
   }
 
   return (
-    <div className="h-full overflow-y-auto" ref={listScrollRef}>
+    <div className="relative h-full overflow-y-auto" ref={listScrollRef}>
+      {/* Toast notification for new email */}
+      {toast && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top fade-in bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg text-sm font-medium">
+          {toast}
+        </div>
+      )}
       {threads.map(thread => (
         <ThreadRow
           key={thread.threadId}
@@ -797,14 +821,10 @@ function FoldersView() {
 
 // ─── Main EmailClient ─────────────────────────────────────────────────────────
 
-export function EmailClient({ recruitingEmail, initialThreads = [], initialUnreadCount = 0 }: {
-  recruitingEmail?: string | null
-  initialThreads?: Thread[]
-  initialUnreadCount?: number
-}) {
+export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | null }) {
   const [tab, setTab] = useState<Tab>("inbox")
-  const [unreadCount, setUnreadCount] = useState(initialUnreadCount)
-  // No client-side fetch on mount — initial data comes from server component
+  const [unreadCount, setUnreadCount] = useState(0)
+  // Unread count is updated by InboxView's polling — no separate fetch needed
 
   const tabs: { id: Tab; label: string; icon: React.ElementType; badge?: number }[] = [
     { id: "inbox", label: "Inbox", icon: Inbox, badge: unreadCount },
@@ -869,7 +889,7 @@ export function EmailClient({ recruitingEmail, initialThreads = [], initialUnrea
 
         {/* Content — fills rest, overflow managed internally */}
         <div className="flex-1 min-w-0 min-h-0 overflow-hidden bg-background">
-          {tab === "inbox" && <InboxView initialThreads={initialThreads} />}
+          {tab === "inbox" && <InboxView onUnreadCountChange={setUnreadCount} />}
           {tab === "folders" && <FoldersView />}
         </div>
       </div>
