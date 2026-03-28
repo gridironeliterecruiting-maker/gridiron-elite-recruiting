@@ -47,6 +47,8 @@ interface ThreadMessage {
   is_read: boolean
 }
 
+type Tab = "inbox" | "folders"
+
 interface ArchiveProgram {
   programName: string
   programId: string | null
@@ -426,7 +428,9 @@ function InboxView({ onUnreadCountChange, onArchived: onArchivedCallback }: { on
   const [threads, setThreads] = useState<Thread[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
   const isFirstLoad = useRef(true)
+  const prevLatestIdRef = useRef<string | null>(null)
   const listScrollRef = useRef<HTMLDivElement>(null)
   const savedScrollTop = useRef(0)
 
@@ -438,6 +442,17 @@ function InboxView({ onUnreadCountChange, onArchived: onArchivedCallback }: { on
       if (res.ok) {
         const data = await res.json()
         const incoming: Thread[] = data.threads || []
+
+        // Detect new email — compare latest thread ID
+        if (!firstLoad && incoming.length > 0) {
+          const newLatestId = incoming[0].threadId
+          if (prevLatestIdRef.current && newLatestId !== prevLatestIdRef.current) {
+            setToast(`New email from ${incoming[0].otherName}`)
+          }
+        }
+        if (incoming.length > 0) {
+          prevLatestIdRef.current = incoming[0].threadId
+        }
 
         setThreads(incoming)
         setSelectedThread(prev => {
@@ -470,6 +485,12 @@ function InboxView({ onUnreadCountChange, onArchived: onArchivedCallback }: { on
     return () => clearInterval(interval)
   }, [loadInbox])
 
+  // Auto-dismiss toast after 5 seconds
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(null), 5000)
+    return () => clearTimeout(timer)
+  }, [toast])
 
   const handleSelectThread = (thread: Thread) => {
     // Save scroll position before navigating into thread
@@ -550,7 +571,13 @@ function InboxView({ onUnreadCountChange, onArchived: onArchivedCallback }: { on
   }
 
   return (
-    <div className="h-full overflow-y-auto" ref={listScrollRef}>
+    <div className="relative h-full overflow-y-auto" ref={listScrollRef}>
+      {/* Toast notification for new email */}
+      {toast && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top fade-in bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg text-sm font-medium">
+          {toast}
+        </div>
+      )}
       {threads.map(thread => (
         <ThreadRow
           key={thread.threadId}
@@ -634,7 +661,7 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
     : null
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col -mx-4 -my-6 lg:-mx-8 lg:-my-8 h-[calc(100vh-4rem)] overflow-hidden">
       {/* Page header — pinned */}
       <div className="shrink-0 border-b border-border bg-card px-4 pb-4 pt-6 lg:px-8 lg:pt-8">
         <div className="flex items-end justify-between gap-4">
@@ -663,10 +690,10 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
         </div>
       </div>
 
-      {/* Main — sidebar + content */}
-      <div className="flex min-h-[400px]">
-        {/* Left nav */}
-        <nav className="flex w-[72px] shrink-0 flex-col border-r border-border bg-card md:w-48">
+      {/* Main — pinned sidebar + scrollable content */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Left nav — pinned */}
+        <nav className="flex w-[72px] shrink-0 flex-col border-r border-border bg-card py-2 md:w-48 overflow-y-auto">
           {/* Inbox row */}
           <button
             onClick={() => setNav({ type: "inbox" })}
@@ -739,8 +766,8 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
           </div>
         </nav>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0 bg-background">
+        {/* Content — fills rest, overflow managed internally */}
+        <div className="flex-1 min-w-0 min-h-0 overflow-hidden bg-background">
           {isInbox && (
             <InboxView
               onUnreadCountChange={setUnreadCount}
