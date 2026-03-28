@@ -7,17 +7,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import {
   Inbox,
   Send,
-  FolderOpen,
-  ChevronDown,
-  ChevronRight,
-  Folder,
-  User,
   Reply,
   Archive,
   Loader2,
   Mail,
-  ArrowLeft,
-  Building2,
   Trash2,
   Plus,
   ChevronLeft,
@@ -54,25 +47,26 @@ interface ThreadMessage {
   is_read: boolean
 }
 
-interface FolderEmail {
-  id: string
-  thread_id: string | null
-  from_name: string | null
-  from_email: string | null
-  coach_name: string | null
-  program_name: string | null
-  subject: string
-  snippet: string
-  received_at: string | null
-  filed_at: string
+interface ArchiveProgram {
+  programName: string
+  programId: string | null
+  logoUrl: string | null
+  threadCount: number
+  threads: {
+    id: string
+    threadId: string | null
+    subject: string
+    snippet: string
+    otherName: string
+    otherEmail: string
+    receivedAt: string | null
+    filedAt: string
+    messageCount: number
+  }[]
 }
 
-interface CoachFolder { coach_id: string | null; coach_name: string; emails: FolderEmail[] }
-interface SchoolFolder { program_id: string | null; school_name: string; coaches: CoachFolder[] }
-interface ConferenceFolder { conference: string; schools: SchoolFolder[] }
-interface DivisionFolder { division: string; conferences: ConferenceFolder[] }
-
-type Tab = "inbox" | "folders"
+// Nav state: "inbox" or a program name from archives
+type NavSelection = { type: "inbox" } | { type: "archive"; programName: string }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -265,13 +259,15 @@ function ConversationView({ thread, onBack, onArchived, onDeleted }: {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          gmailMessageId: thread.latestReceivedId,
+          messageId: thread.latestReceivedId,
           threadId: thread.threadId,
           fromEmail: thread.otherEmail,
           fromName: thread.otherName,
           subject: thread.subject,
           snippet: thread.snippet,
           receivedAt: thread.latestAt,
+          coachName: thread.otherName,
+          programName: thread.schoolName || null,
         }),
       })
       onArchived(thread.threadId)
@@ -424,7 +420,7 @@ function ConversationView({ thread, onBack, onArchived, onDeleted }: {
 
 // ─── Inbox View ──────────────────────────────────────────────────────────────
 
-function InboxView({ onUnreadCountChange }: { onUnreadCountChange?: (count: number) => void }) {
+function InboxView({ onUnreadCountChange, onArchived: onArchivedCallback }: { onUnreadCountChange?: (count: number) => void; onArchived?: () => void }) {
   const [threads, setThreads] = useState<Thread[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null)
@@ -498,6 +494,7 @@ function InboxView({ onUnreadCountChange }: { onUnreadCountChange?: (count: numb
   const handleArchived = (threadId: string) => {
     setThreads(prev => prev.filter(t => t.threadId !== threadId))
     setSelectedThread(null)
+    onArchivedCallback?.()
   }
 
   const handleDeleted = (threadId: string) => {
@@ -564,232 +561,42 @@ function InboxView({ onUnreadCountChange }: { onUnreadCountChange?: (count: numb
   )
 }
 
-// ─── Folders View ────────────────────────────────────────────────────────────
+// ─── Archive Program View ─────────────────────────────────────────────────────
 
-function FoldersView() {
-  const [divisions, setDivisions] = useState<DivisionFolder[]>([])
-  const [loading, setLoading] = useState(true)
-  const [expandedDivisions, setExpandedDivisions] = useState<Record<string, boolean>>({})
-  const [expandedConferences, setExpandedConferences] = useState<Record<string, boolean>>({})
-  const [expandedSchools, setExpandedSchools] = useState<Record<string, boolean>>({})
-  const [expandedCoaches, setExpandedCoaches] = useState<Record<string, boolean>>({})
-  const [selected, setSelected] = useState<FolderEmail | null>(null)
-  const [showReply, setShowReply] = useState(false)
-  const [replyBody, setReplyBody] = useState("")
-  const [sending, setSending] = useState(false)
-  const [sent, setSent] = useState(false)
-  const replyTextareaRef = useRef<HTMLTextAreaElement>(null)
-
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true)
-      try {
-        const res = await fetch("/api/email/folders")
-        if (res.ok) {
-          const data = await res.json()
-          setDivisions(data.divisions || [])
-        }
-      } finally { setLoading(false) }
-    }
-    load()
-  }, [])
-
-  useEffect(() => {
-    if (showReply) replyTextareaRef.current?.focus()
-  }, [showReply])
-
-  const toggle = (setter: React.Dispatch<React.SetStateAction<Record<string, boolean>>>, key: string) =>
-    setter(prev => ({ ...prev, [key]: !prev[key] }))
-
-  const handleReply = async () => {
-    if (!selected || !replyBody.trim() || !selected.from_email) return
-    setSending(true)
-    try {
-      const res = await fetch("/api/email/reply", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          gmailMessageId: selected.id,
-          threadId: selected.thread_id,
-          toEmail: selected.from_email,
-          toName: selected.from_name || undefined,
-          replyBody,
-        }),
-      })
-      if (res.ok) {
-        setSent(true)
-        setReplyBody("")
-        setShowReply(false)
-      } else {
-        const err = await res.json()
-        alert(err.error || "Failed to send reply")
-      }
-    } catch {
-      alert("Network error. Please try again.")
-    } finally { setSending(false) }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex h-full gap-0">
-        <div className="w-full md:w-64 border-r border-border p-4">
-          <Skeleton className="h-4 w-1/2 mb-3" />
-          <Skeleton className="h-3 w-2/3 mb-2 ml-4" />
-        </div>
-      </div>
-    )
-  }
-
-  if (divisions.length === 0) {
+function ArchiveProgramView({ program }: { program: ArchiveProgram }) {
+  if (program.threads.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-16 text-center px-4">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-          <FolderOpen className="h-8 w-8 text-muted-foreground/40" />
+          <Archive className="h-8 w-8 text-muted-foreground/40" />
         </div>
         <p className="mt-4 text-sm font-medium text-muted-foreground">
-          No filed emails yet. Use Archive in your inbox to organize responses.
+          No archived emails from {program.programName}.
         </p>
       </div>
     )
   }
 
   return (
-    <div className="flex h-full min-h-0">
-      {/* Folder tree */}
-      <div className={cn(
-        "flex-col border-r border-border overflow-y-auto w-full md:flex md:w-64 shrink-0",
-        selected ? "hidden md:flex" : "flex"
-      )}>
-        <div className="p-3">
-          {divisions.map((div) => {
-            const divKey = div.division
-            const divOpen = expandedDivisions[divKey] !== false
-            return (
-              <div key={divKey} className="mb-1">
-                <button onClick={() => toggle(setExpandedDivisions, divKey)}
-                  className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs font-bold uppercase tracking-wider text-primary hover:bg-primary/5">
-                  {divOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
-                  <Folder className="h-3.5 w-3.5 shrink-0" />
-                  {div.division}
-                </button>
-                {divOpen && div.conferences.map((conf) => {
-                  const confKey = `${divKey}-${conf.conference}`
-                  const confOpen = expandedConferences[confKey] !== false
-                  return (
-                    <div key={confKey} className="ml-4">
-                      <button onClick={() => toggle(setExpandedConferences, confKey)}
-                        className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs font-semibold text-foreground hover:bg-muted/50">
-                        {confOpen ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
-                        <FolderOpen className="h-3 w-3 shrink-0 text-muted-foreground" />
-                        <span className="truncate">{conf.conference}</span>
-                      </button>
-                      {confOpen && conf.schools.map((school) => {
-                        const schoolKey = `${confKey}-${school.program_id || school.school_name}`
-                        const schoolOpen = expandedSchools[schoolKey]
-                        return (
-                          <div key={schoolKey} className="ml-4">
-                            <button onClick={() => toggle(setExpandedSchools, schoolKey)}
-                              className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs text-foreground hover:bg-muted/50">
-                              {schoolOpen ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
-                              <Building2 className="h-3 w-3 shrink-0 text-muted-foreground" />
-                              <span className="truncate">{school.school_name}</span>
-                            </button>
-                            {schoolOpen && school.coaches.map((coach) => {
-                              const coachKey = `${schoolKey}-${coach.coach_id || coach.coach_name}`
-                              const coachOpen = expandedCoaches[coachKey]
-                              return (
-                                <div key={coachKey} className="ml-4">
-                                  <button onClick={() => toggle(setExpandedCoaches, coachKey)}
-                                    className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-muted/50">
-                                    {coachOpen ? <ChevronDown className="h-3 w-3 shrink-0" /> : <ChevronRight className="h-3 w-3 shrink-0" />}
-                                    <User className="h-3 w-3 shrink-0" />
-                                    <span className="truncate flex-1">{coach.coach_name}</span>
-                                    <span className="ml-auto shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">{coach.emails.length}</span>
-                                  </button>
-                                  {coachOpen && coach.emails.map((email) => (
-                                    <button key={email.id}
-                                      onClick={() => { setSelected(email); setShowReply(false); setSent(false) }}
-                                      className={cn(
-                                        "ml-4 flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-muted/50",
-                                        selected?.id === email.id && "bg-primary/5 text-primary font-medium"
-                                      )}>
-                                      <Mail className="h-3 w-3 shrink-0" />
-                                      <span className="truncate flex-1">{email.subject}</span>
-                                      <span className="shrink-0 text-[10px]">{email.filed_at ? formatDate(email.filed_at) : ""}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                              )
-                            })}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })}
+    <div className="h-full overflow-y-auto">
+      {program.threads.map(thread => (
+        <div
+          key={thread.id}
+          className="flex items-center gap-3 px-4 py-3 border-b border-border text-left"
+        >
+          <ThreadLogo logoUrl={program.logoUrl} schoolName={program.programName} otherName={thread.otherName} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate text-sm font-medium text-foreground">
+                {thread.otherName}
+              </span>
+              <span className="shrink-0 text-xs text-muted-foreground">{formatDate(thread.receivedAt)}</span>
+            </div>
+            <p className="text-xs text-muted-foreground truncate mt-0.5">{thread.subject}</p>
+            <p className="text-xs text-muted-foreground/60 truncate mt-0.5">{thread.snippet}</p>
+          </div>
         </div>
-      </div>
-
-      {/* Reading pane */}
-      <div className={cn("flex-1 overflow-hidden flex-col min-h-0", selected ? "flex" : "hidden md:flex")}>
-        {selected ? (
-          <div className="flex h-full flex-col">
-            <div className="shrink-0 border-b border-border px-4 py-3 flex items-center gap-3">
-              <button onClick={() => setSelected(null)} className="md:hidden text-muted-foreground hover:text-foreground">
-                <ArrowLeft className="h-4 w-4" />
-              </button>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-sm font-semibold text-foreground truncate">{selected.subject}</h2>
-                <p className="text-xs text-muted-foreground">
-                  {selected.coach_name || selected.from_name || selected.from_email}
-                  {selected.received_at && <> · {new Date(selected.received_at).toLocaleString()}</>}
-                </p>
-              </div>
-              {selected.from_email && (
-                <button onClick={() => setShowReply(r => !r)}
-                  className="flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
-                  <Reply className="h-3.5 w-3.5" /> Reply
-                </button>
-              )}
-            </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                {selected.snippet || "(No preview available)"}
-              </p>
-              {sent && (
-                <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-                  Reply sent successfully.
-                </div>
-              )}
-              {showReply && (
-                <div className="mt-4 rounded-2xl border border-primary/30 bg-card p-4">
-                  <textarea ref={replyTextareaRef}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                    rows={4} placeholder="Type your reply..." value={replyBody}
-                    onChange={(e) => setReplyBody(e.target.value)} />
-                  <div className="mt-2 flex justify-end gap-2">
-                    <Button size="sm" variant="outline" onClick={() => { setShowReply(false); setReplyBody("") }}>Cancel</Button>
-                    <Button size="sm" onClick={handleReply} disabled={sending || !replyBody.trim()}
-                      className="bg-primary text-primary-foreground hover:bg-primary/90">
-                      {sending ? <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" />Sending...</> : <><Send className="mr-1.5 h-3 w-3" />Send</>}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <FolderOpen className="h-10 w-10 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">Select an email to read</p>
-            </div>
-          </div>
-        )}
-      </div>
+      ))}
     </div>
   )
 }
@@ -797,8 +604,10 @@ function FoldersView() {
 // ─── Main EmailClient ─────────────────────────────────────────────────────────
 
 export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | null }) {
-  const [tab, setTab] = useState<Tab>("inbox")
+  const [nav, setNav] = useState<NavSelection>({ type: "inbox" })
   const [unreadCount, setUnreadCount] = useState(0)
+  const [archivePrograms, setArchivePrograms] = useState<ArchiveProgram[]>([])
+  const [archivesLoading, setArchivesLoading] = useState(true)
 
   // Lock page scroll while email page is open — prevent footer from showing
   useEffect(() => {
@@ -812,13 +621,30 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
     }
   }, [])
 
-  const tabs: { id: Tab; label: string; icon: React.ElementType; badge?: number }[] = [
-    { id: "inbox", label: "Inbox", icon: Inbox, badge: unreadCount },
-    { id: "folders", label: "Folders", icon: FolderOpen },
-  ]
+  // Load archive programs for the sidebar
+  const loadArchives = useCallback(async () => {
+    try {
+      const res = await fetch("/api/email/archives")
+      if (res.ok) {
+        const data = await res.json()
+        setArchivePrograms(data.programs || [])
+      }
+    } finally {
+      setArchivesLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadArchives()
+  }, [loadArchives])
+
+  const isInbox = nav.type === "inbox"
+  const selectedProgram = nav.type === "archive"
+    ? archivePrograms.find(p => p.programName === nav.programName) || null
+    : null
 
   return (
-    <div className="flex flex-col -mx-4 -my-6 lg:-mx-8 lg:-my-8 h-[calc(100vh-3.5rem)] overflow-hidden">
+    <div className="flex flex-col -mx-4 -my-6 lg:-mx-8 lg:-my-8 h-[calc(100vh-4rem)] overflow-hidden">
       {/* Page header — pinned */}
       <div className="shrink-0 border-b border-border bg-card px-4 pb-4 pt-6 lg:px-8 lg:pt-8">
         <div className="flex items-end justify-between gap-4">
@@ -850,33 +676,88 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
       {/* Main — pinned sidebar + scrollable content */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Left nav — pinned */}
-        <nav className="flex w-[72px] shrink-0 flex-col border-r border-border bg-card py-2 md:w-44">
-          {tabs.map(({ id, label, icon: Icon, badge }) => (
-            <button key={id} onClick={() => setTab(id)}
-              className={cn(
-                "relative flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors md:px-4",
-                tab === id
-                  ? "bg-primary/10 text-primary font-semibold border-l-2 border-primary"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              )}>
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline">{label}</span>
-              {badge !== undefined && badge > 0 && (
-                <Badge className="ml-auto hidden h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-accent p-0 text-[10px] font-bold text-white md:flex">
-                  {badge > 99 ? "99+" : badge}
-                </Badge>
-              )}
-              {badge !== undefined && badge > 0 && (
-                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-accent md:hidden" />
-              )}
-            </button>
-          ))}
+        <nav className="flex w-[72px] shrink-0 flex-col border-r border-border bg-card md:w-48 overflow-y-auto">
+          {/* Inbox row */}
+          <button
+            onClick={() => setNav({ type: "inbox" })}
+            className={cn(
+              "relative flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors md:px-4",
+              isInbox
+                ? "bg-primary/10 text-primary font-semibold border-l-2 border-primary"
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            )}
+          >
+            <Inbox className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline">Inbox</span>
+            {unreadCount > 0 && (
+              <Badge className="ml-auto hidden h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-accent p-0 text-[10px] font-bold text-white md:flex">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </Badge>
+            )}
+            {unreadCount > 0 && (
+              <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-accent md:hidden" />
+            )}
+          </button>
+
+          {/* Archives section */}
+          <div className="mt-3 border-t border-border pt-2">
+            {/* Archives label — static, not clickable */}
+            <div className="flex items-center gap-2 px-3 py-1.5 md:px-4">
+              <Archive className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+              <span className="hidden md:inline text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                Archives
+              </span>
+            </div>
+
+            {/* Program list */}
+            {archivesLoading ? (
+              <div className="px-3 py-2 md:px-4">
+                <Skeleton className="h-3 w-20 mb-2" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            ) : archivePrograms.length === 0 ? (
+              <p className="hidden md:block px-4 py-2 text-[10px] text-muted-foreground/50">
+                No archived emails yet
+              </p>
+            ) : (
+              archivePrograms.map(prog => {
+                const isSelected = nav.type === "archive" && nav.programName === prog.programName
+                return (
+                  <button
+                    key={prog.programName}
+                    onClick={() => setNav({ type: "archive", programName: prog.programName })}
+                    className={cn(
+                      "relative flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors md:px-4",
+                      isSelected
+                        ? "bg-primary/10 text-primary font-semibold border-l-2 border-primary"
+                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    )}
+                  >
+                    {prog.logoUrl ? (
+                      <img src={prog.logoUrl} alt="" className="h-4 w-4 shrink-0 rounded object-contain" />
+                    ) : (
+                      <Mail className="h-4 w-4 shrink-0" />
+                    )}
+                    <span className="hidden md:inline truncate text-xs">{prog.programName}</span>
+                    <span className="ml-auto hidden md:inline shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      {prog.threadCount}
+                    </span>
+                  </button>
+                )
+              })
+            )}
+          </div>
         </nav>
 
         {/* Content — fills rest, overflow managed internally */}
         <div className="flex-1 min-w-0 min-h-0 overflow-hidden bg-background">
-          {tab === "inbox" && <InboxView onUnreadCountChange={setUnreadCount} />}
-          {tab === "folders" && <FoldersView />}
+          {isInbox && (
+            <InboxView
+              onUnreadCountChange={setUnreadCount}
+              onArchived={loadArchives}
+            />
+          )}
+          {selectedProgram && <ArchiveProgramView program={selectedProgram} />}
         </div>
       </div>
     </div>
