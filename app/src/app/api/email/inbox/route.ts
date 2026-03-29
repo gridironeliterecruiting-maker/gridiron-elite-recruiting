@@ -77,17 +77,24 @@ export async function GET() {
     const responses = await Promise.all(fetches)
 
     const rawThreads: any[] = []
-    for (const res of responses) {
+    for (let i = 0; i < responses.length; i++) {
+      const res = responses[i]
+      const source = i === 0 ? 'INBOX' : 'SENT'
       if (!res.ok) {
-        console.error('[inbox] Zoho threads error:', res.status)
+        console.error(`[inbox] Zoho ${source} error:`, res.status)
         continue
       }
       const data = await res.json()
       if (data?.status?.code && data.status.code !== 200) {
-        console.error('[inbox] Zoho API error:', data.status)
+        console.error(`[inbox] Zoho ${source} API error:`, data.status)
         continue
       }
-      rawThreads.push(...(data?.data || []))
+      const folderThreads = data?.data || []
+      console.error(`[DIAG] ${source} raw count: ${folderThreads.length}`)
+      for (const t of folderThreads) {
+        console.error(`[DIAG] ${source} thread: id=${t.threadId} subj="${(t.subject || '').substring(0, 50)}" from="${t.fromAddress || t.sender || ''}"`)
+      }
+      rawThreads.push(...folderThreads)
     }
 
     // Deduplicate by threadId — includesent=true can return the same thread twice
@@ -102,6 +109,10 @@ export async function GET() {
       }
     }
     const zohoThreads = [...threadMap.values()]
+    console.error(`[DIAG] after dedup: ${zohoThreads.length} threads`)
+    for (const t of zohoThreads) {
+      console.error(`[DIAG] deduped: id=${t.threadId} subj="${(t.subject || '').substring(0, 50)}"`)
+    }
 
     // 3. Build normalised thread list from Zoho thread objects
     const threads = zohoThreads.map((t: any) => {
@@ -148,8 +159,17 @@ export async function GET() {
     })
       // Only drop threads where we are talking to ourselves (otherEmail = our own address).
       // Do NOT drop threads where otherEmail is empty — we'd lose replied-to threads.
-      .filter(t => t.threadId && t.otherEmail !== workspaceEmail)
+      .filter(t => {
+        const dominated = !t.threadId || t.otherEmail === workspaceEmail
+        if (dominated) console.error(`[DIAG] FILTERED OUT: id=${t.threadId} otherEmail=${t.otherEmail} workspaceEmail=${workspaceEmail}`)
+        return !dominated
+      })
       .sort((a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime())
+
+    console.error(`[DIAG] after filter: ${threads.length} threads`)
+    for (const t of threads) {
+      console.error(`[DIAG] filtered: id=${t.threadId} subj="${t.subject.substring(0, 50)}" other=${t.otherEmail}`)
+    }
 
     // 4. Batch logo + coach name lookup from our database
     const otherEmails = [...new Set(threads.map(t => t.otherEmail).filter(Boolean))]
@@ -222,6 +242,14 @@ export async function GET() {
       } else {
         inboxThreads.push(thread)
       }
+    }
+
+    console.error(`[DIAG] FINAL: inbox=${inboxThreads.length} archived=${archivedThreads.length}`)
+    for (const t of inboxThreads) {
+      console.error(`[DIAG] INBOX: id=${t.threadId} subj="${t.subject.substring(0, 50)}" other=${t.otherEmail}`)
+    }
+    for (const t of archivedThreads) {
+      console.error(`[DIAG] ARCHIVED: id=${t.threadId} subj="${t.subject.substring(0, 50)}" prog=${t.programName}`)
     }
 
     const unreadCount = inboxThreads.reduce((sum, t) => sum + t.unreadCount, 0)
