@@ -85,9 +85,16 @@ export async function GET() {
 
     const rawThreads: any[] = threadsData?.data || []
 
-    // DEBUG: dump ALL keys of first thread so we can find the correct message count field
+    // DEBUG: log candidate message-count fields one per line (avoids log truncation)
     if (rawThreads.length > 0) {
-      console.log('[inbox:debug] first thread all fields:', JSON.stringify(rawThreads[0], null, 2))
+      const t0 = rawThreads[0]
+      console.log('[inbox:debug] threadCount=' + t0.threadCount)
+      console.log('[inbox:debug] messageCount=' + t0.messageCount)
+      console.log('[inbox:debug] count=' + t0.count)
+      console.log('[inbox:debug] noOfMessages=' + t0.noOfMessages)
+      console.log('[inbox:debug] totalCount=' + t0.totalCount)
+      console.log('[inbox:debug] msgCount=' + t0.msgCount)
+      console.log('[inbox:debug] keys=' + Object.keys(t0).join(','))
     }
 
     // Deduplicate by threadId — includesent=true can return the same thread twice
