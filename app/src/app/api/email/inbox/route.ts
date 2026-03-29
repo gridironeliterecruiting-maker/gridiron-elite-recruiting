@@ -253,10 +253,8 @@ export async function GET() {
     diagLines.push(`ARCH_IDS=[${[...archivedThreadIds].join(',')}]`)
     diagLines.push(`ARCH_EMAILS=[${[...archivedEmailKeys].join(',')}]`)
 
-    console.error(`[DIAG]\n${diagLines.join('\n')}`)
-
     const unreadCount = inboxThreads.reduce((sum, t) => sum + t.unreadCount, 0)
-    return NextResponse.json({ threads: inboxThreads, archivedThreads, unreadCount })
+    return NextResponse.json({ threads: inboxThreads, archivedThreads, unreadCount, _diag: diagLines })
   } catch (err: any) {
     console.error('[inbox] unexpected error:', err?.message || err)
     return NextResponse.json({ threads: [], archivedThreads: [], unreadCount: 0 })
