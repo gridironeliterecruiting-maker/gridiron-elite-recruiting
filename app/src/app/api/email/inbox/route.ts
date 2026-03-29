@@ -56,34 +56,46 @@ export async function GET() {
   }
 
   try {
-    // 1. Get inbox folder ID — only inbox threads (with incoming emails) are shown.
-    //    Sent-only threads (campaigns with no reply) are intentionally excluded.
+    // 1. Get folder IDs — need both inbox and sent to find all conversation threads.
+    //    Inbox has threads where last message is incoming.
+    //    Sent has threads where Cael replied last (coach's earlier reply still exists).
     const folders = await getZohoFolders(accountKey)
     const inboxFolderId = findFolderId(folders, 'inbox')
+    const sentFolderId = findFolderId(folders, 'sent')
     if (!inboxFolderId) {
       return NextResponse.json({ threads: [], archivedThreads: [], unreadCount: 0 })
     }
 
-    // 2. Fetch inbox threads only — threads where a coach replied show here.
+    // 2. Fetch inbox + sent in parallel to get complete thread list.
     const diagLines: string[] = []
-    const inboxRes = await zohoFetch(
-      `${ZOHO_API_BASE}/accounts/${accountKey}/threads?folderId=${inboxFolderId}&limit=100`,
-      {}
-    )
+    const fetches: Promise<Response>[] = [
+      zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/threads?folderId=${inboxFolderId}&limit=100`, {}),
+    ]
+    if (sentFolderId) {
+      fetches.push(zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/threads?folderId=${sentFolderId}&limit=100`, {}))
+    }
+    const responses = await Promise.all(fetches)
 
-    let rawEntries: any[] = []
-    if (!inboxRes.ok) {
-      diagLines.push(`INBOX ERROR ${inboxRes.status}`)
-    } else {
-      const data = await inboxRes.json()
+    // Track which threadIds appear in inbox — used to filter sent-only campaigns
+    const inboxThreadIds = new Set<string>()
+    const rawEntries: any[] = []
+    for (let i = 0; i < responses.length; i++) {
+      const res = responses[i]
+      const source = i === 0 ? 'INBOX' : 'SENT'
+      if (!res.ok) {
+        diagLines.push(`${source} ERROR ${res.status}`)
+        continue
+      }
+      const data = await res.json()
       if (data?.status?.code && data.status.code !== 200) {
-        diagLines.push(`INBOX API ERROR ${JSON.stringify(data.status)}`)
-      } else {
-        rawEntries = data?.data || []
-        diagLines.push(`INBOX raw=${rawEntries.length}`)
-        for (const t of rawEntries) {
-          diagLines.push(`  RAW:${t.threadId}|msgId=${t.messageId}|${(t.subject || '').substring(0, 40)}|from=${(t.fromAddress || '').substring(0, 40)}`)
-        }
+        diagLines.push(`${source} API ERROR ${JSON.stringify(data.status)}`)
+        continue
+      }
+      const entries = data?.data || []
+      diagLines.push(`${source} raw=${entries.length}`)
+      for (const t of entries) {
+        if (i === 0) inboxThreadIds.add(String(t.threadId || ''))
+        rawEntries.push(t)
       }
     }
 
@@ -99,7 +111,7 @@ export async function GET() {
       }
     }
     const zohoThreads = [...threadMap.values()]
-    diagLines.push(`DEDUP=${zohoThreads.length}`)
+    diagLines.push(`DEDUP=${zohoThreads.length} inboxThreadIds=${inboxThreadIds.size}`)
 
     // 3. Build normalised thread list from Zoho thread objects
     const threads = zohoThreads.map((t: any) => {
@@ -208,14 +220,17 @@ export async function GET() {
         if (row.thread_id) {
           archivedStoredIds.add(String(row.thread_id))
           if (row.program_name) programByStoredId.set(String(row.thread_id), row.program_name)
-        } else if (row.from_email) {
-          // Legacy records without thread_id — match by email only
+        }
+        // Always index by email — stored thread_ids may be message IDs (legacy bug)
+        // that don't match any current thread. Email is the reliable fallback.
+        if (row.from_email) {
           const key = (row.from_email || '').toLowerCase()
           archivedEmailKeys.add(key)
           if (row.program_name) programByEmailKey.set(key, row.program_name)
         }
       }
     }
+    diagLines.push(`ARCH stored=${archivedStoredIds.size} emails=${archivedEmailKeys.size} keys=[${[...archivedEmailKeys].join(',')}]`)
 
     const inboxThreads: typeof threads = []
     const archivedThreads: (typeof threads[0] & { programName: string | null })[] = []
