@@ -786,7 +786,7 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
                 const segs = window.location.pathname.split('/').filter(Boolean)
                 const appRoutes = ['hub', 'coaches', 'pipeline', 'outreach', 'profile', 'email']
                 const base = segs.length >= 2 && appRoutes.includes(segs[1]) ? `/${segs[0]}` : ''
-                window.location.href = `${base}/outreach`
+                window.location.href = `${base}/outreach?quickEmail=true`
               }}
               className="bg-accent text-accent-foreground hover:bg-accent/90"
             >
