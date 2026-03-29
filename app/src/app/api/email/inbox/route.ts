@@ -15,8 +15,15 @@ const ZOHO_API_BASE = 'https://mail360.zoho.com/api'
 function parseFrom(fromRaw: string): { name: string; email: string } {
   if (!fromRaw) return { name: '', email: '' }
 
+  // Zoho sent folder entries have HTML-encoded angle brackets — decode first
+  let s = fromRaw
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+
   // RFC 5322: "Name" <email> or Name <email>
-  const rfcMatch = fromRaw.match(/^(.*?)\s*<([^>@\s]+@[^>]+)>/)
+  const rfcMatch = s.match(/^(.*?)\s*<([^>@\s]+@[^>]+)>/)
   if (rfcMatch) {
     const name = rfcMatch[1].trim().replace(/^"|"$/g, '')
     const email = rfcMatch[2].trim().toLowerCase()
@@ -24,7 +31,7 @@ function parseFrom(fromRaw: string): { name: string; email: string } {
   }
 
   // Zoho display format: <Name>email@domain.com
-  const zohoMatch = fromRaw.match(/^<([^>]*)>(.+@.+)$/)
+  const zohoMatch = s.match(/^<([^>]*)>(.+@.+)$/)
   if (zohoMatch) {
     const name = zohoMatch[1].trim()
     const email = zohoMatch[2].trim().toLowerCase()
@@ -32,7 +39,7 @@ function parseFrom(fromRaw: string): { name: string; email: string } {
   }
 
   // Plain email address
-  const plain = fromRaw.trim().toLowerCase()
+  const plain = s.trim().toLowerCase()
   return { name: plain, email: plain }
 }
 
