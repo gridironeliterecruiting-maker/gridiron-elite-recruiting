@@ -56,34 +56,39 @@ export async function GET() {
   }
 
   try {
-    // 1. Get inbox folder ID (needed to scope threads to inbox only)
+    // 1. Get folder IDs for inbox and sent — both are needed to show all threads
     const folders = await getZohoFolders(accountKey)
     const inboxFolderId = findFolderId(folders, 'inbox')
+    const sentFolderId = findFolderId(folders, 'sent')
     if (!inboxFolderId) {
       return NextResponse.json({ threads: [], archivedThreads: [], unreadCount: 0 })
     }
 
-    // 2. Fetch inbox threads using the Threads API — native conversation grouping,
-    //    includes sent replies so we see the full back-and-forth in the list.
-    //    This replaces the old approach of fetching 200 inbox + 200 sent messages
-    //    and grouping manually by subject+sender.
-    const threadsRes = await zohoFetch(
-      `${ZOHO_API_BASE}/accounts/${accountKey}/threads?folderId=${inboxFolderId}&includesent=true&limit=100`,
-      {}
-    )
-
-    if (!threadsRes.ok) {
-      console.error('[inbox] Zoho threads error:', threadsRes.status)
-      return NextResponse.json({ threads: [], archivedThreads: [], unreadCount: 0 })
+    // 2. Fetch inbox threads AND sent threads in parallel.
+    //    Inbox-only misses threads where Cael sent first and coach hasn't replied.
+    //    Sent-only misses threads where a coach reached out cold.
+    //    Both together = complete conversation list.
+    const fetches: Promise<Response>[] = [
+      zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/threads?folderId=${inboxFolderId}&limit=100`, {}),
+    ]
+    if (sentFolderId) {
+      fetches.push(zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/threads?folderId=${sentFolderId}&limit=100`, {}))
     }
+    const responses = await Promise.all(fetches)
 
-    const threadsData = await threadsRes.json()
-    if (threadsData?.status?.code && threadsData.status.code !== 200) {
-      console.error('[inbox] Zoho API error:', threadsData.status)
-      return NextResponse.json({ threads: [], archivedThreads: [], unreadCount: 0 })
+    const rawThreads: any[] = []
+    for (const res of responses) {
+      if (!res.ok) {
+        console.error('[inbox] Zoho threads error:', res.status)
+        continue
+      }
+      const data = await res.json()
+      if (data?.status?.code && data.status.code !== 200) {
+        console.error('[inbox] Zoho API error:', data.status)
+        continue
+      }
+      rawThreads.push(...(data?.data || []))
     }
-
-    const rawThreads: any[] = threadsData?.data || []
 
     // Deduplicate by threadId — includesent=true can return the same thread twice
     // (once as inbox entry, once as sent entry). Keep the entry with the latest receivedTime.
