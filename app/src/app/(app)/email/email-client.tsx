@@ -428,10 +428,11 @@ function ConversationView({ thread, onBack, onArchived, onDeleted, isArchived = 
 
 // ─── Inbox View ──────────────────────────────────────────────────────────────
 
-function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate, isActive }: {
+function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate, isActive, refreshTrigger }: {
   onUnreadCountChange?: (count: number) => void
   onArchivedThreadsUpdate?: (threads: ArchivedThread[]) => void
   isActive?: boolean
+  refreshTrigger?: number
 }) {
   const [threads, setThreads] = useState<Thread[]>([])
   const [loading, setLoading] = useState(true)
@@ -516,6 +517,11 @@ function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate, isActive }: {
   useEffect(() => {
     if (isActive) setSelectedThread(null)
   }, [isActive])
+
+  // Refresh inbox when a thread is moved back from archive
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0) loadInbox()
+  }, [refreshTrigger, loadInbox])
 
   // Auto-dismiss toast after 5 seconds
   useEffect(() => {
@@ -630,7 +636,7 @@ function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate, isActive }: {
 
 // ─── Archive Program View — identical functionality to InboxView ──────────────
 
-function ArchiveProgramView({ program, onMovedToInbox, onUnreadCleared }: { program: ArchiveProgram; onMovedToInbox?: () => void; onUnreadCleared?: (count: number) => void }) {
+function ArchiveProgramView({ program, onMovedToInbox, onUnreadCleared }: { program: ArchiveProgram; onMovedToInbox?: (threadId: string) => void; onUnreadCleared?: (count: number) => void }) {
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null)
   const [threads, setThreads] = useState(program.threads)
   const listScrollRef = useRef<HTMLDivElement>(null)
@@ -666,7 +672,7 @@ function ArchiveProgramView({ program, onMovedToInbox, onUnreadCleared }: { prog
   const handleMovedToInbox = (threadId: string) => {
     setThreads(prev => prev.filter(t => t.threadId !== threadId))
     setSelectedThread(null)
-    onMovedToInbox?.()
+    onMovedToInbox?.(threadId)
   }
 
   if (threads.length === 0) {
@@ -716,6 +722,7 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
   const [nav, setNav] = useState<NavSelection>({ type: "inbox" })
   const [unreadCount, setUnreadCount] = useState(0)
   const [archivePrograms, setArchivePrograms] = useState<ArchiveProgram[]>([])
+  const [inboxRefreshTrigger, setInboxRefreshTrigger] = useState(0)
 
   // Build archive programs from archived threads returned by inbox API
   const handleArchivedThreadsUpdate = useCallback((archivedThreads: ArchivedThread[]) => {
@@ -850,13 +857,23 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
               onUnreadCountChange={setUnreadCount}
               onArchivedThreadsUpdate={handleArchivedThreadsUpdate}
               isActive={isInbox}
+              refreshTrigger={inboxRefreshTrigger}
             />
           </div>
           {selectedProgram && (
             <ArchiveProgramView
               key={selectedProgram.programName}
               program={selectedProgram}
-              onMovedToInbox={() => {/* next poll cycle will update */}}
+              onMovedToInbox={(threadId) => {
+                // Remove from archive state immediately so folder doesn't re-show it
+                setArchivePrograms(prev => prev.map(p =>
+                  p.programName === selectedProgram.programName
+                    ? { ...p, threads: p.threads.filter(t => t.threadId !== threadId) }
+                    : p
+                ))
+                // Trigger inbox refresh so the thread appears there
+                setInboxRefreshTrigger(n => n + 1)
+              }}
               onUnreadCleared={(count) => {
                 // Immediately deduct from the program's badge
                 setArchivePrograms(prev => prev.map(p =>
