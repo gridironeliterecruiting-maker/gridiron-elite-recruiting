@@ -77,22 +77,23 @@ export async function GET() {
     const responses = await Promise.all(fetches)
 
     const rawThreads: any[] = []
+    const diagLines: string[] = []
     for (let i = 0; i < responses.length; i++) {
       const res = responses[i]
       const source = i === 0 ? 'INBOX' : 'SENT'
       if (!res.ok) {
-        console.error(`[inbox] Zoho ${source} error:`, res.status)
+        diagLines.push(`${source} ERROR ${res.status}`)
         continue
       }
       const data = await res.json()
       if (data?.status?.code && data.status.code !== 200) {
-        console.error(`[inbox] Zoho ${source} API error:`, data.status)
+        diagLines.push(`${source} API ERROR ${JSON.stringify(data.status)}`)
         continue
       }
       const folderThreads = data?.data || []
-      console.error(`[DIAG] ${source} raw count: ${folderThreads.length}`)
+      diagLines.push(`${source} raw=${folderThreads.length}`)
       for (const t of folderThreads) {
-        console.error(`[DIAG] ${source} thread: id=${t.threadId} subj="${(t.subject || '').substring(0, 50)}" from="${t.fromAddress || t.sender || ''}"`)
+        diagLines.push(`  ${source}:${t.threadId}|${(t.subject || '').substring(0, 40)}|from=${(t.fromAddress || '').substring(0, 40)}|sender=${(t.sender || '').substring(0, 30)}`)
       }
       rawThreads.push(...folderThreads)
     }
@@ -109,20 +110,17 @@ export async function GET() {
       }
     }
     const zohoThreads = [...threadMap.values()]
-    console.error(`[DIAG] after dedup: ${zohoThreads.length} threads`)
-    for (const t of zohoThreads) {
-      console.error(`[DIAG] deduped: id=${t.threadId} subj="${(t.subject || '').substring(0, 50)}"`)
-    }
+    diagLines.push(`DEDUP=${zohoThreads.length}`)
 
     // 3. Build normalised thread list from Zoho thread objects
     const threads = zohoThreads.map((t: any) => {
       const fromRaw = t.fromAddress || t.sender || ''
       const { name: fromName, email: fromEmail } = parseFrom(fromRaw)
 
-      // Prefer the separate `sender` field for display name when available
-      const displayName = t.sender && !t.sender.includes('@')
-        ? t.sender.trim()
-        : fromName
+      // Use fromName from parseFrom — it properly extracts the name.
+      // The raw `sender` field often contains angle-bracket-wrapped emails
+      // like "<paulkong3@gmail.com>" which renders as HTML entities in React.
+      const displayName = fromName
 
       const isMine = fromEmail === workspaceEmail
 
@@ -161,14 +159,14 @@ export async function GET() {
       // Do NOT drop threads where otherEmail is empty — we'd lose replied-to threads.
       .filter(t => {
         const dominated = !t.threadId || t.otherEmail === workspaceEmail
-        if (dominated) console.error(`[DIAG] FILTERED OUT: id=${t.threadId} otherEmail=${t.otherEmail} workspaceEmail=${workspaceEmail}`)
+        if (dominated) diagLines.push(`DROPPED:${t.threadId}|other=${t.otherEmail}|ws=${workspaceEmail}`)
         return !dominated
       })
       .sort((a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime())
 
-    console.error(`[DIAG] after filter: ${threads.length} threads`)
+    diagLines.push(`FILTER=${threads.length}`)
     for (const t of threads) {
-      console.error(`[DIAG] filtered: id=${t.threadId} subj="${t.subject.substring(0, 50)}" other=${t.otherEmail}`)
+      diagLines.push(`  T:${t.threadId}|${t.subject.substring(0, 40)}|other=${t.otherEmail}|name=${t.otherName}`)
     }
 
     // 4. Batch logo + coach name lookup from our database
@@ -244,13 +242,18 @@ export async function GET() {
       }
     }
 
-    console.error(`[DIAG] FINAL: inbox=${inboxThreads.length} archived=${archivedThreads.length}`)
+    diagLines.push(`FINAL inbox=${inboxThreads.length} archived=${archivedThreads.length}`)
     for (const t of inboxThreads) {
-      console.error(`[DIAG] INBOX: id=${t.threadId} subj="${t.subject.substring(0, 50)}" other=${t.otherEmail}`)
+      diagLines.push(`  IN:${t.threadId}|${t.subject.substring(0, 40)}|${t.otherEmail}`)
     }
     for (const t of archivedThreads) {
-      console.error(`[DIAG] ARCHIVED: id=${t.threadId} subj="${t.subject.substring(0, 50)}" prog=${t.programName}`)
+      diagLines.push(`  AR:${t.threadId}|${t.subject.substring(0, 40)}|prog=${t.programName}`)
     }
+    // Archived IDs from DB
+    diagLines.push(`ARCH_IDS=[${[...archivedThreadIds].join(',')}]`)
+    diagLines.push(`ARCH_EMAILS=[${[...archivedEmailKeys].join(',')}]`)
+
+    console.error(`[DIAG]\n${diagLines.join('\n')}`)
 
     const unreadCount = inboxThreads.reduce((sum, t) => sum + t.unreadCount, 0)
     return NextResponse.json({ threads: inboxThreads, archivedThreads, unreadCount })
