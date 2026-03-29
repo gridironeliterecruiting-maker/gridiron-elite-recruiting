@@ -20,16 +20,9 @@ import { RecruitingEmailBadge } from "@/components/recruiting-email-badge"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface ConversationMessage {
-  messageId: string
-  fromAddress: string
-  receivedTime: string   // Unix ms as string from Zoho
-  status: string         // '0' = unread, '1' = read
-  isSent: boolean
-}
-
 interface Thread {
-  threadId: string
+  threadId: string        // Zoho native thread ID — stable, used for archive keying
+  latestMessageId: string // Latest message ID — used for mark-as-read
   subject: string
   latestAt: string
   otherName: string
@@ -41,7 +34,6 @@ interface Thread {
   latestReceivedId: string
   logoUrl: string | null
   schoolName: string | null
-  conversationMessages?: ConversationMessage[]
 }
 
 interface ThreadMessage {
@@ -56,12 +48,15 @@ interface ThreadMessage {
   is_read: boolean
 }
 
-type Tab = "inbox" | "folders"
-
 // Archived thread = same as Thread but with programName attached
 interface ArchivedThread extends Thread {
   programName: string | null
 }
+
+// ─── Session-level thread body cache ─────────────────────────────────────────
+// Caches full message arrays by threadId for the duration of the browser session.
+// Reopening a thread that was previously viewed makes zero Zoho API calls.
+const threadBodyCache = new Map<string, ThreadMessage[]>()
 
 interface ArchiveProgram {
   programName: string
@@ -182,50 +177,26 @@ function ConversationView({ thread, onBack, onArchived, onDeleted, isArchived = 
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const loadThread = useCallback(async () => {
+    // Serve from session cache if available — zero Zoho calls for previously viewed threads
+    if (threadBodyCache.has(thread.threadId)) {
+      setMessages(threadBodyCache.get(thread.threadId)!)
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     try {
-      const convMsgs = thread.conversationMessages
-      if (convMsgs && convMsgs.length > 0) {
-        // Fast path: metadata already in thread data, only fetch bodies (N calls vs 4+N)
-        const ids = convMsgs.map(m => m.messageId).filter(Boolean)
-        const res = await fetch(`/api/email/thread/${encodeURIComponent(thread.threadId)}?messageIds=${ids.join(',')}`)
-        if (res.ok) {
-          const data = await res.json()
-          const bodies: Record<string, string> = data.bodies || {}
-          const msgs: ThreadMessage[] = convMsgs
-            .filter(m => m.messageId)
-            .map(m => {
-              const match = m.fromAddress.match(/^(.*?)\s*<(.+?)>$/)
-              const fromName = match ? match[1].trim().replace(/^"|"$/g, '') : m.fromAddress
-              const fromEmail = match ? match[2] : m.fromAddress
-              const recvMs = parseInt(m.receivedTime || '0', 10)
-              return {
-                id: m.messageId,
-                from_name: fromName || fromEmail,
-                from_email: fromEmail,
-                subject: thread.subject,
-                body: bodies[m.messageId] || '',
-                snippet: '',
-                received_at: recvMs ? new Date(recvMs).toISOString() : new Date().toISOString(),
-                is_sent: m.isSent,
-                is_read: m.status === '1' || m.isSent,
-              }
-            })
-            .sort((a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime())
-          setMessages(msgs)
-        }
-      } else {
-        // Fallback: old full-fetch behavior
-        const res = await fetch(`/api/email/thread/${encodeURIComponent(thread.threadId)}`)
-        if (res.ok) {
-          const data = await res.json()
-          setMessages(data.messages || [])
-        }
+      const res = await fetch(`/api/email/thread/${encodeURIComponent(thread.threadId)}`)
+      if (res.ok) {
+        const data = await res.json()
+        const msgs: ThreadMessage[] = data.messages || []
+        threadBodyCache.set(thread.threadId, msgs)
+        setMessages(msgs)
       }
     } finally {
       setLoading(false)
     }
-  }, [thread.threadId, thread.conversationMessages, thread.subject])
+  }, [thread.threadId])
 
   useEffect(() => { loadThread() }, [loadThread])
 
@@ -280,7 +251,10 @@ function ConversationView({ thread, onBack, onArchived, onDeleted, isArchived = 
       if (res.ok) {
         setReplyBody("")
         setShowReply(false)
-        setTimeout(() => loadThread(), 1000)
+        setTimeout(() => {
+          threadBodyCache.delete(thread.threadId) // Invalidate so reply is fetched fresh
+          loadThread()
+        }, 1000)
       } else {
         const err = await res.json()
         alert(err.error || "Failed to send reply")
@@ -296,14 +270,17 @@ function ConversationView({ thread, onBack, onArchived, onDeleted, isArchived = 
     setArchiving(true)
     try {
       if (isArchived) {
-        // Move back to inbox — delete from filed_emails
+        // Move back to inbox — delete from filed_emails by thread ID
         await fetch("/api/email/unarchive", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fromEmail: thread.otherEmail }),
+          body: JSON.stringify({
+            threadId: thread.threadId,
+            fromEmail: thread.otherEmail,
+          }),
         })
       } else {
-        // Archive — add to filed_emails
+        // Archive — file by Zoho thread ID so future lookups are exact
         await fetch("/api/email/file", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
