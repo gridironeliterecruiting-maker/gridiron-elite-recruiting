@@ -333,7 +333,7 @@ function ConversationView({ thread, onBack, onArchived, onDeleted, isArchived = 
         </button>
         <div className="flex-1 min-w-0">
           <span className="font-semibold text-sm text-foreground truncate block">{thread.subject}</span>
-          <span className="text-xs text-muted-foreground">{thread.messageCount} message{thread.messageCount !== 1 ? "s" : ""}</span>
+          <span className="text-xs text-muted-foreground">{messages.length > 0 ? `${messages.length} message${messages.length !== 1 ? 's' : ''}` : ''}</span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <button

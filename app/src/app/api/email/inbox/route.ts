@@ -85,20 +85,8 @@ export async function GET() {
 
     const rawThreads: any[] = threadsData?.data || []
 
-    // DEBUG: log candidate message-count fields one per line (avoids log truncation)
-    if (rawThreads.length > 0) {
-      const t0 = rawThreads[0]
-      console.log('[inbox:debug] threadCount=' + t0.threadCount)
-      console.log('[inbox:debug] messageCount=' + t0.messageCount)
-      console.log('[inbox:debug] count=' + t0.count)
-      console.log('[inbox:debug] noOfMessages=' + t0.noOfMessages)
-      console.log('[inbox:debug] totalCount=' + t0.totalCount)
-      console.log('[inbox:debug] msgCount=' + t0.msgCount)
-      console.log('[inbox:debug] keys=' + Object.keys(t0).join(','))
-    }
-
     // Deduplicate by threadId — includesent=true can return the same thread twice
-    // (once as inbox, once as sent). Keep the entry with the latest receivedTime.
+    // (once as inbox entry, once as sent entry). Keep the entry with the latest receivedTime.
     const threadMap = new Map<string, any>()
     for (const t of rawThreads) {
       const id = String(t.threadId || '')
@@ -121,34 +109,41 @@ export async function GET() {
         : fromName
 
       const isMine = fromEmail === workspaceEmail
-      // For threads where we sent the latest message, the "other" is the recipient
-      const otherEmail = isMine
-        ? parseFrom(t.toAddress || '').email
-        : fromEmail
-      const otherName = isMine
-        ? parseFrom(t.toAddress || '').name || otherEmail
-        : (displayName || fromEmail)
+
+      // When we sent the latest message, the other party is the recipient.
+      // toAddress may be a comma-separated list — take the first valid address.
+      let otherEmail = fromEmail
+      let otherName = displayName || fromEmail
+      if (isMine) {
+        const firstTo = (t.toAddress || '').split(',')[0].trim()
+        const parsed = parseFrom(firstTo)
+        otherEmail = parsed.email
+        otherName = parsed.name || parsed.email
+      }
 
       const receivedMs = parseInt(t.receivedTime || t.sentDateInGMT || '0', 10)
 
       return {
-        threadId: String(t.threadId || ''),          // Real Zoho thread ID
-        latestMessageId: String(t.messageId || ''),   // Latest message in thread
+        threadId: String(t.threadId || ''),
+        latestMessageId: String(t.messageId || ''),
         subject: t.subject || '(No subject)',
         latestAt: receivedMs ? new Date(receivedMs).toISOString() : new Date().toISOString(),
         otherName: otherName || otherEmail,
         otherEmail: otherEmail || '',
         snippet: t.summary || '',
-        // Thread-level status: '0' = has unread, '1' = all read
         unreadCount: String(t.status) === '0' ? 1 : 0,
-        messageCount: parseInt(String(t.threadCount || '1'), 10),
+        // threadCount is unreliable from Zoho list endpoint (returns 0).
+        // Set to 0 here; ConversationView overwrites with real messages.length when opened.
+        messageCount: 0,
         hasUnread: String(t.status) === '0',
         latestReceivedId: String(t.messageId || ''),
         logoUrl: null as string | null,
         schoolName: null as string | null,
       }
     })
-      .filter(t => t.otherEmail && t.otherEmail !== workspaceEmail)
+      // Only drop threads where we are talking to ourselves (otherEmail = our own address).
+      // Do NOT drop threads where otherEmail is empty — we'd lose replied-to threads.
+      .filter(t => t.threadId && t.otherEmail !== workspaceEmail)
       .sort((a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime())
 
     // 4. Batch logo + coach name lookup from our database
