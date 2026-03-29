@@ -253,8 +253,14 @@ export async function GET() {
     diagLines.push(`ARCH_IDS=[${[...archivedThreadIds].join(',')}]`)
     diagLines.push(`ARCH_EMAILS=[${[...archivedEmailKeys].join(',')}]`)
 
+    // Write diagnostics to DB so we can read them without relying on Vercel logs
+    await admin.from('system_settings').upsert({
+      key: 'inbox_diag',
+      value: JSON.stringify(diagLines),
+    }, { onConflict: 'key' }).catch(() => {})
+
     const unreadCount = inboxThreads.reduce((sum, t) => sum + t.unreadCount, 0)
-    return NextResponse.json({ threads: inboxThreads, archivedThreads, unreadCount, _diag: diagLines })
+    return NextResponse.json({ threads: inboxThreads, archivedThreads, unreadCount })
   } catch (err: any) {
     console.error('[inbox] unexpected error:', err?.message || err)
     return NextResponse.json({ threads: [], archivedThreads: [], unreadCount: 0 })
