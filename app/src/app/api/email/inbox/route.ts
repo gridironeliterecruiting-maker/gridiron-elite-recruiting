@@ -71,7 +71,7 @@ export async function GET() {
       {}
     )
 
-    let zohoThreads: any[] = []
+    let rawEntries: any[] = []
     if (!inboxRes.ok) {
       diagLines.push(`INBOX ERROR ${inboxRes.status}`)
     } else {
@@ -79,13 +79,27 @@ export async function GET() {
       if (data?.status?.code && data.status.code !== 200) {
         diagLines.push(`INBOX API ERROR ${JSON.stringify(data.status)}`)
       } else {
-        zohoThreads = data?.data || []
-        diagLines.push(`INBOX raw=${zohoThreads.length}`)
-        for (const t of zohoThreads) {
-          diagLines.push(`  IN:${t.threadId}|msgId=${t.messageId}|${(t.subject || '').substring(0, 40)}|from=${(t.fromAddress || '').substring(0, 40)}`)
+        rawEntries = data?.data || []
+        diagLines.push(`INBOX raw=${rawEntries.length}`)
+        for (const t of rawEntries) {
+          diagLines.push(`  RAW:${t.threadId}|msgId=${t.messageId}|${(t.subject || '').substring(0, 40)}|from=${(t.fromAddress || '').substring(0, 40)}`)
         }
       }
     }
+
+    // Deduplicate by threadId — Zoho returns one entry per message, not per thread.
+    // Keep the entry with the latest receivedTime for each thread.
+    const threadMap = new Map<string, any>()
+    for (const t of rawEntries) {
+      const id = String(t.threadId || '')
+      if (!id) continue
+      const existing = threadMap.get(id)
+      if (!existing || parseInt(t.receivedTime || '0', 10) > parseInt(existing.receivedTime || '0', 10)) {
+        threadMap.set(id, t)
+      }
+    }
+    const zohoThreads = [...threadMap.values()]
+    diagLines.push(`DEDUP=${zohoThreads.length}`)
 
     // 3. Build normalised thread list from Zoho thread objects
     const threads = zohoThreads.map((t: any) => {
@@ -194,9 +208,8 @@ export async function GET() {
         if (row.thread_id) {
           archivedStoredIds.add(String(row.thread_id))
           if (row.program_name) programByStoredId.set(String(row.thread_id), row.program_name)
-        }
-        if (row.from_email) {
-          // Also index by email for fallback matching
+        } else if (row.from_email) {
+          // Legacy records without thread_id — match by email only
           const key = (row.from_email || '').toLowerCase()
           archivedEmailKeys.add(key)
           if (row.program_name) programByEmailKey.set(key, row.program_name)
