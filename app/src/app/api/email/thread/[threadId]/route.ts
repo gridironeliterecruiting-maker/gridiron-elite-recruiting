@@ -64,8 +64,8 @@ function stripQuotedReply(text: string): string {
   const idx3b = text.search(/\n?\s*-{2,}\s*On\s+\w{3},?\s+\d{1,2}\s+\w{3}\s+\d{4}/i)
   if (idx3b > 0) return text.substring(0, idx3b).trim()
 
-  // Email signature separator: "-- " or "---" or longer dashes followed by metadata
-  const idx4 = text.search(/\n\s*-{2,}\s*\n/)
+  // Email signature separator: "-- " or dashes on their own line (including at end of string)
+  const idx4 = text.search(/\n\s*-{2,}\s*(\n|$)/)
   if (idx4 > 0) return text.substring(0, idx4).trim()
 
   // "From:" header block (forwarded/reply metadata without dashes)
@@ -123,6 +123,20 @@ export async function GET(
   if (!accountKey) return NextResponse.json({ messages: [] })
 
   try {
+    // Fast path: if caller passes messageIds, skip all list fetches — just return bodies.
+    // This reduces Zoho calls from 4+N to N per thread open.
+    const messageIdsParam = req.nextUrl.searchParams.get('messageIds')
+    if (messageIdsParam) {
+      const messageIds = messageIdsParam.split(',').filter(Boolean)
+      const bodies = await Promise.all(messageIds.map(async id => {
+        const html = await fetchMessageBody(accountKey, id)
+        return html ? stripHtml(html) : ''
+      }))
+      const result: Record<string, string> = {}
+      messageIds.forEach((id, i) => { result[id] = bodies[i] || '' })
+      return NextResponse.json({ bodies: result })
+    }
+
     // The threadId passed in is a messageId from the inbox.
     // First, get that message's metadata to find the subject and contact.
     const seedRes = await zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages/${threadId}`, {})

@@ -20,6 +20,14 @@ import { RecruitingEmailBadge } from "@/components/recruiting-email-badge"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+interface ConversationMessage {
+  messageId: string
+  fromAddress: string
+  receivedTime: string   // Unix ms as string from Zoho
+  status: string         // '0' = unread, '1' = read
+  isSent: boolean
+}
+
 interface Thread {
   threadId: string
   subject: string
@@ -33,6 +41,7 @@ interface Thread {
   latestReceivedId: string
   logoUrl: string | null
   schoolName: string | null
+  conversationMessages?: ConversationMessage[]
 }
 
 interface ThreadMessage {
@@ -118,7 +127,7 @@ function ThreadRow({ thread, selected, onClick }: {
     <button
       onClick={onClick}
       className={cn(
-        "w-full flex items-center gap-3 px-4 py-3 border-b border-border text-left transition-colors hover:bg-muted/40",
+        "w-full flex items-center gap-3 px-4 py-3 border-b border-border text-left transition-all hover:bg-muted/50 hover:shadow-sm hover:translate-x-0.5",
         selected && "bg-primary/5 border-l-2 border-l-primary",
         thread.hasUnread && !selected && "bg-blue-50/50"
       )}
@@ -175,15 +184,48 @@ function ConversationView({ thread, onBack, onArchived, onDeleted, isArchived = 
   const loadThread = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/email/thread/${encodeURIComponent(thread.threadId)}`)
-      if (res.ok) {
-        const data = await res.json()
-        setMessages(data.messages || [])
+      const convMsgs = thread.conversationMessages
+      if (convMsgs && convMsgs.length > 0) {
+        // Fast path: metadata already in thread data, only fetch bodies (N calls vs 4+N)
+        const ids = convMsgs.map(m => m.messageId).filter(Boolean)
+        const res = await fetch(`/api/email/thread/${encodeURIComponent(thread.threadId)}?messageIds=${ids.join(',')}`)
+        if (res.ok) {
+          const data = await res.json()
+          const bodies: Record<string, string> = data.bodies || {}
+          const msgs: ThreadMessage[] = convMsgs
+            .filter(m => m.messageId)
+            .map(m => {
+              const match = m.fromAddress.match(/^(.*?)\s*<(.+?)>$/)
+              const fromName = match ? match[1].trim().replace(/^"|"$/g, '') : m.fromAddress
+              const fromEmail = match ? match[2] : m.fromAddress
+              const recvMs = parseInt(m.receivedTime || '0', 10)
+              return {
+                id: m.messageId,
+                from_name: fromName || fromEmail,
+                from_email: fromEmail,
+                subject: thread.subject,
+                body: bodies[m.messageId] || '',
+                snippet: '',
+                received_at: recvMs ? new Date(recvMs).toISOString() : new Date().toISOString(),
+                is_sent: m.isSent,
+                is_read: m.status === '1' || m.isSent,
+              }
+            })
+            .sort((a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime())
+          setMessages(msgs)
+        }
+      } else {
+        // Fallback: old full-fetch behavior
+        const res = await fetch(`/api/email/thread/${encodeURIComponent(thread.threadId)}`)
+        if (res.ok) {
+          const data = await res.json()
+          setMessages(data.messages || [])
+        }
       }
     } finally {
       setLoading(false)
     }
-  }, [thread.threadId])
+  }, [thread.threadId, thread.conversationMessages, thread.subject])
 
   useEffect(() => { loadThread() }, [loadThread])
 

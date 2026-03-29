@@ -42,17 +42,18 @@ export async function GET() {
   }
 
   try {
-    // Get inbox folder ID, then fetch inbox messages (2 API calls total)
+    // Get folder IDs, then fetch inbox + sent in parallel (3 API calls total)
     const folders = await getZohoFolders(accountKey)
     const inboxFolderId = findFolderId(folders, 'inbox')
+    const sentFolderId = findFolderId(folders, 'sent')
     if (!inboxFolderId) {
       return NextResponse.json({ threads: [], unreadCount: 0 })
     }
 
-    const inboxRes = await zohoFetch(
-      `${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${inboxFolderId}&limit=200`,
-      {}
-    )
+    const [inboxRes, sentRes] = await Promise.all([
+      zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${inboxFolderId}&limit=200`, {}),
+      sentFolderId ? zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${sentFolderId}&limit=200`, {}) : Promise.resolve(null),
+    ])
 
     if (!inboxRes.ok) {
       console.error('[inbox] Zoho messages error:', inboxRes.status)
@@ -66,6 +67,7 @@ export async function GET() {
     }
 
     const inboxMessages: any[] = inboxData?.data || []
+    const sentMessages: any[] = sentRes?.ok ? (await sentRes.json())?.data || [] : []
 
     // Group inbox messages into conversations by normalized subject + sender
     const conversationMap = new Map<string, any[]>()
@@ -178,8 +180,38 @@ export async function GET() {
       }
     }
 
+    // Embed conversation message metadata in each thread so the thread
+    // view only needs to fetch bodies — eliminates 3 Zoho calls per thread open
+    const buildConversationMessages = (thread: typeof inboxThreads[0]) => {
+      const normalizedSubject = normalizeSubject(thread.subject)
+      const key = `${thread.otherEmail}::${normalizedSubject}`
+      const inboxMsgs = (conversationMap.get(key) || []).map((msg: any) => ({
+        messageId: String(msg.messageId || ''),
+        fromAddress: msg.fromAddress || '',
+        receivedTime: msg.receivedTime || msg.sentDateInGMT || '0',
+        status: String(msg.status || '0'),
+        isSent: false,
+      }))
+      const sentMsgs = sentMessages.filter((msg: any) => {
+        const subj = normalizeSubject(msg.subject || '')
+        const { email: toEmail } = parseFrom(msg.toAddress || '')
+        return subj === normalizedSubject && toEmail.toLowerCase() === thread.otherEmail
+      }).map((msg: any) => ({
+        messageId: String(msg.messageId || ''),
+        fromAddress: msg.fromAddress || '',
+        receivedTime: msg.receivedTime || msg.sentDateInGMT || '0',
+        status: '1',
+        isSent: true,
+      }))
+      return [...inboxMsgs, ...sentMsgs]
+    }
+
     const unreadCount = inboxThreads.reduce((sum, t) => sum + t.unreadCount, 0)
-    return NextResponse.json({ threads: inboxThreads, archivedThreads, unreadCount })
+    return NextResponse.json({
+      threads: inboxThreads.map(t => ({ ...t, conversationMessages: buildConversationMessages(t) })),
+      archivedThreads: archivedThreads.map(t => ({ ...t, conversationMessages: buildConversationMessages(t) })),
+      unreadCount,
+    })
   } catch (err: any) {
     console.error('[inbox] unexpected error:', err?.message || err)
     return NextResponse.json({ threads: [], unreadCount: 0 })
