@@ -83,27 +83,25 @@ export async function GET() {
       return NextResponse.json({ threads: [], archivedThreads: [], unreadCount: 0 })
     }
 
-    const zohoThreads: any[] = threadsData?.data || []
+    const rawThreads: any[] = threadsData?.data || []
 
-    // DEBUG: log first 3 threads to inspect field names
-    if (zohoThreads.length > 0) {
-      console.log('[inbox:debug] sample threads:', JSON.stringify(zohoThreads.slice(0, 3).map((t: any) => ({
-        threadId: t.threadId,
-        messageId: t.messageId,
-        threadCount: t.threadCount,
-        messageCount: t.messageCount,
-        count: t.count,
-        subject: t.subject,
-        status: t.status,
-        fromAddress: t.fromAddress,
-        sender: t.sender,
-        toAddress: t.toAddress,
-      })), null, 2))
-      // Log all threadIds to detect duplicates
-      const ids = zohoThreads.map((t: any) => t.threadId)
-      const dupes = ids.filter((id: string, i: number) => ids.indexOf(id) !== i)
-      if (dupes.length > 0) console.log('[inbox:debug] DUPLICATE threadIds from Zoho:', dupes)
+    // DEBUG: dump ALL keys of first thread so we can find the correct message count field
+    if (rawThreads.length > 0) {
+      console.log('[inbox:debug] first thread all fields:', JSON.stringify(rawThreads[0], null, 2))
     }
+
+    // Deduplicate by threadId — includesent=true can return the same thread twice
+    // (once as inbox, once as sent). Keep the entry with the latest receivedTime.
+    const threadMap = new Map<string, any>()
+    for (const t of rawThreads) {
+      const id = String(t.threadId || '')
+      if (!id) continue
+      const existing = threadMap.get(id)
+      if (!existing || parseInt(t.receivedTime || '0', 10) > parseInt(existing.receivedTime || '0', 10)) {
+        threadMap.set(id, t)
+      }
+    }
+    const zohoThreads = [...threadMap.values()]
 
     // 3. Build normalised thread list from Zoho thread objects
     const threads = zohoThreads.map((t: any) => {
