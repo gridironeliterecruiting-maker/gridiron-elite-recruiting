@@ -8,9 +8,9 @@ export const dynamic = 'force-dynamic'
 const ZOHO_API_BASE = 'https://mail360.zoho.com/api'
 
 /**
- * Parse a Zoho fromAddress field.
- * Zoho may return RFC 5322 ("Name <email>") or its own format ("<Name>email").
- * Sent folder entries have HTML-encoded angle brackets — decoded first.
+ * Parse a Zoho fromAddress / toAddress field.
+ * Handles RFC 5322 ("Name <email>"), Zoho format ("<Name>email"),
+ * and HTML-encoded variants from the sent folder.
  */
 function parseFrom(fromRaw: string): { name: string; email: string } {
   if (!fromRaw) return { name: '', email: '' }
@@ -43,6 +43,14 @@ function parseFrom(fromRaw: string): { name: string; email: string } {
   return { name: plain, email: plain }
 }
 
+/** Normalize subject for grouping: strip Re:/Fwd: prefixes and whitespace */
+function normalizeSubject(subject: string): string {
+  return subject
+    .replace(/^(Re:\s*|Fwd:\s*|Fw:\s*)+/i, '')
+    .trim()
+    .toLowerCase()
+}
+
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -63,7 +71,7 @@ export async function GET() {
   }
 
   try {
-    // 1. Get folder IDs — need both inbox and sent to find all conversation threads.
+    // 1. Get folder IDs (1 Zoho call)
     const folders = await getZohoFolders(accountKey)
     const inboxFolderId = findFolderId(folders, 'inbox')
     const sentFolderId = findFolderId(folders, 'sent')
@@ -71,143 +79,147 @@ export async function GET() {
       return NextResponse.json({ threads: [], archivedThreads: [], unreadCount: 0 })
     }
 
-    // 2. Fetch MESSAGES (not threads) from inbox + sent in parallel.
-    //    The messages endpoint returns every individual email — no grouping issues.
-    //    We group by threadId ourselves to build the complete thread list.
+    // 2. Fetch inbox + sent messages in parallel (2 Zoho calls)
     const diagLines: string[] = []
-    const fetches: Promise<Response>[] = [
+    const [inboxRes, sentRes] = await Promise.all([
       zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${inboxFolderId}&limit=200`, {}),
-    ]
-    if (sentFolderId) {
-      fetches.push(zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${sentFolderId}&limit=200`, {}))
-    }
-    const responses = await Promise.all(fetches)
+      sentFolderId
+        ? zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${sentFolderId}&limit=200`, {})
+        : Promise.resolve(null),
+    ])
 
-    // Collect all raw messages from both folders
-    const inboxMessageIds = new Set<string>()
-    const allMessages: any[] = []
-    for (let i = 0; i < responses.length; i++) {
-      const res = responses[i]
-      const source = i === 0 ? 'INBOX' : 'SENT'
-      if (!res.ok) {
-        diagLines.push(`${source} ERROR ${res.status}`)
-        continue
-      }
-      const data = await res.json()
-      if (data?.status?.code && data.status.code !== 200) {
-        diagLines.push(`${source} API ERROR ${JSON.stringify(data.status)}`)
-        continue
-      }
-      const entries = data?.data || []
-      diagLines.push(`${source} raw=${entries.length}`)
-      for (const msg of entries) {
-        if (i === 0) inboxMessageIds.add(String(msg.messageId || ''))
-        allMessages.push(msg)
-      }
+    const inboxData = inboxRes.ok ? await inboxRes.json() : null
+    const sentData = sentRes?.ok ? await sentRes.json() : null
+    const inboxMessages: any[] = inboxData?.data || []
+    const sentMessages: any[] = sentData?.data || []
+    diagLines.push(`INBOX raw=${inboxMessages.length} SENT raw=${sentMessages.length}`)
+
+    // 3. Group inbox messages into conversations by normalized subject + sender
+    //    This is the exact logic from commit 16c8375 that worked perfectly.
+    const conversationMap = new Map<string, { inbox: any[]; sent: any[] }>()
+
+    for (const msg of inboxMessages) {
+      const normalizedSubject = normalizeSubject(msg.subject || '')
+      const { email: fromEmail } = parseFrom(msg.fromAddress || '')
+      const key = `${fromEmail.toLowerCase()}::${normalizedSubject}`
+
+      const existing = conversationMap.get(key) || { inbox: [], sent: [] }
+      existing.inbox.push(msg)
+      conversationMap.set(key, existing)
     }
 
-    // 3. Group messages by threadId to build thread list.
-    //    For each thread, collect ALL messages so we can:
-    //    - Use the latest message for display (subject, date, snippet)
-    //    - Find the "other party" by looking at all messages (not just latest)
-    //    - Track all messageIds for archive matching
-    const threadGroups = new Map<string, any[]>()
-    for (const msg of allMessages) {
-      const tid = String(msg.threadId || msg.messageId || '')
-      if (!tid) continue
-      const group = threadGroups.get(tid) || []
-      // Deduplicate — same message may appear in both inbox and sent
-      if (!group.some((m: any) => String(m.messageId) === String(msg.messageId))) {
-        group.push(msg)
+    // Match sent messages to existing conversations by toEmail::normalizedSubject
+    for (const msg of sentMessages) {
+      const normalizedSubject = normalizeSubject(msg.subject || '')
+      const toRaw = (msg.toAddress || '').split(',')[0].trim()
+      const { email: toEmail } = parseFrom(toRaw)
+      const key = `${toEmail.toLowerCase()}::${normalizedSubject}`
+
+      const existing = conversationMap.get(key)
+      if (existing) {
+        existing.sent.push(msg)
       }
-      threadGroups.set(tid, group)
     }
-    diagLines.push(`THREADS=${threadGroups.size} from ${allMessages.length} messages`)
 
-    // 4. Build normalised thread list from grouped messages
-    const threads: {
-      threadId: string
-      latestMessageId: string
-      allMessageIds: string[]
-      subject: string
-      latestAt: string
-      otherName: string
-      otherEmail: string
-      snippet: string
-      unreadCount: number
-      messageCount: number
-      hasUnread: boolean
-      latestReceivedId: string
-      logoUrl: string | null
-      schoolName: string | null
-    }[] = []
+    diagLines.push(`CONVERSATIONS=${conversationMap.size}`)
 
-    for (const [threadId, messages] of threadGroups) {
-      // Sort messages by time, latest last
-      messages.sort((a: any, b: any) =>
-        parseInt(a.receivedTime || a.sentDateInGMT || '0', 10) -
-        parseInt(b.receivedTime || b.sentDateInGMT || '0', 10)
-      )
+    // 4. Build thread list from grouped conversations
+    const threads = Array.from(conversationMap.entries()).map(([, conv]) => {
+      const allMsgs = [...conv.inbox, ...conv.sent]
 
-      const latest = messages[messages.length - 1]
-      const allMessageIds = messages.map((m: any) => String(m.messageId || ''))
+      // Sort all messages by time, latest first
+      allMsgs.sort((a: any, b: any) => {
+        const aMs = parseInt(a.receivedTime || a.sentDateInGMT || '0', 10)
+        const bMs = parseInt(b.receivedTime || b.sentDateInGMT || '0', 10)
+        return bMs - aMs
+      })
+      const latest = allMsgs[0]
 
-      // Find the "other party" — scan all messages for someone who isn't us
-      let otherEmail = ''
-      let otherName = ''
-      for (const msg of messages) {
-        const fromRaw = msg.fromAddress || msg.sender || ''
-        const { name, email } = parseFrom(fromRaw)
-        if (email && email !== workspaceEmail) {
-          otherEmail = email
-          otherName = name || email
-          break
-        }
-      }
-      // If all messages are from us, use the toAddress of the latest message
-      if (!otherEmail) {
-        const firstTo = (latest.toAddress || '').split(',')[0].trim()
-        const parsed = parseFrom(firstTo)
-        otherEmail = parsed.email
-        otherName = parsed.name || parsed.email
-      }
+      // Collect all message IDs for the thread detail fast path
+      const allMessageIds = allMsgs.map((m: any) => String(m.messageId || ''))
 
-      // If we're still talking to ourselves, skip this thread
-      if (!otherEmail || otherEmail === workspaceEmail) {
-        diagLines.push(`DROPPED:${threadId}|other=${otherEmail}|ws=${workspaceEmail}`)
-        continue
+      // Build per-message metadata (no body) — passed to client for thread detail rendering
+      const allMessagesMeta = allMsgs
+        .sort((a: any, b: any) => {
+          const aMs = parseInt(a.receivedTime || a.sentDateInGMT || '0', 10)
+          const bMs = parseInt(b.receivedTime || b.sentDateInGMT || '0', 10)
+          return aMs - bMs // oldest first for conversation order
+        })
+        .map((m: any) => {
+          const fromRaw = m.fromAddress || m.sender || ''
+          const { name: fromName, email: fromEmail } = parseFrom(fromRaw)
+          const receivedMs = parseInt(m.receivedTime || m.sentDateInGMT || '0', 10)
+          const isSent = fromEmail.toLowerCase() === workspaceEmail
+          return {
+            id: String(m.messageId || ''),
+            from_name: fromName || fromEmail,
+            from_email: fromEmail,
+            subject: m.subject || '(No subject)',
+            snippet: m.summary || '',
+            received_at: receivedMs ? new Date(receivedMs).toISOString() : new Date().toISOString(),
+            is_sent: isSent,
+            is_read: String(m.status) === '1' || isSent,
+          }
+        })
+
+      // The "other party" is always the inbox sender (not us)
+      const latestInbox = conv.inbox.sort((a: any, b: any) => {
+        const aMs = parseInt(a.receivedTime || '0', 10)
+        const bMs = parseInt(b.receivedTime || '0', 10)
+        return bMs - aMs
+      })[0]
+
+      const fromRaw = latestInbox?.fromAddress || latestInbox?.sender || latest.fromAddress || latest.sender || ''
+      const { name: fromName, email: fromEmail } = parseFrom(fromRaw)
+
+      // If the latest message overall is from us, use the inbox sender as the "other"
+      const latestFromRaw = latest.fromAddress || latest.sender || ''
+      const { email: latestFromEmail } = parseFrom(latestFromRaw)
+      const latestIsMine = latestFromEmail.toLowerCase() === workspaceEmail
+
+      let otherEmail: string
+      let otherName: string
+      if (latestIsMine && latestInbox) {
+        // Latest msg is ours — show the coach (inbox sender)
+        otherEmail = fromEmail.toLowerCase()
+        otherName = fromName || fromEmail
+      } else {
+        // Latest msg is from coach — show them
+        const { name, email } = parseFrom(latestFromRaw)
+        otherEmail = email.toLowerCase()
+        otherName = name || email
       }
 
       const receivedMs = parseInt(latest.receivedTime || latest.sentDateInGMT || '0', 10)
-      const hasUnread = messages.some((m: any) => String(m.status) === '0')
+      const latestAt = receivedMs ? new Date(receivedMs).toISOString() : new Date().toISOString()
+      const unreadMsgs = conv.inbox.filter((m: any) => String(m.status) === '0')
 
-      threads.push({
-        threadId,
+      return {
+        threadId: String(latestInbox?.messageId || latest.messageId || ''),
         latestMessageId: String(latest.messageId || ''),
         allMessageIds,
-        subject: latest.subject || messages[0]?.subject || '(No subject)',
-        latestAt: receivedMs ? new Date(receivedMs).toISOString() : new Date().toISOString(),
+        allMessages: allMessagesMeta,
+        subject: latest.subject || '(No subject)',
+        latestAt,
         otherName: otherName || otherEmail,
-        otherEmail: otherEmail || '',
+        otherEmail,
         snippet: latest.summary || '',
-        unreadCount: messages.filter((m: any) => String(m.status) === '0').length,
-        messageCount: messages.length,
-        hasUnread,
-        latestReceivedId: String(latest.messageId || ''),
-        logoUrl: null,
-        schoolName: null,
-      })
-    }
+        unreadCount: unreadMsgs.length,
+        messageCount: allMsgs.length,
+        hasUnread: unreadMsgs.length > 0,
+        latestReceivedId: String(latestInbox?.messageId || latest.messageId || ''),
+        logoUrl: null as string | null,
+        schoolName: null as string | null,
+      }
+    }).filter(t => t.otherEmail && t.otherEmail !== workspaceEmail)
+      .sort((a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime())
 
-    // Sort by latest message time, newest first
-    threads.sort((a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime())
-
-    diagLines.push(`FILTER=${threads.length}`)
+    diagLines.push(`THREADS=${threads.length}`)
     for (const t of threads) {
-      diagLines.push(`  T:${t.threadId}|${t.subject.substring(0, 40)}|other=${t.otherEmail}|name=${t.otherName}|msgs=${t.allMessageIds.join(';')}`)
+      diagLines.push(`  T:${t.threadId}|${t.subject.substring(0, 40)}|other=${t.otherEmail}|msgs=${t.allMessageIds.length}`)
     }
 
-    // 5. Batch logo + coach name lookup from our database
+    // 5. Batch logo + coach name lookup from our database (Supabase, not Zoho)
     const otherEmails = [...new Set(threads.map(t => t.otherEmail).filter(Boolean))]
     if (otherEmails.length > 0) {
       const { data: coachRows } = await admin
@@ -237,60 +249,40 @@ export async function GET() {
       }
     }
 
-    // 6. Load archived thread IDs from filed_emails and split inbox vs archived.
-    //    Primary key: zoho thread_id. Fallback: message ID match, then email fallback.
+    // 6. Check which threads are archived — split into inbox vs archived (Supabase, not Zoho)
     const { data: filedRows } = await admin
       .from('filed_emails')
-      .select('from_email, subject, program_name, thread_id')
+      .select('from_email, subject, program_name')
       .eq('user_id', user.id)
 
-    const archivedStoredIds = new Set<string>()
-    const archivedEmailKeys = new Set<string>()
-    const programByStoredId = new Map<string, string>()
-    const programByEmailKey = new Map<string, string>()
-
+    const archivedKeys = new Set<string>()
+    const archivedProgramMap = new Map<string, string>()
     if (filedRows) {
       for (const row of filedRows) {
-        if (row.thread_id) {
-          archivedStoredIds.add(String(row.thread_id))
-          if (row.program_name) programByStoredId.set(String(row.thread_id), row.program_name)
-        }
-        if (row.from_email) {
-          const key = (row.from_email || '').toLowerCase()
-          archivedEmailKeys.add(key)
-          if (row.program_name) programByEmailKey.set(key, row.program_name)
-        }
+        const key = `${(row.from_email || '').toLowerCase()}::${normalizeSubject(row.subject || '')}`
+        archivedKeys.add(key)
+        if (row.program_name) archivedProgramMap.set(key, row.program_name)
       }
     }
-    diagLines.push(`ARCH stored=${archivedStoredIds.size} emails=${archivedEmailKeys.size} keys=[${[...archivedEmailKeys].join(',')}]`)
 
     const inboxThreads: typeof threads = []
     const archivedThreads: (typeof threads[0] & { programName: string | null })[] = []
 
     for (const thread of threads) {
-      // Match by threadId (correct case), any messageId in the thread (handles legacy
-      // bug where message IDs were stored as thread_ids), or email fallback
-      const matchedById = archivedStoredIds.has(thread.threadId)
-      const matchedByMsgId = !matchedById && thread.allMessageIds.some(id => archivedStoredIds.has(id))
-      const matchedByEmail = !matchedById && !matchedByMsgId && archivedEmailKeys.has(thread.otherEmail)
-
-      if (matchedById || matchedByMsgId || matchedByEmail) {
-        const programName = matchedById
-          ? (programByStoredId.get(thread.threadId) || thread.schoolName || null)
-          : matchedByMsgId
-          ? (programByStoredId.get(thread.allMessageIds.find(id => archivedStoredIds.has(id))!) || thread.schoolName || null)
-          : (programByEmailKey.get(thread.otherEmail) || thread.schoolName || null)
-        archivedThreads.push({ ...thread, programName })
-        diagLines.push(`  ARCHIVED:${thread.threadId}|match=${matchedById ? 'threadId' : matchedByMsgId ? 'msgId' : 'email'}|prog=${programName}`)
+      const key = `${thread.otherEmail.toLowerCase()}::${normalizeSubject(thread.subject)}`
+      if (archivedKeys.has(key)) {
+        archivedThreads.push({
+          ...thread,
+          programName: archivedProgramMap.get(key) || thread.schoolName || null,
+        })
       } else {
         inboxThreads.push(thread)
       }
     }
 
     diagLines.push(`FINAL inbox=${inboxThreads.length} archived=${archivedThreads.length}`)
-    diagLines.push(`STORED_IDS=[${[...archivedStoredIds].join(',')}]`)
 
-    // Write diagnostics to DB so we can read them without relying on Vercel logs
+    // Write diagnostics to DB (temporary — for verification)
     try {
       await admin.from('system_settings').upsert({
         key: 'inbox_diag',

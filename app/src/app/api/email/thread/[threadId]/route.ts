@@ -26,33 +26,6 @@ async function fetchMessageBody(accountKey: string, messageId: string): Promise<
   }
 }
 
-/**
- * Parse a Zoho fromAddress field.
- * Handles RFC 5322 ("Name <email>"), Zoho format ("<Name>email"), and plain email.
- */
-function parseFrom(fromRaw: string): { name: string; email: string } {
-  if (!fromRaw) return { name: '', email: '' }
-
-  // RFC 5322: "Name" <email> or Name <email>
-  const rfcMatch = fromRaw.match(/^(.*?)\s*<([^>@\s]+@[^>]+)>/)
-  if (rfcMatch) {
-    const name = rfcMatch[1].trim().replace(/^"|"$/g, '')
-    const email = rfcMatch[2].trim().toLowerCase()
-    return { name: name || email, email }
-  }
-
-  // Zoho display format: <Name>email@domain.com
-  const zohoMatch = fromRaw.match(/^<([^>]*)>(.+@.+)$/)
-  if (zohoMatch) {
-    const name = zohoMatch[1].trim()
-    const email = zohoMatch[2].trim().toLowerCase()
-    return { name: name || email, email }
-  }
-
-  const plain = fromRaw.trim().toLowerCase()
-  return { name: plain, email: plain }
-}
-
 /** Decode HTML entities — run twice to handle double-encoding */
 function decodeEntities(text: string): string {
   function once(s: string): string {
@@ -95,7 +68,6 @@ function stripQuotedReply(text: string): string {
   if (idx5 > 0) return text.substring(0, idx5).trim()
 
   // Standalone dash separator line (email signature or reply divider)
-  // Matches "----" on its own line, including at end of string
   const idx6 = text.search(/\n\s*-{2,}\s*(\n|$)/)
   if (idx6 > 0) return text.substring(0, idx6).trim()
 
@@ -111,14 +83,12 @@ function stripQuotedReply(text: string): string {
  * Removes quoted reply content, strips tags, decodes entities.
  */
 function stripHtml(html: string): string {
-  // Remove quoted reply HTML blocks before stripping tags
   let cleaned = html
     .replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, '')
     .replace(/<div[^>]*class="[^"]*gmail_quote[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
     .replace(/<div[^>]*class="[^"]*yahoo_quoted[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
     .replace(/<div[^>]*class="[^"]*moz-cite-prefix[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
 
-  // Strip tags, preserve line breaks
   cleaned = cleaned
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
@@ -136,19 +106,20 @@ function stripHtml(html: string): string {
 }
 
 /**
- * GET /api/email/thread/[threadId]
+ * GET /api/email/thread/[threadId]?messageIds=id1,id2,id3
  *
- * Uses Zoho's native Threads API to load all messages in a conversation
- * in a single call, then fetches bodies in parallel.
+ * Fast path: client passes the message IDs (from inbox route data).
+ * We only fetch message bodies — N Zoho calls total.
+ * No seed message, no folder discovery, no message list fetches.
  *
- * Zoho call budget: 1 (GET /threads/{threadId}) + N (body fetches)
- * Previously: 4 + N (seed message + folders + 200 inbox + 200 sent)
+ * The client already has message metadata (from, to, subject, date)
+ * from the inbox route. This endpoint only adds the body text.
  */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ threadId: string }> }
 ) {
-  const { threadId } = await params
+  await params // consume params to avoid Next.js warnings
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -157,72 +128,33 @@ export async function GET(
   const admin = createAdminClient()
   const { data: profile } = await admin
     .from('profiles')
-    .select('workspace_email, zoho_account_key')
+    .select('zoho_account_key')
     .eq('id', user.id)
     .single()
 
   const accountKey = (profile as any)?.zoho_account_key as string | null
-  const workspaceEmail = ((profile as any)?.workspace_email as string | null)?.toLowerCase() || ''
-  if (!accountKey) return NextResponse.json({ messages: [] })
+  if (!accountKey) return NextResponse.json({ bodies: {} })
 
   try {
-    // Single call to Zoho Threads API — returns all messages in the conversation
-    // with full metadata. Eliminates the 3-call overhead of the old approach.
-    const threadRes = await zohoFetch(
-      `${ZOHO_API_BASE}/accounts/${accountKey}/threads/${threadId}?limit=50`,
-      {}
-    )
-
-    if (!threadRes.ok) {
-      console.error('[thread] Zoho threads error:', threadRes.status)
-      return NextResponse.json({ messages: [] })
+    const messageIdsParam = req.nextUrl.searchParams.get('messageIds')
+    if (!messageIdsParam) {
+      return NextResponse.json({ bodies: {} })
     }
 
-    const threadData = await threadRes.json()
-    if (threadData?.status?.code && threadData.status.code !== 200) {
-      console.error('[thread] Zoho API error:', threadData.status)
-      return NextResponse.json({ messages: [] })
-    }
+    const messageIds = messageIdsParam.split(',').filter(Boolean)
 
-    const rawMessages: any[] = threadData?.data || []
-
-    // Fetch all message bodies in parallel — one call per message
-    const messages = await Promise.all(
-      rawMessages.map(async (raw: any) => {
-        const msgId = String(raw.messageId || '')
-        const bodyHtml = msgId ? await fetchMessageBody(accountKey, msgId) : ''
-        const body = bodyHtml ? stripHtml(bodyHtml) : (raw.summary || '')
-
-        const fromRaw = raw.fromAddress || raw.sender || ''
-        const { name: fromName, email: fromEmail } = parseFrom(fromRaw)
-        // Prefer the separate `sender` field for display name
-        const displayName = raw.sender && !raw.sender.includes('@')
-          ? raw.sender.trim()
-          : fromName
-
-        const receivedMs = parseInt(raw.receivedTime || raw.sentDateInGMT || '0', 10)
-        const isSent = fromEmail === workspaceEmail
-
-        return {
-          id: msgId,
-          from_name: displayName || fromName || fromEmail,
-          from_email: fromEmail,
-          subject: raw.subject || '(No subject)',
-          body,
-          snippet: raw.summary || '',
-          received_at: receivedMs ? new Date(receivedMs).toISOString() : new Date().toISOString(),
-          is_sent: isSent,
-          is_read: String(raw.status) === '1' || isSent,
-        }
+    // Fetch all message bodies in parallel — N Zoho calls
+    const bodies: Record<string, string> = {}
+    await Promise.all(
+      messageIds.map(async (id) => {
+        const html = await fetchMessageBody(accountKey, id)
+        bodies[id] = html ? stripHtml(html) : ''
       })
     )
 
-    // Oldest message first for conversation display
-    messages.sort((a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime())
-
-    return NextResponse.json({ messages })
+    return NextResponse.json({ bodies })
   } catch (err: any) {
     console.error('[thread] unexpected error:', err?.message || err)
-    return NextResponse.json({ messages: [] })
+    return NextResponse.json({ bodies: {} })
   }
 }

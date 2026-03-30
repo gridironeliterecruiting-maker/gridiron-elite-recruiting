@@ -20,9 +20,22 @@ import { RecruitingEmailBadge } from "@/components/recruiting-email-badge"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+interface MessageMeta {
+  id: string
+  from_name: string
+  from_email: string
+  subject: string
+  snippet: string
+  received_at: string
+  is_sent: boolean
+  is_read: boolean
+}
+
 interface Thread {
-  threadId: string        // Zoho native thread ID — stable, used for archive keying
+  threadId: string        // Latest inbox message ID — used as conversation key
   latestMessageId: string // Latest message ID — used for mark-as-read
+  allMessageIds: string[] // All message IDs in conversation — passed to thread detail for body fetch
+  allMessages: MessageMeta[] // Message metadata (no body) — from inbox route
   subject: string
   latestAt: string
   otherName: string
@@ -186,10 +199,19 @@ function ConversationView({ thread, onBack, onArchived, onDeleted, isArchived = 
 
     setLoading(true)
     try {
-      const res = await fetch(`/api/email/thread/${encodeURIComponent(thread.threadId)}`)
+      // Pass message IDs to thread detail — it only fetches bodies (N Zoho calls).
+      // Message metadata (from, to, date, etc.) is already in thread.allMessages from inbox route.
+      const messageIds = thread.allMessageIds?.join(',') || ''
+      const res = await fetch(`/api/email/thread/${encodeURIComponent(thread.threadId)}?messageIds=${encodeURIComponent(messageIds)}`)
       if (res.ok) {
         const data = await res.json()
-        const msgs: ThreadMessage[] = data.messages || []
+        const bodies: Record<string, string> = data.bodies || {}
+
+        // Merge metadata from inbox route + bodies from thread detail
+        const msgs: ThreadMessage[] = (thread.allMessages || []).map(meta => ({
+          ...meta,
+          body: bodies[meta.id] || meta.snippet || '',
+        }))
         threadBodyCache.set(thread.threadId, msgs)
         setMessages(msgs)
       }
