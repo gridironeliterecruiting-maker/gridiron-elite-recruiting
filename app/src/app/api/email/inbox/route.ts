@@ -10,7 +10,7 @@ const ZOHO_API_BASE = 'https://mail360.zoho.com/api'
 /**
  * Parse a Zoho fromAddress field.
  * Zoho may return RFC 5322 ("Name <email>") or its own format ("<Name>email").
- * Falls back gracefully to plain email.
+ * Sent folder entries have HTML-encoded angle brackets — decoded first.
  */
 function parseFrom(fromRaw: string): { name: string; email: string } {
   if (!fromRaw) return { name: '', email: '' }
@@ -64,8 +64,6 @@ export async function GET() {
 
   try {
     // 1. Get folder IDs — need both inbox and sent to find all conversation threads.
-    //    Inbox has threads where last message is incoming.
-    //    Sent has threads where Cael replied last (coach's earlier reply still exists).
     const folders = await getZohoFolders(accountKey)
     const inboxFolderId = findFolderId(folders, 'inbox')
     const sentFolderId = findFolderId(folders, 'sent')
@@ -73,19 +71,21 @@ export async function GET() {
       return NextResponse.json({ threads: [], archivedThreads: [], unreadCount: 0 })
     }
 
-    // 2. Fetch inbox + sent in parallel to get complete thread list.
+    // 2. Fetch MESSAGES (not threads) from inbox + sent in parallel.
+    //    The messages endpoint returns every individual email — no grouping issues.
+    //    We group by threadId ourselves to build the complete thread list.
     const diagLines: string[] = []
     const fetches: Promise<Response>[] = [
-      zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/threads?folderId=${inboxFolderId}&limit=100`, {}),
+      zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${inboxFolderId}&limit=200`, {}),
     ]
     if (sentFolderId) {
-      fetches.push(zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/threads?folderId=${sentFolderId}&limit=100`, {}))
+      fetches.push(zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${sentFolderId}&limit=200`, {}))
     }
     const responses = await Promise.all(fetches)
 
-    // Track which threadIds appear in inbox — used to filter sent-only campaigns
-    const inboxThreadIds = new Set<string>()
-    const rawEntries: any[] = []
+    // Collect all raw messages from both folders
+    const inboxMessageIds = new Set<string>()
+    const allMessages: any[] = []
     for (let i = 0; i < responses.length; i++) {
       const res = responses[i]
       const source = i === 0 ? 'INBOX' : 'SENT'
@@ -100,84 +100,114 @@ export async function GET() {
       }
       const entries = data?.data || []
       diagLines.push(`${source} raw=${entries.length}`)
-      for (const t of entries) {
-        if (i === 0) inboxThreadIds.add(String(t.threadId || ''))
-        rawEntries.push(t)
+      for (const msg of entries) {
+        if (i === 0) inboxMessageIds.add(String(msg.messageId || ''))
+        allMessages.push(msg)
       }
     }
 
-    // Deduplicate by threadId — Zoho returns one entry per message, not per thread.
-    // Keep the entry with the latest receivedTime for each thread.
-    const threadMap = new Map<string, any>()
-    for (const t of rawEntries) {
-      const id = String(t.threadId || '')
-      if (!id) continue
-      const existing = threadMap.get(id)
-      if (!existing || parseInt(t.receivedTime || '0', 10) > parseInt(existing.receivedTime || '0', 10)) {
-        threadMap.set(id, t)
+    // 3. Group messages by threadId to build thread list.
+    //    For each thread, collect ALL messages so we can:
+    //    - Use the latest message for display (subject, date, snippet)
+    //    - Find the "other party" by looking at all messages (not just latest)
+    //    - Track all messageIds for archive matching
+    const threadGroups = new Map<string, any[]>()
+    for (const msg of allMessages) {
+      const tid = String(msg.threadId || msg.messageId || '')
+      if (!tid) continue
+      const group = threadGroups.get(tid) || []
+      // Deduplicate — same message may appear in both inbox and sent
+      if (!group.some((m: any) => String(m.messageId) === String(msg.messageId))) {
+        group.push(msg)
       }
+      threadGroups.set(tid, group)
     }
-    const zohoThreads = [...threadMap.values()]
-    diagLines.push(`DEDUP=${zohoThreads.length} inboxThreadIds=${inboxThreadIds.size}`)
+    diagLines.push(`THREADS=${threadGroups.size} from ${allMessages.length} messages`)
 
-    // 3. Build normalised thread list from Zoho thread objects
-    const threads = zohoThreads.map((t: any) => {
-      const fromRaw = t.fromAddress || t.sender || ''
-      const { name: fromName, email: fromEmail } = parseFrom(fromRaw)
+    // 4. Build normalised thread list from grouped messages
+    const threads: {
+      threadId: string
+      latestMessageId: string
+      allMessageIds: string[]
+      subject: string
+      latestAt: string
+      otherName: string
+      otherEmail: string
+      snippet: string
+      unreadCount: number
+      messageCount: number
+      hasUnread: boolean
+      latestReceivedId: string
+      logoUrl: string | null
+      schoolName: string | null
+    }[] = []
 
-      // Use fromName from parseFrom — it properly extracts the name.
-      // The raw `sender` field often contains angle-bracket-wrapped emails
-      // like "<paulkong3@gmail.com>" which renders as HTML entities in React.
-      const displayName = fromName
+    for (const [threadId, messages] of threadGroups) {
+      // Sort messages by time, latest last
+      messages.sort((a: any, b: any) =>
+        parseInt(a.receivedTime || a.sentDateInGMT || '0', 10) -
+        parseInt(b.receivedTime || b.sentDateInGMT || '0', 10)
+      )
 
-      const isMine = fromEmail === workspaceEmail
+      const latest = messages[messages.length - 1]
+      const allMessageIds = messages.map((m: any) => String(m.messageId || ''))
 
-      // When we sent the latest message, the other party is the recipient.
-      // toAddress may be a comma-separated list — take the first valid address.
-      let otherEmail = fromEmail
-      let otherName = displayName || fromEmail
-      if (isMine) {
-        const firstTo = (t.toAddress || '').split(',')[0].trim()
+      // Find the "other party" — scan all messages for someone who isn't us
+      let otherEmail = ''
+      let otherName = ''
+      for (const msg of messages) {
+        const fromRaw = msg.fromAddress || msg.sender || ''
+        const { name, email } = parseFrom(fromRaw)
+        if (email && email !== workspaceEmail) {
+          otherEmail = email
+          otherName = name || email
+          break
+        }
+      }
+      // If all messages are from us, use the toAddress of the latest message
+      if (!otherEmail) {
+        const firstTo = (latest.toAddress || '').split(',')[0].trim()
         const parsed = parseFrom(firstTo)
         otherEmail = parsed.email
         otherName = parsed.name || parsed.email
       }
 
-      const receivedMs = parseInt(t.receivedTime || t.sentDateInGMT || '0', 10)
+      // If we're still talking to ourselves, skip this thread
+      if (!otherEmail || otherEmail === workspaceEmail) {
+        diagLines.push(`DROPPED:${threadId}|other=${otherEmail}|ws=${workspaceEmail}`)
+        continue
+      }
 
-      return {
-        threadId: String(t.threadId || ''),
-        latestMessageId: String(t.messageId || ''),
-        subject: t.subject || '(No subject)',
+      const receivedMs = parseInt(latest.receivedTime || latest.sentDateInGMT || '0', 10)
+      const hasUnread = messages.some((m: any) => String(m.status) === '0')
+
+      threads.push({
+        threadId,
+        latestMessageId: String(latest.messageId || ''),
+        allMessageIds,
+        subject: latest.subject || messages[0]?.subject || '(No subject)',
         latestAt: receivedMs ? new Date(receivedMs).toISOString() : new Date().toISOString(),
         otherName: otherName || otherEmail,
         otherEmail: otherEmail || '',
-        snippet: t.summary || '',
-        unreadCount: String(t.status) === '0' ? 1 : 0,
-        // threadCount is unreliable from Zoho list endpoint (returns 0).
-        // Set to 0 here; ConversationView overwrites with real messages.length when opened.
-        messageCount: 0,
-        hasUnread: String(t.status) === '0',
-        latestReceivedId: String(t.messageId || ''),
-        logoUrl: null as string | null,
-        schoolName: null as string | null,
-      }
-    })
-      // Only drop threads where we are talking to ourselves (otherEmail = our own address).
-      // Do NOT drop threads where otherEmail is empty — we'd lose replied-to threads.
-      .filter(t => {
-        const dominated = !t.threadId || t.otherEmail === workspaceEmail
-        if (dominated) diagLines.push(`DROPPED:${t.threadId}|other=${t.otherEmail}|ws=${workspaceEmail}`)
-        return !dominated
+        snippet: latest.summary || '',
+        unreadCount: messages.filter((m: any) => String(m.status) === '0').length,
+        messageCount: messages.length,
+        hasUnread,
+        latestReceivedId: String(latest.messageId || ''),
+        logoUrl: null,
+        schoolName: null,
       })
-      .sort((a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime())
+    }
+
+    // Sort by latest message time, newest first
+    threads.sort((a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime())
 
     diagLines.push(`FILTER=${threads.length}`)
     for (const t of threads) {
-      diagLines.push(`  T:${t.threadId}|${t.subject.substring(0, 40)}|other=${t.otherEmail}|name=${t.otherName}`)
+      diagLines.push(`  T:${t.threadId}|${t.subject.substring(0, 40)}|other=${t.otherEmail}|name=${t.otherName}|msgs=${t.allMessageIds.join(';')}`)
     }
 
-    // 4. Batch logo + coach name lookup from our database
+    // 5. Batch logo + coach name lookup from our database
     const otherEmails = [...new Set(threads.map(t => t.otherEmail).filter(Boolean))]
     if (otherEmails.length > 0) {
       const { data: coachRows } = await admin
@@ -207,16 +237,13 @@ export async function GET() {
       }
     }
 
-    // 5. Load archived thread IDs from filed_emails and split inbox vs archived.
-    //    Primary key: zoho thread_id. Fallback: from_email match for legacy records.
+    // 6. Load archived thread IDs from filed_emails and split inbox vs archived.
+    //    Primary key: zoho thread_id. Fallback: message ID match, then email fallback.
     const { data: filedRows } = await admin
       .from('filed_emails')
       .select('from_email, subject, program_name, thread_id')
       .eq('user_id', user.id)
 
-    // Build a set of all stored IDs from filed_emails.
-    // These may be real Zoho thread IDs OR message IDs (legacy bug).
-    // We match against both thread.threadId and thread.latestMessageId to handle both cases.
     const archivedStoredIds = new Set<string>()
     const archivedEmailKeys = new Set<string>()
     const programByStoredId = new Map<string, string>()
@@ -228,8 +255,6 @@ export async function GET() {
           archivedStoredIds.add(String(row.thread_id))
           if (row.program_name) programByStoredId.set(String(row.thread_id), row.program_name)
         }
-        // Always index by email — stored thread_ids may be message IDs (legacy bug)
-        // that don't match any current thread. Email is the reliable fallback.
         if (row.from_email) {
           const key = (row.from_email || '').toLowerCase()
           archivedEmailKeys.add(key)
@@ -243,20 +268,20 @@ export async function GET() {
     const archivedThreads: (typeof threads[0] & { programName: string | null })[] = []
 
     for (const thread of threads) {
-      // Match by threadId (correct case) OR by latestMessageId (handles legacy bug
-      // where message IDs were stored as thread_ids in filed_emails)
+      // Match by threadId (correct case), any messageId in the thread (handles legacy
+      // bug where message IDs were stored as thread_ids), or email fallback
       const matchedById = archivedStoredIds.has(thread.threadId)
-      const matchedByMsgId = !matchedById && archivedStoredIds.has(thread.latestMessageId)
+      const matchedByMsgId = !matchedById && thread.allMessageIds.some(id => archivedStoredIds.has(id))
       const matchedByEmail = !matchedById && !matchedByMsgId && archivedEmailKeys.has(thread.otherEmail)
 
       if (matchedById || matchedByMsgId || matchedByEmail) {
         const programName = matchedById
           ? (programByStoredId.get(thread.threadId) || thread.schoolName || null)
           : matchedByMsgId
-          ? (programByStoredId.get(thread.latestMessageId) || thread.schoolName || null)
+          ? (programByStoredId.get(thread.allMessageIds.find(id => archivedStoredIds.has(id))!) || thread.schoolName || null)
           : (programByEmailKey.get(thread.otherEmail) || thread.schoolName || null)
         archivedThreads.push({ ...thread, programName })
-        diagLines.push(`  ARCHIVED:${thread.threadId}|msgId=${thread.latestMessageId}|match=${matchedById ? 'threadId' : matchedByMsgId ? 'msgId' : 'email'}|prog=${programName}`)
+        diagLines.push(`  ARCHIVED:${thread.threadId}|match=${matchedById ? 'threadId' : matchedByMsgId ? 'msgId' : 'email'}|prog=${programName}`)
       } else {
         inboxThreads.push(thread)
       }
