@@ -16,6 +16,7 @@ import {
   PenLine,
   CircleCheck,
   Circle,
+  Trash2,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import type { CampaignGoal, EmailTemplate } from "../types"
@@ -335,6 +336,33 @@ export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange,
           onUpdate={(updates) => handleEditorSave(updates)}
           onClose={() => setEditingTemplate(null)}
           existingTemplateNames={availableTemplates.filter(t => !t.is_system).map(t => t.name)}
+          userTemplateId={(() => {
+            // Check if the selected template is a user-saved template (not default, not custom)
+            const userStartIndex = defaultTemplates.length
+            const userEndIndex = displayTemplates.length - 1
+            if (selectedIndex >= userStartIndex && selectedIndex < userEndIndex) {
+              const userIdx = selectedIndex - userStartIndex
+              const userDbTemplates = availableTemplates.filter(t => !t.is_system)
+              return userDbTemplates[userIdx]?.id || null
+            }
+            return null
+          })()}
+          onDeleteTemplate={async (templateId) => {
+            try {
+              const response = await fetch(`/api/templates/${templateId}`, { method: 'DELETE' })
+              if (response.ok) {
+                setAvailableTemplates(prev => prev.filter(t => t.id !== templateId))
+                setSelectedIndex(null)
+                onTemplatesChange([])
+                setEditingTemplate(null)
+              } else {
+                throw new Error('Failed to delete template')
+              }
+            } catch (error) {
+              console.error('Error deleting template:', error)
+              throw error
+            }
+          }}
           onSaveAsTemplate={async (templateData) => {
             try {
               const response = await fetch('/api/templates', {
@@ -367,6 +395,8 @@ function TemplateEditorOverlay({
   onClose,
   onSaveAsTemplate,
   existingTemplateNames,
+  userTemplateId,
+  onDeleteTemplate,
 }: {
   template: EmailTemplate
   mergeTags: string[]
@@ -374,6 +404,8 @@ function TemplateEditorOverlay({
   onClose: () => void
   onSaveAsTemplate: (data: { name: string; subject: string; body: string }) => Promise<void>
   existingTemplateNames: string[]
+  userTemplateId: string | null
+  onDeleteTemplate: (templateId: string) => Promise<void>
 }) {
   const [name, setName] = useState(template.name)
   const [subject, setSubject] = useState(template.subject)
@@ -382,6 +414,8 @@ function TemplateEditorOverlay({
   const [saveAsName, setSaveAsName] = useState('')
   const [savingAs, setSavingAs] = useState(false)
   const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const bodyRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSave = () => {
@@ -475,6 +509,15 @@ function TemplateEditorOverlay({
           <h3 className="flex-1 font-display text-lg font-bold uppercase tracking-tight text-foreground">
             Edit Email Template
           </h3>
+          {userTemplateId && (
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => { setSaveAsName(name); setShowSaveAs(true) }}
@@ -558,6 +601,46 @@ function TemplateEditorOverlay({
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation */}
+        {showDeleteConfirm && userTemplateId && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center">
+            <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)} />
+            <div className="relative mx-4 w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl">
+              <h4 className="mb-1 font-display text-base font-bold uppercase tracking-tight text-foreground">
+                Delete Template
+              </h4>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Are you sure you want to delete &ldquo;{name}&rdquo;? This cannot be undone.
+              </p>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="rounded-md border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-border hover:text-foreground"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setDeleting(true)
+                    try {
+                      await onDeleteTemplate(userTemplateId)
+                    } catch {
+                      setDeleting(false)
+                      setShowDeleteConfirm(false)
+                    }
+                  }}
+                  disabled={deleting}
+                  className="rounded-md bg-red-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {deleting ? 'Deleting...' : 'Delete Template'}
+                </button>
+              </div>
             </div>
           </div>
         )}
