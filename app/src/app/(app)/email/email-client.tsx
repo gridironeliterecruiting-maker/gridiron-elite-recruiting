@@ -478,7 +478,6 @@ function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate, isActive, ref
   const [threads, setThreads] = useState<Thread[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
   const isFirstLoad = useRef(true)
   const prevLatestIdRef = useRef<string | null>(null)
   const listScrollRef = useRef<HTMLDivElement>(null)
@@ -533,9 +532,6 @@ function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate, isActive, ref
 
         if (lastCheckedRef.current && data.newCount > 0) {
           // New email detected in our DB — now refresh from Zoho
-          const from = data.latestFrom || ""
-          const name = from.includes("<") ? from.split("<")[0].trim().replace(/"/g, "") : from.split("@")[0]
-          setToast(`New email from ${name}`)
           loadInbox()
         }
 
@@ -563,13 +559,6 @@ function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate, isActive, ref
   useEffect(() => {
     if (refreshTrigger && refreshTrigger > 0) loadInbox()
   }, [refreshTrigger, loadInbox])
-
-  // Auto-dismiss toast after 5 seconds
-  useEffect(() => {
-    if (!toast) return
-    const timer = setTimeout(() => setToast(null), 5000)
-    return () => clearTimeout(timer)
-  }, [toast])
 
   const handleSelectThread = (thread: Thread) => {
     // Save scroll position before navigating into thread
@@ -657,12 +646,6 @@ function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate, isActive, ref
 
   return (
     <div className="relative h-full overflow-y-auto" ref={listScrollRef}>
-      {/* Toast notification for new email */}
-      {toast && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top fade-in bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg text-sm font-medium">
-          {toast}
-        </div>
-      )}
       {threads.map(thread => (
         <ThreadRow
           key={thread.threadId}
