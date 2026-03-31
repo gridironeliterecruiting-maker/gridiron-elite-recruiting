@@ -796,17 +796,28 @@ function TemplatePreviewOverlay({
     if (!mergeData) return text
     return text.replace(/\(\(([^)]+)\)\)/g, (_match, tag) => {
       const trimmed = tag.trim()
-      // Recipient-specific tags — these vary per coach, show as placeholder
-      const recipientTags = ['Coach Last Name', 'Coach First Name', 'Coach Name', 'School Name']
-      if (recipientTags.includes(trimmed)) {
-        return `[${trimmed}]`
+      // Recipient-specific tags — show realistic sample values
+      const sampleValues: Record<string, string> = {
+        'Coach Last Name': 'Smith',
+        'Coach First Name': 'John',
+        'Coach Name': 'John Smith',
+        'School Name': 'State University',
       }
+      if (trimmed in sampleValues) return sampleValues[trimmed]
+
       // Try exact match, then underscore variant
       const variations = [trimmed, trimmed.replace(/_/g, ' '), trimmed.replace(/\s+/g, '_')]
       for (const v of variations) {
-        if (v in mergeData) return mergeData[v] || `[${trimmed}]`
+        if (v in mergeData && mergeData[v]) return mergeData[v]
       }
-      return `[${trimmed}]`
+      // Fallback sample values for empty/missing fields
+      const fallbacks: Record<string, string> = {
+        'Player Film Link': 'https://www.hudl.com/video/example',
+        'Player Phone': '(555) 555-1234',
+        'Player Email': 'player@example.com',
+        'Player GPA': '3.5',
+      }
+      return fallbacks[trimmed] || `[${trimmed}]`
     })
   }
 
@@ -857,7 +868,7 @@ function TemplatePreviewOverlay({
             <div className="mt-6 rounded-lg border border-border bg-secondary/30 px-4 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Note</p>
               <p className="text-xs text-muted-foreground">
-                Values in [brackets] change per recipient — they&apos;ll be filled with each coach&apos;s real name and school when sent.
+                Coach name, school name, and any missing profile values show sample data. They&apos;ll be replaced with real values when sent.
               </p>
             </div>
           </div>
