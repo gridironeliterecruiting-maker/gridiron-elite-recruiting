@@ -180,11 +180,16 @@ export async function GET(req: NextRequest) {
   } else if (step === 'test-zohomail') {
     // Test if Zoho Mail API (different from Mail360) supports threading
     await runTestZohoMail(accountKey, results)
+  } else if (step === 'dump-all') {
+    // Dump ALL messages from inbox + sent, filtered by a contact email
+    // Uses proper parseFrom with HTML entity decoding
+    const contactFilter = (searchParams.get('contact') || '').toLowerCase()
+    await runDumpAll(accountKey, contactFilter, results)
   } else if (step === 'list-accounts') {
     // List all accounts to see what exists
     await runListAccounts(results)
   } else {
-    results.error = `Unknown step: ${step}. Use: diagnose, set-password, create-sync, test-sync, list-accounts`
+    results.error = `Unknown step: ${step}. Use: diagnose, dump-all, set-password, create-sync, test-sync, list-accounts`
   }
 
   return NextResponse.json(results, { status: 200 })
@@ -673,5 +678,101 @@ async function runListAccounts(results: Record<string, any>) {
     results.accounts = data?.data || data
   } catch (e: any) {
     results.accountsError = e?.message || String(e)
+  }
+}
+
+/** Parse email address — same logic as inbox route, handles HTML entities */
+function debugParseFrom(fromRaw: string): { name: string; email: string } {
+  if (!fromRaw) return { name: '', email: '' }
+  let s = fromRaw
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+  const rfcMatch = s.match(/^(.*?)\s*<([^>@\s]+@[^>]+)>/)
+  if (rfcMatch) {
+    const name = rfcMatch[1].trim().replace(/^"|"$/g, '')
+    const email = rfcMatch[2].trim().toLowerCase()
+    return { name: name || email, email }
+  }
+  const zohoMatch = s.match(/^<([^>]*)>(.+@.+)$/)
+  if (zohoMatch) {
+    const name = zohoMatch[1].trim()
+    const email = zohoMatch[2].trim().toLowerCase()
+    return { name: name || email, email }
+  }
+  const plain = s.trim().toLowerCase()
+  return { name: plain, email: plain }
+}
+
+async function runDumpAll(acctKey: string, contactFilter: string, results: Record<string, any>) {
+  try {
+    const folders = await getZohoFolders(acctKey)
+    results.folders = folders.map((f: any) => ({ name: f.folderName, id: f.folderId }))
+
+    // Fetch ALL messages from ALL relevant folders
+    const folderNames = ['inbox', 'sent', 'spam', 'trash', 'drafts', 'outbox']
+    const allMessages: any[] = []
+
+    for (const fname of folderNames) {
+      const folder = folders.find((f: any) => (f.folderName || '').toLowerCase() === fname)
+      if (!folder) continue
+      const folderId = String(folder.folderId || '')
+      try {
+        const res = await zohoFetch(`${ZOHO_API_BASE}/accounts/${acctKey}/messages?folderId=${folderId}&limit=200`, {})
+        if (res.ok) {
+          const data = await res.json()
+          const msgs = data?.data || []
+          for (const m of msgs) {
+            allMessages.push({ ...m, _folderName: fname, _folderId: folderId })
+          }
+        }
+      } catch { /* skip folder */ }
+    }
+
+    results.totalMessagesAllFolders = allMessages.length
+
+    // Parse and annotate every message
+    const annotated = allMessages.map((m: any) => {
+      const fromParsed = debugParseFrom(m.fromAddress || '')
+      const toParsed = debugParseFrom((m.toAddress || '').split(',')[0].trim())
+      return {
+        messageId: m.messageId,
+        subject: m.subject,
+        fromRaw: m.fromAddress,
+        fromEmail: fromParsed.email,
+        fromName: fromParsed.name,
+        toRaw: m.toAddress,
+        toEmail: toParsed.email,
+        toName: toParsed.name,
+        folder: m._folderName,
+        receivedTime: m.receivedTime,
+        sentDateInGMT: m.sentDateInGMT,
+        date: m.receivedTime ? new Date(parseInt(m.receivedTime, 10)).toISOString() : m.sentDateInGMT ? new Date(parseInt(m.sentDateInGMT, 10)).toISOString() : null,
+        status: m.status,
+        threadId: m.threadId,
+      }
+    })
+
+    // Filter by contact if provided
+    if (contactFilter) {
+      results.contactFilter = contactFilter
+      results.messages = annotated.filter((m: any) =>
+        m.fromEmail === contactFilter || m.toEmail === contactFilter
+      )
+      results.matchCount = results.messages.length
+    } else {
+      results.messages = annotated
+      results.matchCount = annotated.length
+    }
+
+    // Sort by date
+    results.messages.sort((a: any, b: any) => {
+      const aT = parseInt(a.receivedTime || a.sentDateInGMT || '0', 10)
+      const bT = parseInt(b.receivedTime || b.sentDateInGMT || '0', 10)
+      return aT - bT
+    })
+  } catch (e: any) {
+    results.error = e?.message || String(e)
   }
 }
