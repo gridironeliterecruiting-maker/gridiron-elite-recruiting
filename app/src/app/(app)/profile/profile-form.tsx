@@ -24,6 +24,9 @@ interface Profile {
   primary_video_url: string | null
   twitter_handle: string | null
   instagram_handle: string | null
+  coach_name: string | null
+  coach_phone: string | null
+  coach_email: string | null
 }
 
 const inputClass =
@@ -68,6 +71,9 @@ export function ProfileForm({
     hudl_url: profile?.hudl_url || "",
     primary_video_url: profile?.primary_video_url || "",
     instagram_handle: profile?.instagram_handle || "",
+    coach_name: profile?.coach_name || "",
+    coach_phone: profile?.coach_phone || "",
+    coach_email: profile?.coach_email || "",
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -107,6 +113,9 @@ export function ProfileForm({
         hudl_url: form.hudl_url,
         primary_video_url: form.primary_video_url || null,
         instagram_handle: form.instagram_handle || null,
+        coach_name: form.coach_name || null,
+        coach_phone: form.coach_phone || null,
+        coach_email: form.coach_email || null,
       })
       .eq("id", profile.id)
     setSaving(false)
@@ -261,6 +270,20 @@ export function ProfileForm({
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Coach Info */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Coach Info</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <Field label="Coach Name" value={form.coach_name} onChange={(v) => update("coach_name", v)} placeholder="John Smith" />
+          </div>
+          <Field label="Coach Phone" value={form.coach_phone} onChange={(v) => update("coach_phone", v)} placeholder="(555) 123-4567" />
+          <Field label="Coach Email" value={form.coach_email} onChange={(v) => update("coach_email", v)} placeholder="coach@school.edu" />
         </CardContent>
       </Card>
 
