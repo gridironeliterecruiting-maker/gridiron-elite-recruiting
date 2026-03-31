@@ -384,8 +384,11 @@ export async function GET(request: Request) {
           // Wrap in basic HTML email template
           htmlBody = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#333;">${htmlBody}</body></html>`
 
-          const senderDisplayName = mergeProfile
-            ? `${mergeProfile.first_name} ${mergeProfile.last_name}`
+          // For coach campaigns (player_id set), the sender name is the coach (senderProfile),
+          // not the player (mergeProfile). For athlete campaigns, sender IS the player.
+          const nameSource = campaign.player_id ? senderProfile : mergeProfile
+          const senderDisplayName = nameSource
+            ? `${nameSource.first_name} ${nameSource.last_name}`
             : (senderProfile ? `${senderProfile.first_name} ${senderProfile.last_name}` : undefined)
 
           let sentMessageId: string
