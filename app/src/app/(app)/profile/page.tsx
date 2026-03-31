@@ -7,6 +7,7 @@ import { RecruitingDrive } from "@/components/profile/recruiting-drive"
 import { getActivePlayerId } from "@/lib/active-player"
 import { getCoachContext } from "@/lib/coach-context"
 import { ProfileHeader } from "./profile-header"
+import { CoachInfoCard } from "./coach-info-card"
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -96,37 +97,14 @@ export default async function ProfilePage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           {/* Left: Coach info */}
           <div className="lg:col-span-5">
-            <div className="rounded-xl border bg-card p-6">
-              <h2 className="mb-4 font-display text-lg font-bold uppercase tracking-tight">Coach Info</h2>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-xs font-medium uppercase text-muted-foreground">Name</p>
-                  <p className="text-sm font-semibold">{profile?.first_name} {profile?.last_name}</p>
-                </div>
-                {coachProfile?.title && (
-                  <div>
-                    <p className="text-xs font-medium uppercase text-muted-foreground">Title</p>
-                    <p className="text-sm font-semibold">{coachProfile.title}</p>
-                  </div>
-                )}
-                {coachProfile?.program_name && (
-                  <div>
-                    <p className="text-xs font-medium uppercase text-muted-foreground">Program</p>
-                    <p className="text-sm font-semibold">{coachProfile.program_name}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-xs font-medium uppercase text-muted-foreground">Login Email</p>
-                  <p className="text-sm font-semibold">{user?.email || profile?.email}</p>
-                </div>
-                {recruitingEmail && (
-                  <div>
-                    <p className="text-xs font-medium uppercase text-muted-foreground">Recruiting Email</p>
-                    <p className="text-sm font-semibold">{recruitingEmail}</p>
-                  </div>
-                )}
-              </div>
-            </div>
+            <CoachInfoCard
+              firstName={profile?.first_name || ''}
+              lastName={profile?.last_name || ''}
+              title={(profile as any)?.title || 'Head Coach'}
+              programName={coachProfile?.program_name || ''}
+              loginEmail={user?.email || profile?.email || ''}
+              recruitingEmail={recruitingEmail}
+            />
           </div>
 
           {/* Right: Active player info + recruiting drive */}
