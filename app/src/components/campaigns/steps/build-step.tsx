@@ -20,12 +20,13 @@ import {
   Eye,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
-import type { CampaignGoal, EmailTemplate } from "../types"
+import type { CampaignGoal, EmailTemplate, SelectedCoach } from "../types"
 
 interface BuildStepProps {
   goal: CampaignGoal
   templates: EmailTemplate[]
   recruitingEmail?: string | null
+  selectedCoaches?: SelectedCoach[]
   onTemplatesChange: (templates: EmailTemplate[]) => void
   onNext: () => void
   onBack: () => void
@@ -115,7 +116,7 @@ const COACH_MERGE_TAGS = [
   "Coach Email Address",
 ]
 
-export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange, onNext, onBack }: BuildStepProps) {
+export function BuildStep({ goal, templates, recruitingEmail, selectedCoaches, onTemplatesChange, onNext, onBack }: BuildStepProps) {
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [availableTemplates, setAvailableTemplates] = useState<DatabaseTemplate[]>([])
@@ -359,6 +360,7 @@ export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange,
           template={previewTemplate}
           mergeData={previewData}
           loading={loadingPreview}
+          firstCoach={selectedCoaches?.[0] || null}
           onClose={() => { setPreviewTemplate(null); setPreviewData(null) }}
         />
       )}
@@ -783,25 +785,31 @@ function TemplatePreviewOverlay({
   template,
   mergeData,
   loading,
+  firstCoach,
   onClose,
 }: {
   template: EmailTemplate
   mergeData: Record<string, string> | null
   loading: boolean
+  firstCoach: SelectedCoach | null
   onClose: () => void
 }) {
   // Resolve all merge tags for preview display
   const resolvePreview = (text: string): string => {
     if (!mergeData) return text
 
-    // Sample values for recipient-specific tags (vary per coach)
-    const samples: Record<string, string> = {
-      'Coach Last Name': 'Smith',
-      'Coach First Name': 'John',
-      'Coach Name': 'John Smith',
-      'School Name': 'State University',
-      'Coach Phone': '(555) 555-0000',
-      'Coach Email Address': 'coach@university.edu',
+    // Use real coach data from the first targeted coach
+    const coachName = firstCoach?.coachName || ''
+    const coachLast = coachName.split(' ').pop() || ''
+    const coachFirst = coachName.split(' ')[0] || ''
+    const schoolName = firstCoach?.programName || ''
+
+    // Real coach data from the targeted list
+    const coachValues: Record<string, string> = {
+      'Coach Last Name': coachLast,
+      'Coach First Name': coachFirst,
+      'Coach Name': coachName,
+      'School Name': schoolName,
     }
 
     // Fallbacks when player data is empty in DB
@@ -815,12 +823,11 @@ function TemplatePreviewOverlay({
     return text.replace(/\(\(([^)]+)\)\)/g, (_match, rawTag) => {
       const tag = rawTag.trim()
 
-      // 1. Sample values for recipient-specific fields
-      if (samples[tag]) return samples[tag]
+      // 1. Real coach data from targeted list
+      if (tag in coachValues && coachValues[tag]) return coachValues[tag]
 
-      // 2. Real data from the API
+      // 2. Real player/sender data from the API
       if (mergeData[tag]) return mergeData[tag]
-      // Try underscore/space variants
       const alt1 = tag.replace(/_/g, ' ')
       const alt2 = tag.replace(/\s+/g, '_')
       if (mergeData[alt1]) return mergeData[alt1]
@@ -881,7 +888,9 @@ function TemplatePreviewOverlay({
             <div className="mt-6 rounded-lg border border-border bg-secondary/30 px-4 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Note</p>
               <p className="text-xs text-muted-foreground">
-                Coach name, school name, and any missing profile values show sample data. They&apos;ll be replaced with real values when sent.
+                {firstCoach
+                  ? `Previewing with ${firstCoach.coachName} at ${firstCoach.programName}. Each coach will receive a personalized version.`
+                  : 'Select target coaches to see a fully personalized preview.'}
               </p>
             </div>
           </div>

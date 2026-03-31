@@ -389,6 +389,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
             goal={campaignGoal}
             templates={draft.templates}
             recruitingEmail={recruitingEmail}
+            selectedCoaches={draft.selectedCoaches}
             onTemplatesChange={(templates: EmailTemplate[]) => {
               setDraft((prev) => ({ ...prev, templates }))
               setHasUnsavedChanges(true)
