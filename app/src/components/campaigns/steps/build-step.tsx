@@ -804,7 +804,7 @@ function TemplatePreviewOverlay({
       // Try exact match, then underscore variant
       const variations = [trimmed, trimmed.replace(/_/g, ' '), trimmed.replace(/\s+/g, '_')]
       for (const v of variations) {
-        if (mergeData[v]) return mergeData[v]
+        if (v in mergeData) return mergeData[v] || `[${trimmed}]`
       }
       return `[${trimmed}]`
     })

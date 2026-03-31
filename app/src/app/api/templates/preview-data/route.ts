@@ -39,11 +39,23 @@ export async function GET() {
       .eq('id', membership.program_id)
       .single()
 
-    // Get active player's profile
-    const activePlayerId = await getActivePlayerId()
+    // Get active player's profile — fall back to first player in program
+    let activePlayerId = await getActivePlayerId()
+
+    // If no cookie, get the first player from program_members
+    if (!activePlayerId) {
+      const { data: players } = await admin
+        .from('program_members')
+        .select('user_id')
+        .eq('program_id', membership.program_id)
+        .eq('role', 'player')
+        .limit(1)
+      activePlayerId = players?.[0]?.user_id || null
+    }
+
     let playerProfile: any = null
     if (activePlayerId) {
-      const { data: pp } = await supabase
+      const { data: pp } = await admin
         .from('profiles')
         .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, primary_video_url, phone, email')
         .eq('id', activePlayerId)
