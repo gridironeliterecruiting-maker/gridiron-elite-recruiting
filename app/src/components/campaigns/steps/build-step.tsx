@@ -17,6 +17,7 @@ import {
   CircleCheck,
   Circle,
   Trash2,
+  Eye,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import type { CampaignGoal, EmailTemplate } from "../types"
@@ -120,6 +121,9 @@ export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange,
   const [availableTemplates, setAvailableTemplates] = useState<DatabaseTemplate[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(true)
   const [audience, setAudience] = useState<'player' | 'coach'>('player')
+  const [previewTemplate, setPreviewTemplate] = useState<EmailTemplate | null>(null)
+  const [previewData, setPreviewData] = useState<Record<string, string> | null>(null)
+  const [loadingPreview, setLoadingPreview] = useState(false)
 
   // Recommended templates — same for all campaigns (no goal selection)
   const defaultTemplates: EmailTemplate[] = audience === 'coach' ? COACH_TEMPLATES : PLAYER_TEMPLATES
@@ -204,6 +208,24 @@ export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange,
   }
 
   const isCustom = (index: number) => index === displayTemplates.length - 1
+
+  const handlePreview = async (e: React.MouseEvent, index: number) => {
+    e.stopPropagation()
+    const template = displayTemplates[index]
+    setPreviewTemplate(template)
+    setLoadingPreview(true)
+    try {
+      const res = await fetch('/api/templates/preview-data')
+      if (res.ok) {
+        const { mergeData } = await res.json()
+        setPreviewData(mergeData)
+      }
+    } catch (err) {
+      console.error('Failed to load preview data:', err)
+    } finally {
+      setLoadingPreview(false)
+    }
+  }
 
   // Can proceed if a template is selected AND it has subject + body
   // (custom email must be filled in)
@@ -291,6 +313,18 @@ export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange,
                     )}
                   </div>
 
+                  {/* Preview button (not on custom email) */}
+                  {!isCustomRow && (
+                    <button
+                      type="button"
+                      onClick={(e) => handlePreview(e, index)}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                      title="Preview with your data"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                  )}
+
                   {/* Chevron to indicate clickable */}
                   <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40" />
                 </div>
@@ -318,6 +352,16 @@ export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange,
           Continue <ChevronRight className="h-3 w-3" />
         </button>
       </div>
+
+      {/* Template Preview Overlay */}
+      {previewTemplate && (
+        <TemplatePreviewOverlay
+          template={previewTemplate}
+          mergeData={previewData}
+          loading={loadingPreview}
+          onClose={() => { setPreviewTemplate(null); setPreviewData(null) }}
+        />
+      )}
 
       {/* Template Editor Overlay */}
       {editingTemplate && selectedIndex !== null && (
@@ -499,7 +543,7 @@ function TemplateEditorOverlay({
             <X className="h-4 w-4" />
           </button>
           <h3 className="flex-1 font-display text-lg font-bold uppercase tracking-tight text-foreground">
-            Edit Email Template
+            Edit Email
           </h3>
           {userTemplateId && (
             <button
@@ -729,6 +773,95 @@ function TemplateEditorOverlay({
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Template Preview Overlay ────────────────────────────────────
+function TemplatePreviewOverlay({
+  template,
+  mergeData,
+  loading,
+  onClose,
+}: {
+  template: EmailTemplate
+  mergeData: Record<string, string> | null
+  loading: boolean
+  onClose: () => void
+}) {
+  // Resolve merge tags using the preview data from the API
+  // Recipient-specific tags (Coach Last Name, School Name) become placeholders
+  const resolvePreview = (text: string): string => {
+    if (!mergeData) return text
+    return text.replace(/\(\(([^)]+)\)\)/g, (_match, tag) => {
+      const trimmed = tag.trim()
+      // Recipient-specific tags — these vary per coach, show as placeholder
+      const recipientTags = ['Coach Last Name', 'Coach First Name', 'Coach Name', 'School Name']
+      if (recipientTags.includes(trimmed)) {
+        return `[${trimmed}]`
+      }
+      // Try exact match, then underscore variant
+      const variations = [trimmed, trimmed.replace(/_/g, ' '), trimmed.replace(/\s+/g, '_')]
+      for (const v of variations) {
+        if (mergeData[v]) return mergeData[v]
+      }
+      return `[${trimmed}]`
+    })
+  }
+
+  const resolvedSubject = resolvePreview(template.subject)
+  const resolvedBody = resolvePreview(template.body || '')
+
+  return (
+    <div className="animate-in fade-in fixed inset-0 z-[80] flex items-center justify-center duration-150">
+      <div className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative mx-4 flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b border-border px-5 py-4">
+          <Eye className="h-5 w-5 text-primary" />
+          <h3 className="flex-1 font-display text-base font-bold uppercase tracking-tight text-foreground">
+            Email Preview
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition-colors hover:bg-border"
+            aria-label="Close preview"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <p className="text-sm text-muted-foreground">Loading preview data...</p>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto px-5 py-5">
+            {/* Subject */}
+            <div className="mb-4">
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Subject</p>
+              <p className="text-sm font-semibold text-foreground">{resolvedSubject}</p>
+            </div>
+
+            {/* Divider */}
+            <div className="mb-4 border-t border-border" />
+
+            {/* Body — render newlines as line breaks */}
+            <div className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+              {resolvedBody}
+            </div>
+
+            {/* Legend for placeholder tags */}
+            <div className="mt-6 rounded-lg border border-border bg-secondary/30 px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Note</p>
+              <p className="text-xs text-muted-foreground">
+                Values in [brackets] change per recipient — they&apos;ll be filled with each coach&apos;s real name and school when sent.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
