@@ -40,6 +40,7 @@ const coachRoutes = [
   { label: "Hub", icon: LayoutDashboard, path: "/hub" },
   { label: "Programs", icon: Users, path: "/coaches" },
   { label: "Outreach", icon: Mail, path: "/outreach" },
+  { label: "Email", icon: Inbox, path: "/email" },
   { label: "Profile", icon: User, path: "/profile" },
 ]
 

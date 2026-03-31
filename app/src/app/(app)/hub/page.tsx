@@ -14,7 +14,7 @@ export default async function HubPage() {
   const { data: userProfile } = user
     ? await supabase
         .from("profiles")
-        .select("first_name, last_name, position, grad_year, high_school, hudl_url, city, state, twitter_handle, instagram_handle, role, readiness_score_open, workspace_email, jersey_number")
+        .select("first_name, last_name, position, grad_year, high_school, hudl_url, city, state, twitter_handle, instagram_handle, role, readiness_score_open, workspace_email, jersey_number, email_banner_dismissed")
         .eq("id", user.id)
         .single()
     : { data: null }
@@ -287,6 +287,7 @@ export default async function HubPage() {
       managedProgramId={managedProgramId}
       programTwitterHandle={programTwitterHandle}
       readinessScoreOpen={userProfile?.readiness_score_open ?? true}
+      emailBannerDismissed={userProfile?.email_banner_dismissed ?? false}
       recruitingEmail={isCoach ? null : recruitingEmail}
     />
   )

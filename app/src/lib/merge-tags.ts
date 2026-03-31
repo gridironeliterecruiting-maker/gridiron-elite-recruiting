@@ -31,6 +31,7 @@ export interface MergeTagData {
   // Sender (for coach templates — the sending coach's own name)
   myFirstName?: string
   myLastName?: string
+  myTitle?: string
 }
 
 export function resolveMergeTags(template: string, data: MergeTagData): string {
@@ -60,6 +61,7 @@ export function resolveMergeTags(template: string, data: MergeTagData): string {
     // Sender (coach templates)
     'My First Name':     data.myFirstName || '',
     'My Last Name':      data.myLastName || '',
+    'My Title':          data.myTitle || '',
 
     // ── BACKWARDS COMPAT ──────────────────────────────────────────────────────
     'coach name':        data.coachName || '',

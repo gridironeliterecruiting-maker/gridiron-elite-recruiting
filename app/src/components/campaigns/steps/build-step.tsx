@@ -67,21 +67,9 @@ const PLAYER_TEMPLATES: EmailTemplate[] = [
 
 const COACH_TEMPLATES: EmailTemplate[] = [
   {
-    name: "Direct Introduction",
+    name: "Coach Introduction",
     subject: "((Player First Name)) ((Player Last Name)) ((Player Grad Year)) ((Player Position))",
-    body: "Hi Coach ((Coach Last Name)),\n\nMy name is ((My First Name)), a coach at ((Player High School)). I'm reaching out to introduce ((Player First Name)) ((Player Last Name)), a ((Player Grad Year)) ((Player Position)) from ((Player City)), ((Player State)).\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere is my video:\n((Player Film Link))\n\nThanks,\n((My First Name))\n((Coach Phone))",
-    delayDays: null
-  },
-  {
-    name: "Film & Coach Reference",
-    subject: "((Player First Name)) ((Player Last Name)) ((Player Grad Year)) ((Player Position))",
-    body: "Hi Coach ((Coach Last Name)),\n\nAre you currently looking for a ((Player Grad Year)) ((Player Position))? I'd like to share film on ((Player First Name)) ((Player Last Name)) from ((Player High School)).\n\n((Player Film Link))\n\nGPA: ((Player GPA))\n\nI think ((Player First Name)) has what it takes to compete at ((School Name)). Happy to discuss further.\n\n((My First Name))\n((Coach Phone))",
-    delayDays: null
-  },
-  {
-    name: "Genuine Interest",
-    subject: "((Player First Name)) ((Player Last Name)) ((Player Grad Year)) ((Player Position))",
-    body: "Hi Coach ((Coach Last Name)),\n\n((Player First Name)) ((Player Last Name)) is genuinely interested in ((School Name)). ((Player First Name)) is a ((Player Grad Year)) ((Player Position)) from ((Player High School)) with a ((Player GPA)) GPA.\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere is my video:\n((Player Film Link))\n\nThanks,\n((My First Name))\n((Coach Phone))",
+    body: "Hi Coach ((Coach Last Name)),\n\nMy name is ((My First Name)) ((My Last Name)). I am the ((My Title)) at ((Player High School)) in ((Player City)), ((Player State)).\n\nI'm writing to let you know I have a ((Player Grad Year)) ((Player Position)) named ((Player First Name)) ((Player Last Name)) that you should take a close look at. In addition to being one of the best ((Player Position))s I've ever coached, he's also a leader on the field, in the classroom, and in the community.\n\nHere is his video:\n((Player Film Link))\n\nI would love to host you or anyone from your staff here at the school at your earliest convenience.\n\nThanks,\n((My First Name)) ((My Last Name))",
     delayDays: null
   },
 ]
@@ -120,6 +108,7 @@ const COACH_MERGE_TAGS = [
   "Player GPA",
   "My First Name",
   "My Last Name",
+  "My Title",
   "Coach Name",
   "Coach Phone",
   "Coach Email Address",

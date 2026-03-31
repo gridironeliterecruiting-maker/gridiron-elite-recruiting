@@ -75,6 +75,7 @@ interface HubClientProps {
   managedProgramId: string | null
   programTwitterHandle: string | null
   readinessScoreOpen: boolean
+  emailBannerDismissed: boolean
   recruitingEmail: string | null
 }
 
@@ -99,21 +100,18 @@ export function HubClient({
   managedProgramId,
   programTwitterHandle,
   readinessScoreOpen,
+  emailBannerDismissed: initialEmailBannerDismissed,
   recruitingEmail,
 }: HubClientProps) {
   const [twitterProfile, setTwitterProfile] = useState<TwitterProfile | null>(null)
   const [twitterLoading, setTwitterLoading] = useState(hasTwitterToken)
   const [twitterLoadFailed, setTwitterLoadFailed] = useState(false)
   const [effectiveHandle, setEffectiveHandle] = useState<string | null>(twitterHandle)
-  const [emailBannerDismissed, setEmailBannerDismissed] = useState(false)
-
-  useEffect(() => {
-    setEmailBannerDismissed(localStorage.getItem('hub_email_dismissed') === 'true')
-  }, [])
+  const [emailBannerDismissed, setEmailBannerDismissed] = useState(initialEmailBannerDismissed)
 
   const dismissEmailBanner = () => {
-    localStorage.setItem('hub_email_dismissed', 'true')
     setEmailBannerDismissed(true)
+    fetch('/api/profile/dismiss-email-banner', { method: 'POST' }).catch(() => {})
   }
 
   // Fetch full Twitter profile data client-side (enrichment from Twitter API)

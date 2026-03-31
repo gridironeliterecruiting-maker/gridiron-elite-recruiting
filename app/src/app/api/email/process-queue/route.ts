@@ -173,7 +173,7 @@ export async function GET(request: Request) {
       // For now, fetch the sender's own profile as the default merge tag source
       const { data: senderProfile } = await admin
         .from('profiles')
-        .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, primary_video_url, phone, email')
+        .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, primary_video_url, phone, email, title')
         .eq('id', userId)
         .single()
 
@@ -253,7 +253,7 @@ export async function GET(request: Request) {
           if (campaign.player_id) {
             const { data: playerProfile } = await admin
               .from('profiles')
-              .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, primary_video_url, phone, email')
+              .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, primary_video_url, phone, email, title')
               .eq('id', campaign.player_id)
               .single()
             if (playerProfile) {
@@ -293,6 +293,7 @@ export async function GET(request: Request) {
             // Sender (for coach campaigns — the sending coach's own name)
             'My_First_Name':      senderProfile?.first_name || '',
             'My_Last_Name':       senderProfile?.last_name || '',
+            'My_Title':           (senderProfile as any)?.title || '',
 
             // ── Legacy aliases (backwards compat) ───────────────────────────
             'Last_Name_Coach':    coachLastName,
