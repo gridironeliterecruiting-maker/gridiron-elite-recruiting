@@ -39,7 +39,7 @@ export default async function DmQueuePage({
   // Fetch athlete profile for merge tags
   const { data: profile } = await supabase
     .from("profiles")
-    .select("first_name, last_name, position, grad_year, hudl_url, high_school, city, state, gpa, phone, email")
+    .select("first_name, last_name, position, grad_year, hudl_url, primary_video_url, high_school, city, state, gpa, phone, email")
     .eq("id", user.id)
     .single()
 

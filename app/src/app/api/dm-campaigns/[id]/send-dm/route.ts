@@ -121,7 +121,7 @@ export async function POST(
       playerFirstName: profile?.first_name || '',
       playerLastName: profile?.last_name || '',
       position: profile?.position || '',
-      filmLink: profile?.hudl_url || '',
+      filmLink: profile?.primary_video_url || profile?.hudl_url || '',
       gradYear: profile?.grad_year?.toString() || '',
       highSchool: profile?.high_school || '',
       city: profile?.city || '',

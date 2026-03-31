@@ -173,7 +173,7 @@ export async function GET(request: Request) {
       // For now, fetch the sender's own profile as the default merge tag source
       const { data: senderProfile } = await admin
         .from('profiles')
-        .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, phone, email')
+        .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, primary_video_url, phone, email')
         .eq('id', userId)
         .single()
 
@@ -253,7 +253,7 @@ export async function GET(request: Request) {
           if (campaign.player_id) {
             const { data: playerProfile } = await admin
               .from('profiles')
-              .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, phone, email')
+              .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, primary_video_url, phone, email')
               .eq('id', campaign.player_id)
               .single()
             if (playerProfile) {
@@ -287,7 +287,7 @@ export async function GET(request: Request) {
             'Player_City':        mergeProfile?.city || '',
             'Player_State':       mergeProfile?.state || '',
             'Player_GPA':         formatGPA(mergeProfile?.gpa),
-            'Player_Film_Link':   mergeProfile?.hudl_url || '',
+            'Player_Film_Link':   (mergeProfile as any)?.primary_video_url || mergeProfile?.hudl_url || '',
             'Player_Phone':       mergeProfile?.phone || '',
             'Player_Email':       playerEmail,
             // Sender (for coach campaigns — the sending coach's own name)
@@ -306,7 +306,7 @@ export async function GET(request: Request) {
             'State':              mergeProfile?.state || '',
             'City_State':         cityState,
             'GPA':                formatGPA(mergeProfile?.gpa),
-            'Film_Link':          mergeProfile?.hudl_url || '',
+            'Film_Link':          (mergeProfile as any)?.primary_video_url || mergeProfile?.hudl_url || '',
             'Hudl_URL':           mergeProfile?.hudl_url || '',
             'Phone':              mergeProfile?.phone || '',
             'Email':              playerEmail,

@@ -35,6 +35,7 @@ interface Profile {
   position: string | null
   grad_year: number | null
   hudl_url: string | null
+  primary_video_url: string | null
   high_school: string | null
   city: string | null
   state: string | null
@@ -88,7 +89,7 @@ export function DmQueueClient({
       playerFirstName: profile?.first_name || "",
       playerLastName: profile?.last_name || "",
       position: profile?.position || "",
-      filmLink: profile?.hudl_url || "",
+      filmLink: profile?.primary_video_url || profile?.hudl_url || "",
       gradYear: profile?.grad_year?.toString() || "",
       highSchool: profile?.high_school || "",
       city: profile?.city || "",

@@ -48,19 +48,19 @@ const PLAYER_TEMPLATES: EmailTemplate[] = [
   {
     name: "Direct Introduction",
     subject: "((Player First Name)) ((Player Last Name)) ((Player Grad Year)) ((Player Position))",
-    body: "Hi Coach ((Coach Last Name)),\n\nMy name is ((Player First Name)) ((Player Last Name)). I'm a ((Player Grad Year)) ((Player Position)) from ((Player City)), ((Player State)).\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere's some video:\n((Player Film Link))\n\nThanks,\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
+    body: "Hi Coach ((Coach Last Name)),\n\nMy name is ((Player First Name)) ((Player Last Name)). I'm a ((Player Grad Year)) ((Player Position)) from ((Player City)), ((Player State)).\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere is my video:\n((Player Film Link))\n\nThanks,\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
     delayDays: null
   },
   {
     name: "Film & Coach Reference",
     subject: "((Player First Name)) ((Player Last Name)) ((Player Grad Year)) ((Player Position))",
-    body: "Hi Coach ((Coach Last Name)),\n\nAre you currently looking for a ((Player Grad Year)) ((Player Position))?\n\nFor reference, please feel free to call my coach, ((Coach Name)) - ((Coach Phone))\n\nHere's some video:\n((Player Film Link))\n\nThanks,\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
+    body: "Hi Coach ((Coach Last Name)),\n\nAre you currently looking for a ((Player Grad Year)) ((Player Position))?\n\nFor reference, please feel free to call my coach, ((Coach Name)) - ((Coach Phone))\n\nHere is my video:\n((Player Film Link))\n\nThanks,\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
     delayDays: null
   },
   {
     name: "Genuine Interest",
     subject: "((Player First Name)) ((Player Last Name)) ((Player Grad Year)) ((Player Position))",
-    body: "Hi Coach ((Coach Last Name)),\n\nI'm genuinely interested in ((School Name)).\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere's some video:\n((Player Film Link))\n\nThanks,\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
+    body: "Hi Coach ((Coach Last Name)),\n\nI'm genuinely interested in ((School Name)).\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere is my video:\n((Player Film Link))\n\nThanks,\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
     delayDays: null
   },
 ]
@@ -69,7 +69,7 @@ const COACH_TEMPLATES: EmailTemplate[] = [
   {
     name: "Direct Introduction",
     subject: "((Player First Name)) ((Player Last Name)) ((Player Grad Year)) ((Player Position))",
-    body: "Hi Coach ((Coach Last Name)),\n\nMy name is ((My First Name)), a coach at ((Player High School)). I'm reaching out to introduce ((Player First Name)) ((Player Last Name)), a ((Player Grad Year)) ((Player Position)) from ((Player City)), ((Player State)).\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere's some video:\n((Player Film Link))\n\nThanks,\n((My First Name))\n((Coach Phone))",
+    body: "Hi Coach ((Coach Last Name)),\n\nMy name is ((My First Name)), a coach at ((Player High School)). I'm reaching out to introduce ((Player First Name)) ((Player Last Name)), a ((Player Grad Year)) ((Player Position)) from ((Player City)), ((Player State)).\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere is my video:\n((Player Film Link))\n\nThanks,\n((My First Name))\n((Coach Phone))",
     delayDays: null
   },
   {
@@ -81,7 +81,7 @@ const COACH_TEMPLATES: EmailTemplate[] = [
   {
     name: "Genuine Interest",
     subject: "((Player First Name)) ((Player Last Name)) ((Player Grad Year)) ((Player Position))",
-    body: "Hi Coach ((Coach Last Name)),\n\n((Player First Name)) ((Player Last Name)) is genuinely interested in ((School Name)). ((Player First Name)) is a ((Player Grad Year)) ((Player Position)) from ((Player High School)) with a ((Player GPA)) GPA.\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere's some video:\n((Player Film Link))\n\nThanks,\n((My First Name))\n((Coach Phone))",
+    body: "Hi Coach ((Coach Last Name)),\n\n((Player First Name)) ((Player Last Name)) is genuinely interested in ((School Name)). ((Player First Name)) is a ((Player Grad Year)) ((Player Position)) from ((Player High School)) with a ((Player GPA)) GPA.\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere is my video:\n((Player Film Link))\n\nThanks,\n((My First Name))\n((Coach Phone))",
     delayDays: null
   },
 ]
