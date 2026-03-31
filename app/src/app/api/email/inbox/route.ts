@@ -80,7 +80,6 @@ export async function GET() {
     }
 
     // 2. Fetch inbox + sent messages in parallel (2 Zoho calls)
-    const diagLines: string[] = []
     const [inboxRes, sentRes] = await Promise.all([
       zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${inboxFolderId}&limit=200`, {}),
       sentFolderId
@@ -92,7 +91,6 @@ export async function GET() {
     const sentData = sentRes?.ok ? await sentRes.json() : null
     const inboxMessages: any[] = inboxData?.data || []
     const sentMessages: any[] = sentData?.data || []
-    diagLines.push(`INBOX raw=${inboxMessages.length} SENT raw=${sentMessages.length}`)
 
     // 3. Group inbox messages into conversations by normalized subject + sender
     //    This is the exact logic from commit 16c8375 that worked perfectly.
@@ -120,8 +118,6 @@ export async function GET() {
         existing.sent.push(msg)
       }
     }
-
-    diagLines.push(`CONVERSATIONS=${conversationMap.size}`)
 
     // 4. Build thread list from grouped conversations
     const threads = Array.from(conversationMap.entries()).map(([, conv]) => {
@@ -214,11 +210,6 @@ export async function GET() {
     }).filter(t => t.otherEmail && t.otherEmail !== workspaceEmail)
       .sort((a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime())
 
-    diagLines.push(`THREADS=${threads.length}`)
-    for (const t of threads) {
-      diagLines.push(`  T:${t.threadId}|${t.subject.substring(0, 40)}|other=${t.otherEmail}|msgs=${t.allMessageIds.length}`)
-    }
-
     // 5. Batch logo + coach name lookup from our database (Supabase, not Zoho)
     const otherEmails = [...new Set(threads.map(t => t.otherEmail).filter(Boolean))]
     if (otherEmails.length > 0) {
@@ -279,16 +270,6 @@ export async function GET() {
         inboxThreads.push(thread)
       }
     }
-
-    diagLines.push(`FINAL inbox=${inboxThreads.length} archived=${archivedThreads.length}`)
-
-    // Write diagnostics to DB (temporary — for verification)
-    try {
-      await admin.from('system_settings').upsert({
-        key: 'inbox_diag',
-        value: JSON.stringify(diagLines),
-      }, { onConflict: 'key' })
-    } catch { /* ignore */ }
 
     const unreadCount = inboxThreads.reduce((sum, t) => sum + t.unreadCount, 0)
     return NextResponse.json({ threads: inboxThreads, archivedThreads, unreadCount })
