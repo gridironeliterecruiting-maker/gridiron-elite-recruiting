@@ -315,17 +315,17 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
 
         {/* Progress Tracker */}
         <div className="mx-auto max-w-7xl px-4 pb-4 lg:px-8">
-          <div className="flex items-center gap-0">
+          <div className="flex w-full items-center">
             {steps.map((step, i) => {
               const canNavigate = step.number <= maxStepReached
               const isCompleted = currentStep > step.number || (step.number === steps.length && dmAllSent)
               return (
-                <div key={step.number} className="flex flex-1 items-center">
+                <div key={step.number} className={`flex items-center ${i < steps.length - 1 ? "flex-1" : ""}`}>
                   <button
                     type="button"
                     disabled={!canNavigate}
                     onClick={() => canNavigate && goToStep(step.number)}
-                    className={`flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors ${
+                    className={`flex shrink-0 items-center gap-2 rounded-md px-1.5 py-1 transition-colors ${
                       canNavigate ? "cursor-pointer hover:bg-secondary/80" : "cursor-default"
                     }`}
                   >
