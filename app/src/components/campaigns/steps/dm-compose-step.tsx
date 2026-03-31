@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Loader2, MessageCircle, Eye, EyeOff } from "lucide-react"
+import { Loader2, ChevronRight, MessageCircle, Eye, EyeOff } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import type { CampaignGoal, SelectedCoach } from "../types"
 import { resolveMergeTags } from "@/lib/merge-tags"
@@ -260,7 +260,7 @@ export function DmComposeStep({
           type="button"
           onClick={handleCreate}
           disabled={!canCreate || isCreating}
-          className="flex items-center gap-2 rounded-md bg-accent px-6 py-2 text-xs font-semibold text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 rounded-md bg-primary px-6 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isCreating ? (
             <>
@@ -269,8 +269,7 @@ export function DmComposeStep({
             </>
           ) : (
             <>
-              <MessageCircle className="h-3.5 w-3.5" />
-              Create DM Queue
+              Continue <ChevronRight className="h-3 w-3" />
             </>
           )}
         </button>
