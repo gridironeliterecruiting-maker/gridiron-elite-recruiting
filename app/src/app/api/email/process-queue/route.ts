@@ -250,6 +250,9 @@ export async function GET(request: Request) {
           // When player_id is set (coach campaign), use the player's profile for merge tags
           // and the sender's profile for the sender name. Otherwise, sender IS the player.
           let mergeProfile = senderProfile
+          let programSchoolName = ''
+          let programCity = ''
+          let programState = ''
           if (campaign.player_id) {
             const { data: playerProfile } = await admin
               .from('profiles')
@@ -261,13 +264,39 @@ export async function GET(request: Request) {
             } else {
               console.warn(`Coach campaign ${campaign.id}: could not fetch player ${campaign.player_id} profile, falling back to sender profile`)
             }
+
+            // For coach campaigns, use the managed program's school/city/state
+            // (authoritative data set by admin) instead of player-entered values
+            const { data: membership } = await admin
+              .from('program_members')
+              .select('program_id')
+              .eq('user_id', userId)
+              .eq('role', 'coach')
+              .limit(1)
+              .single()
+            if (membership) {
+              const { data: program } = await admin
+                .from('managed_programs')
+                .select('school_name, city, state')
+                .eq('id', membership.program_id)
+                .single()
+              if (program) {
+                programSchoolName = program.school_name || ''
+                programCity = program.city || ''
+                programState = program.state || ''
+              }
+            }
           }
 
           // Build merge data — canonical ((Player ...)) / ((Coach ...)) / ((School Name)) tags
           // plus full backwards compat for old formats
           const coachFirstName = recipient.coach_name?.split(' ')[0] || ''
           const coachLastName = recipient.coach_name?.split(' ').pop() || ''
-          const cityState = [mergeProfile?.city, mergeProfile?.state].filter(Boolean).join(', ')
+          // For coach campaigns, use program data for high school/city/state
+          const highSchool = programSchoolName || mergeProfile?.high_school || ''
+          const playerCity = programCity || mergeProfile?.city || ''
+          const playerState = programState || mergeProfile?.state || ''
+          const cityState = [playerCity, playerState].filter(Boolean).join(', ')
           const playerEmail = (mergeProfile as any)?.email || userProfile?.email || ''
 
           const profileData: Record<string, string> = {
@@ -283,9 +312,9 @@ export async function GET(request: Request) {
             'Player_Last_Name':   mergeProfile?.last_name || '',
             'Player_Position':    mergeProfile?.position || '',
             'Player_Grad_Year':   mergeProfile?.grad_year?.toString() || '',
-            'Player_High_School': mergeProfile?.high_school || '',
-            'Player_City':        mergeProfile?.city || '',
-            'Player_State':       mergeProfile?.state || '',
+            'Player_High_School': highSchool,
+            'Player_City':        playerCity,
+            'Player_State':       playerState,
             'Player_GPA':         formatGPA(mergeProfile?.gpa),
             'Player_Film_Link':   (mergeProfile as any)?.primary_video_url || mergeProfile?.hudl_url || '',
             'Player_Phone':       mergeProfile?.phone || '',
@@ -302,9 +331,9 @@ export async function GET(request: Request) {
             'Last_Name':          mergeProfile?.last_name || '',
             'Position':           mergeProfile?.position || '',
             'Grad_Year':          mergeProfile?.grad_year?.toString() || '',
-            'High_School':        mergeProfile?.high_school || '',
-            'City':               mergeProfile?.city || '',
-            'State':              mergeProfile?.state || '',
+            'High_School':        highSchool,
+            'City':               playerCity,
+            'State':              playerState,
             'City_State':         cityState,
             'GPA':                formatGPA(mergeProfile?.gpa),
             'Film_Link':          (mergeProfile as any)?.primary_video_url || mergeProfile?.hudl_url || '',
