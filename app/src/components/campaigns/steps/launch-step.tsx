@@ -17,11 +17,11 @@ import type { CampaignGoal, EmailTemplate } from "../types"
 import { LaunchConfirmationOverlay } from "../launch-confirmation-overlay"
 
 const GOAL_LABELS: Record<CampaignGoal, { verb: string; highlight: string }> = {
-  get_response: { verb: "introduce yourself and", highlight: "GET A RESPONSE" },
-  evaluate_film: { verb: "get them to", highlight: "EVALUATE YOUR FILM" },
-  build_interest: { verb: "share your story to", highlight: "BUILD INTEREST" },
-  secure_visit: { verb: "discuss the details and", highlight: "SECURE A VISIT" },
-  other: { verb: "send a custom", highlight: "MESSAGE" },
+  get_response: { verb: "get coaches to", highlight: "WATCH YOUR FILM AND RESPOND" },
+  evaluate_film: { verb: "get coaches to", highlight: "WATCH YOUR FILM AND RESPOND" },
+  build_interest: { verb: "get coaches to", highlight: "WATCH YOUR FILM AND RESPOND" },
+  secure_visit: { verb: "get coaches to", highlight: "WATCH YOUR FILM AND RESPOND" },
+  other: { verb: "get coaches to", highlight: "WATCH YOUR FILM AND RESPOND" },
 }
 
 interface SelectedCoach {

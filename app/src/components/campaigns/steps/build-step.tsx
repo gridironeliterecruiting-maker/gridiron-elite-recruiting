@@ -40,93 +40,50 @@ interface DatabaseTemplate {
   updated_at: string
 }
 
-// Fallback templates (used if the database returns nothing for a goal)
-// All use canonical ((Player ...)) / ((Coach ...)) / ((School Name)) tags.
-const PLAYER_GOAL_TEMPLATES: Record<CampaignGoal, EmailTemplate[]> = {
-  get_response: [
-    {
-      name: "Initial Introduction",
-      subject: "((Player First Name)) ((Player Last Name)) | ((Player Position)) | Class of ((Player Grad Year))",
-      body: "Dear Coach ((Coach Last Name)),\n\nMy name is ((Player First Name)) ((Player Last Name)). I'm a ((Player Position)) from ((Player High School)) in ((Player City)), ((Player State)), Class of ((Player Grad Year)).\n\nI'm very interested in your program at ((School Name)). Here is my film:\n((Player Film Link))\n\nGPA: ((Player GPA))\n\nThank you for your time!\n\n((Player First Name)) ((Player Last Name))\n((Player Phone))\n((Player Email))",
-      delayDays: null
-    },
-  ],
-  evaluate_film: [
-    {
-      name: "Film Share",
-      subject: "((Player First Name)) ((Player Last Name)) — ((Player Position)) Film",
-      body: "Coach ((Coach Last Name)),\n\nI wanted to share my latest film with you:\n((Player Film Link))\n\nGPA: ((Player GPA)) | Class of ((Player Grad Year)) | ((Player High School))\n\n((Player First Name)) ((Player Last Name))",
-      delayDays: null
-    }
-  ],
-  build_interest: [
-    {
-      name: "Build Interest",
-      subject: "Why ((School Name)) Is My Top Choice",
-      body: "Coach ((Coach Last Name)),\n\nI wanted to share more about myself beyond the field. ((School Name)) is my top choice because of your program's culture and academics.\n\nGPA: ((Player GPA)) | ((Player Position)) | Class of ((Player Grad Year))\n\nFilm: ((Player Film Link))\n\n((Player First Name)) ((Player Last Name))",
-      delayDays: null
-    }
-  ],
-  secure_visit: [
-    {
-      name: "Visit Request",
-      subject: "Campus Visit — ((Player First Name)) ((Player Last Name))",
-      body: "Coach ((Coach Last Name)),\n\nThank you for your interest in me as a recruit. I'd love to schedule a campus visit to meet you and the team at ((School Name)).\n\nFilm: ((Player Film Link))\n\nPlease let me know what dates work best.\n\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
-      delayDays: null
-    }
-  ],
-  other: [
-    {
-      name: "Custom Message",
-      subject: "",
-      body: "Coach ((Coach Last Name)),\n\n\n\n((Player First Name)) ((Player Last Name))",
-      delayDays: null
-    }
-  ]
-}
+// Recommended campaign templates — based on proven scripts that have
+// generated $30M+ in scholarships across 14 sports and 1M+ emails sent.
+// These are the 3 best-performing first-contact scripts.
+const PLAYER_TEMPLATES: EmailTemplate[] = [
+  {
+    name: "Direct Introduction",
+    subject: "((Player First Name)) ((Player Last Name)) ((Player Grad Year)) ((Player Position))",
+    body: "Hi Coach ((Coach Last Name)),\n\nMy name is ((Player First Name)) ((Player Last Name)). I'm a ((Player Grad Year)) ((Player Position)) from ((Player City)), ((Player State)).\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere's some video:\n((Player Film Link))\n\nThanks,\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
+    delayDays: null
+  },
+  {
+    name: "Film & Coach Reference",
+    subject: "((Player First Name)) ((Player Last Name)) ((Player Grad Year)) ((Player Position))",
+    body: "Hi Coach ((Coach Last Name)),\n\nAre you currently looking for a ((Player Grad Year)) ((Player Position))?\n\nFor reference, please feel free to call my coach, ((Coach Name)) - ((Coach Phone))\n\nHere's some video:\n((Player Film Link))\n\nThanks,\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
+    delayDays: null
+  },
+  {
+    name: "Genuine Interest",
+    subject: "((Player First Name)) ((Player Last Name)) ((Player Grad Year)) ((Player Position))",
+    body: "Hi Coach ((Coach Last Name)),\n\nI'm genuinely interested in ((School Name)).\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere's some video:\n((Player Film Link))\n\nThanks,\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
+    delayDays: null
+  },
+]
 
-const COACH_GOAL_TEMPLATES: Record<CampaignGoal, EmailTemplate[]> = {
-  get_response: [
-    {
-      name: "Player Introduction",
-      subject: "Prospect Introduction — ((Player First Name)) ((Player Last Name)), ((Player Position))",
-      body: "Dear Coach ((Coach Last Name)),\n\nMy name is ((My First Name)), a coach at ((Player High School)). I'm reaching out to introduce you to one of my players, ((Player First Name)) ((Player Last Name)), a ((Player Position)) in the Class of ((Player Grad Year)).\n\nFilm: ((Player Film Link))\nGPA: ((Player GPA))\n\nI believe ((Player First Name)) would be a great fit for your program at ((School Name)). Please reach out if you'd like to learn more.\n\nThank you,\n((My First Name))",
-      delayDays: null
-    },
-  ],
-  evaluate_film: [
-    {
-      name: "Film Recommendation",
-      subject: "Film — ((Player First Name)) ((Player Last Name)), ((Player Position))",
-      body: "Coach ((Coach Last Name)),\n\nI'd like to share film on ((Player First Name)) ((Player Last Name)), a ((Player Position)) from ((Player High School)) in the Class of ((Player Grad Year)).\n\n((Player Film Link))\n\nGPA: ((Player GPA))\n\nI think ((Player First Name)) has what it takes to compete at ((School Name)). Happy to discuss further.\n\n((My First Name))",
-      delayDays: null
-    }
-  ],
-  build_interest: [
-    {
-      name: "Camp Recommendation",
-      subject: "Camp Invite for ((Player First Name)) ((Player Last Name))",
-      body: "Coach ((Coach Last Name)),\n\nI'm reaching out on behalf of ((Player First Name)) ((Player Last Name)), a ((Player Position)) with a ((Player GPA)) GPA in the Class of ((Player Grad Year)).\n\nFilm: ((Player Film Link))\n\nI believe ((Player First Name)) would benefit greatly from attending your camp at ((School Name)).\n\nThank you,\n((My First Name))",
-      delayDays: null
-    }
-  ],
-  secure_visit: [
-    {
-      name: "Visit Request",
-      subject: "Campus Visit for ((Player First Name)) ((Player Last Name))",
-      body: "Coach ((Coach Last Name)),\n\n((Player First Name)) ((Player Last Name)) is very interested in ((School Name)) and would love to schedule a campus visit. ((Player First Name)) is a ((Player Position)) from ((Player High School)) with a ((Player GPA)) GPA.\n\nFilm: ((Player Film Link))\n\nPlease let us know what dates work best.\n\nThank you,\n((My First Name))",
-      delayDays: null
-    }
-  ],
-  other: [
-    {
-      name: "Custom Message",
-      subject: "",
-      body: "Coach ((Coach Last Name)),\n\n\n\n((My First Name))",
-      delayDays: null
-    }
-  ]
-}
+const COACH_TEMPLATES: EmailTemplate[] = [
+  {
+    name: "Direct Introduction",
+    subject: "((Player First Name)) ((Player Last Name)) ((Player Grad Year)) ((Player Position))",
+    body: "Hi Coach ((Coach Last Name)),\n\nMy name is ((My First Name)), a coach at ((Player High School)). I'm reaching out to introduce ((Player First Name)) ((Player Last Name)), a ((Player Grad Year)) ((Player Position)) from ((Player City)), ((Player State)).\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere's some video:\n((Player Film Link))\n\nThanks,\n((My First Name))\n((Coach Phone))",
+    delayDays: null
+  },
+  {
+    name: "Film & Coach Reference",
+    subject: "((Player First Name)) ((Player Last Name)) ((Player Grad Year)) ((Player Position))",
+    body: "Hi Coach ((Coach Last Name)),\n\nAre you currently looking for a ((Player Grad Year)) ((Player Position))? I'd like to share film on ((Player First Name)) ((Player Last Name)) from ((Player High School)).\n\n((Player Film Link))\n\nGPA: ((Player GPA))\n\nI think ((Player First Name)) has what it takes to compete at ((School Name)). Happy to discuss further.\n\n((My First Name))\n((Coach Phone))",
+    delayDays: null
+  },
+  {
+    name: "Genuine Interest",
+    subject: "((Player First Name)) ((Player Last Name)) ((Player Grad Year)) ((Player Position))",
+    body: "Hi Coach ((Coach Last Name)),\n\n((Player First Name)) ((Player Last Name)) is genuinely interested in ((School Name)). ((Player First Name)) is a ((Player Grad Year)) ((Player Position)) from ((Player High School)) with a ((Player GPA)) GPA.\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere's some video:\n((Player Film Link))\n\nThanks,\n((My First Name))\n((Coach Phone))",
+    delayDays: null
+  },
+]
 
 // Merge tag buttons shown in the editor — audience-specific to avoid confusion
 const PLAYER_MERGE_TAGS = [
@@ -144,6 +101,9 @@ const PLAYER_MERGE_TAGS = [
   "Player Film Link",
   "Player Phone",
   "Player Email",
+  "Coach Name",
+  "Coach Phone",
+  "Coach Email Address",
 ]
 
 const COACH_MERGE_TAGS = [
@@ -159,6 +119,9 @@ const COACH_MERGE_TAGS = [
   "Player GPA",
   "My First Name",
   "My Last Name",
+  "Coach Name",
+  "Coach Phone",
+  "Coach Email Address",
 ]
 
 export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange, onNext, onBack }: BuildStepProps) {
@@ -168,9 +131,8 @@ export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange,
   const [loadingTemplates, setLoadingTemplates] = useState(true)
   const [audience, setAudience] = useState<'player' | 'coach'>('player')
 
-  // Build the list of templates to show for the current goal
-  const goalDefaults = audience === 'coach' ? COACH_GOAL_TEMPLATES : PLAYER_GOAL_TEMPLATES
-  const defaultTemplates: EmailTemplate[] = goalDefaults[goal] || goalDefaults.get_response
+  // Recommended templates — same for all campaigns (no goal selection)
+  const defaultTemplates: EmailTemplate[] = audience === 'coach' ? COACH_TEMPLATES : PLAYER_TEMPLATES
 
   // User-saved templates from DB
   const userTemplates: EmailTemplate[] = availableTemplates
@@ -259,13 +221,21 @@ export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange,
 
   return (
     <div className="px-5 pb-5">
+      {/* Campaign Goal Banner */}
+      <div className="mb-8 text-center">
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Campaign Goal</p>
+        <p className="mt-2 font-display text-lg font-bold uppercase tracking-tight text-foreground">
+          Get coaches to <span className="text-primary">watch your film</span> and <span className="text-primary">respond</span>
+        </p>
+      </div>
+
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h3 className="mb-2 font-display text-lg font-bold uppercase tracking-tight text-foreground">
             Choose Your Template
           </h3>
           <p className="text-sm text-muted-foreground">
-            Browse the recommended templates for your goal. Customize for a personal touch.
+            Browse recommended templates and customize for a personal touch.
           </p>
         </div>
         {recruitingEmail && (

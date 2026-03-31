@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Mail, MessageCircle, Check } from "lucide-react"
-import { GoalStep } from "./steps/goal-step"
 import { TargetStep } from "./steps/target-step"
 import { BuildStep } from "./steps/build-step"
 import { LaunchStep } from "./steps/launch-step"
@@ -27,17 +26,15 @@ interface Program {
 }
 
 const EMAIL_STEPS = [
-  { number: 1, label: "Goal" },
-  { number: 2, label: "Target" },
-  { number: 3, label: "Template" },
-  { number: 4, label: "Launch" },
+  { number: 1, label: "Target" },
+  { number: 2, label: "Template" },
+  { number: 3, label: "Launch" },
 ] as const
 
 const DM_STEPS = [
-  { number: 1, label: "Goal" },
-  { number: 2, label: "Target" },
-  { number: 3, label: "Compose" },
-  { number: 4, label: "Send" },
+  { number: 1, label: "Target" },
+  { number: 2, label: "Compose" },
+  { number: 3, label: "Send" },
 ] as const
 
 interface CreateCampaignOverlayProps {
@@ -74,10 +71,12 @@ interface CreateCampaignOverlayProps {
 export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, hasGmailToken, gmailTokenExpired, quickEmailData, quickDmData, followupData, initialCampaignType = 'email', activePlayerId, recruitingEmail, onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
   const router = useRouter()
   const campaignType = initialCampaignType
-  // Quick email/DM skips goal and target, goes straight to build/compose (step 3)
-  const [currentStep, setCurrentStep] = useState(quickEmailData || quickDmData || followupData ? 3 : 1)
-  const [maxStepReached, setMaxStepReached] = useState(quickEmailData || quickDmData || followupData ? 3 : 1)
-  const [draft, setDraft] = useState<CampaignDraft>({ goal: followupData?.goal || null, selectedCoaches: followupData?.selectedCoaches || [], templates: [] })
+  // Campaign goal is always "get_response" — no goal selection step
+  const campaignGoal: CampaignGoal = 'get_response'
+  // Quick email/DM skips target, goes straight to template/compose (step 2)
+  const [currentStep, setCurrentStep] = useState(quickEmailData || quickDmData || followupData ? 2 : 1)
+  const [maxStepReached, setMaxStepReached] = useState(quickEmailData || quickDmData || followupData ? 2 : 1)
+  const [draft, setDraft] = useState<CampaignDraft>({ goal: campaignGoal, selectedCoaches: followupData?.selectedCoaches || [], templates: [] })
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [showSaveDraftDialog, setShowSaveDraftDialog] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -124,7 +123,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
             const coach = coaches.find((c: any) => c.id === quickEmailData.coachId)
             if (coach) {
               setDraft({
-                goal: quickEmailData.goal as CampaignGoal,
+                goal: campaignGoal,
                 selectedCoaches: [{
                   coachId: coach.id,
                   programId: quickEmailData.programId!,
@@ -158,7 +157,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
             const coach = coaches.find((c: any) => c.id === quickDmData.coachId)
             if (coach) {
               setDraft({
-                goal: quickDmData.goal as CampaignGoal,
+                goal: campaignGoal,
                 selectedCoaches: [{
                   coachId: coach.id,
                   programId: quickDmData.programId!,
@@ -251,13 +250,6 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
     setMaxStepReached((prev) => Math.max(prev, step))
   }
 
-  const handleGoalSelect = (goal: CampaignGoal) => {
-    // Clear templates when goal changes so step 3 shows fresh options for the new goal
-    setDraft((prev) => ({ ...prev, goal, templates: [] }))
-    setHasUnsavedChanges(true)
-    goToStep(2)
-  }
-
   const handleCreateDmCampaign = async (name: string, messageBody: string) => {
     const response = await fetch('/api/campaigns/create', {
       method: 'POST',
@@ -288,7 +280,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
     const { campaignId } = await response.json()
     setHasUnsavedChanges(false)
     setDmCampaignId(campaignId)
-    goToStep(4)
+    goToStep(3)
   }
 
   // Header icon and title
@@ -372,11 +364,8 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
 
       {/* Step Content */}
       <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
+        {/* Step 1: Target (both email and DM) */}
         {currentStep === 1 && (
-          <GoalStep onSelect={handleGoalSelect} selected={draft.goal} channelFilter={campaignType} recruitingEmail={recruitingEmail} />
-        )}
-
-        {currentStep === 2 && (
           <TargetStep
             programs={programs}
             playerPosition={playerPosition}
@@ -387,32 +376,32 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
               setDraft((prev) => ({ ...prev, selectedCoaches: coaches }))
               setHasUnsavedChanges(true)
             }}
-            onNext={() => goToStep(3)}
-            onBack={() => goToStep(1)}
+            onNext={() => goToStep(2)}
+            onBack={handleClose}
             initialNavState={targetNavState}
             onNavStateChange={setTargetNavState}
           />
         )}
 
-        {/* Email flow: Build (step 3) */}
-        {currentStep === 3 && campaignType !== 'dm' && draft.goal && (
+        {/* Email flow: Template (step 2) */}
+        {currentStep === 2 && campaignType !== 'dm' && (
           <BuildStep
-            goal={draft.goal}
+            goal={campaignGoal}
             templates={draft.templates}
             recruitingEmail={recruitingEmail}
             onTemplatesChange={(templates: EmailTemplate[]) => {
               setDraft((prev) => ({ ...prev, templates }))
               setHasUnsavedChanges(true)
             }}
-            onNext={() => goToStep(4)}
-            onBack={() => goToStep(2)}
+            onNext={() => goToStep(3)}
+            onBack={() => goToStep(1)}
           />
         )}
 
-        {/* Email flow: Launch (step 4) */}
-        {currentStep === 4 && campaignType !== 'dm' && draft.goal && (
+        {/* Email flow: Launch (step 3) */}
+        {currentStep === 3 && campaignType !== 'dm' && (
           <LaunchStep
-            goal={draft.goal}
+            goal={campaignGoal}
             selectedCoaches={draft.selectedCoaches}
             templates={draft.templates}
             gmailEmail={gmailEmail}
@@ -420,9 +409,9 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
             gmailTokenExpired={gmailTokenExpired}
             activePlayerId={activePlayerId}
             recruitingEmail={recruitingEmail}
-            onEditTarget={() => goToStep(2)}
-            onEditBuild={() => goToStep(3)}
-            onBack={() => goToStep(3)}
+            onEditTarget={() => goToStep(1)}
+            onEditBuild={() => goToStep(2)}
+            onBack={() => goToStep(2)}
             onScrollToTop={scrollToTop}
             onLaunched={(campaignData) => {
               setHasUnsavedChanges(false)
@@ -435,19 +424,19 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
           />
         )}
 
-        {/* DM flow: Compose (step 3) */}
-        {currentStep === 3 && campaignType === 'dm' && draft.goal && (
+        {/* DM flow: Compose (step 2) */}
+        {currentStep === 2 && campaignType === 'dm' && (
           <DmComposeStep
-            goal={draft.goal}
+            goal={campaignGoal}
             selectedCoaches={draft.selectedCoaches}
             onCreateDmCampaign={handleCreateDmCampaign}
-            onBack={() => goToStep(2)}
+            onBack={() => goToStep(1)}
             onScrollToTop={scrollToTop}
           />
         )}
 
-        {/* DM flow: Send (step 4) — embedded DM queue */}
-        {currentStep === 4 && campaignType === 'dm' && dmCampaignId && (
+        {/* DM flow: Send (step 3) — embedded DM queue */}
+        {currentStep === 3 && campaignType === 'dm' && dmCampaignId && (
           <DmCampaignOverlay
             campaignId={dmCampaignId}
             onClose={onClose}
