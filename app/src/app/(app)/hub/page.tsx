@@ -195,7 +195,7 @@ export default async function HubPage() {
   // Compute recruiting email: use workspace_email if set, else propose one
   let workspaceEmail: string | null = userProfile?.workspace_email || null
   let proposedEmail: string | null = null
-  if (!isCoach && !workspaceEmail && userProfile?.first_name && userProfile?.last_name) {
+  if (!workspaceEmail && userProfile?.first_name && userProfile?.last_name) {
     proposedEmail = await computeProposedEmail(
       userProfile.first_name,
       userProfile.last_name,
@@ -288,7 +288,7 @@ export default async function HubPage() {
       programTwitterHandle={programTwitterHandle}
       readinessScoreOpen={userProfile?.readiness_score_open ?? true}
       emailBannerDismissed={userProfile?.email_banner_dismissed ?? false}
-      recruitingEmail={isCoach ? null : recruitingEmail}
+      recruitingEmail={recruitingEmail}
     />
   )
 }

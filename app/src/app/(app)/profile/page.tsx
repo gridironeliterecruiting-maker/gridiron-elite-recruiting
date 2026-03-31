@@ -19,7 +19,7 @@ export default async function ProfilePage() {
     .eq("id", user?.id)
     .single()
 
-  // Compute recruiting email for athletes
+  // Compute recruiting email for athletes and coaches
   let recruitingEmail: string | null = (profile as any)?.workspace_email || null
   if (!recruitingEmail && !((profile as any)?.role === 'admin') && profile?.first_name && profile?.last_name) {
     recruitingEmail = await computeProposedEmail(
@@ -116,9 +116,15 @@ export default async function ProfilePage() {
                   </div>
                 )}
                 <div>
-                  <p className="text-xs font-medium uppercase text-muted-foreground">Email</p>
-                  <p className="text-sm font-semibold">{profile?.email}</p>
+                  <p className="text-xs font-medium uppercase text-muted-foreground">Login Email</p>
+                  <p className="text-sm font-semibold">{user?.email || profile?.email}</p>
                 </div>
+                {recruitingEmail && (
+                  <div>
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Recruiting Email</p>
+                    <p className="text-sm font-semibold">{recruitingEmail}</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

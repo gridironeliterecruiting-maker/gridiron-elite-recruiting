@@ -186,48 +186,48 @@ export function HubClient({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Left column — brand audit (athletes) or action items (coaches) */}
         <div className="flex flex-col gap-6 lg:col-span-7">
+          {/* Recruiting email banner — dismissible (shown for both athletes and coaches) */}
+          {recruitingEmail && !emailBannerDismissed && (
+            <div className="overflow-hidden rounded-xl border bg-card">
+              <div className="flex items-center justify-between bg-gradient-to-r from-accent/20 to-accent/10 px-5 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
+                  Recruiting Email
+                </p>
+                <button
+                  onClick={dismissEmailBanner}
+                  className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  aria-label="Dismiss"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex flex-col items-center gap-4 p-6 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 ring-2 ring-accent/20">
+                  <Mail className="h-8 w-8 text-accent" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                    Your Recruiting Email Is:
+                  </p>
+                  <p className="mt-1 font-display text-xl font-bold text-foreground">
+                    {recruitingEmail}
+                  </p>
+                  <p className="mt-3 max-w-sm text-sm text-muted-foreground">
+                    All email communications to and from coaches on Runway Recruit will use this custom recruiting email address.
+                  </p>
+                </div>
+                <button
+                  onClick={dismissEmailBanner}
+                  className="rounded-lg border border-border px-6 py-2 text-xs font-bold uppercase tracking-wider text-foreground transition hover:bg-secondary"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+
           {!isCoach && (
             <>
-              {/* Recruiting email banner — dismissible */}
-              {recruitingEmail && !emailBannerDismissed && (
-                <div className="overflow-hidden rounded-xl border bg-card">
-                  <div className="flex items-center justify-between bg-gradient-to-r from-accent/20 to-accent/10 px-5 py-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
-                      Recruiting Email
-                    </p>
-                    <button
-                      onClick={dismissEmailBanner}
-                      className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                      aria-label="Dismiss"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="flex flex-col items-center gap-4 p-6 text-center">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 ring-2 ring-accent/20">
-                      <Mail className="h-8 w-8 text-accent" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                        Your Recruiting Email Is:
-                      </p>
-                      <p className="mt-1 font-display text-xl font-bold text-foreground">
-                        {recruitingEmail}
-                      </p>
-                      <p className="mt-3 max-w-sm text-sm text-muted-foreground">
-                        All email communications to and from coaches on Runway Recruit will use this custom recruiting email address.
-                      </p>
-                    </div>
-                    <button
-                      onClick={dismissEmailBanner}
-                      className="rounded-lg border border-border px-6 py-2 text-xs font-bold uppercase tracking-wider text-foreground transition hover:bg-secondary"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                </div>
-              )}
-
               {/* Twitter profile card */}
               {twitterLoading ? (
                 <TwitterProfileSkeleton />
