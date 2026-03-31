@@ -173,7 +173,7 @@ export async function GET(request: Request) {
       // For now, fetch the sender's own profile as the default merge tag source
       const { data: senderProfile } = await admin
         .from('profiles')
-        .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, primary_video_url, phone, email, title')
+        .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, primary_video_url, phone, email, title, coach_name, coach_phone, coach_email')
         .eq('id', userId)
         .single()
 
@@ -256,7 +256,7 @@ export async function GET(request: Request) {
           if (campaign.player_id) {
             const { data: playerProfile } = await admin
               .from('profiles')
-              .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, primary_video_url, phone, email, title')
+              .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, primary_video_url, phone, email, title, coach_name, coach_phone, coach_email')
               .eq('id', campaign.player_id)
               .single()
             if (playerProfile) {
@@ -301,12 +301,15 @@ export async function GET(request: Request) {
 
           const profileData: Record<string, string> = {
             // ── Canonical tags (preferred) ────────────────────────────────────
-            // Recipient college coach
+            // Recipient college coach (the person being emailed)
             'Coach_Last_Name':    coachLastName,
             'Coach_First_Name':   coachFirstName,
-            'Coach_Name':         recipient.coach_name || '',
             // College / program
             'School_Name':        recipient.program_name || '',
+            // Player's HS coach info (from player profile, NOT the target college coach)
+            'Coach_Name':         (mergeProfile as any)?.coach_name || '',
+            'Coach_Phone':        (mergeProfile as any)?.coach_phone || '',
+            'Coach_Email_Address': (mergeProfile as any)?.coach_email || '',
             // Player being recruited
             'Player_First_Name':  mergeProfile?.first_name || '',
             'Player_Last_Name':   mergeProfile?.last_name || '',

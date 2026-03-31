@@ -804,13 +804,15 @@ function TemplatePreviewOverlay({
     const coachFirst = coachName.split(' ')[0] || ''
     const schoolName = firstCoach?.programName || ''
 
-    // Real coach data from the targeted list
+    // Target college coach data (the recipient)
     const coachValues: Record<string, string> = {
       'Coach Last Name': coachLast,
       'Coach First Name': coachFirst,
-      'Coach Name': coachName,
       'School Name': schoolName,
     }
+    // NOTE: ((Coach Name)), ((Coach Phone)), ((Coach Email Address)) are the
+    // player's HIGH SCHOOL coach — they come from mergeData (the API), NOT
+    // from the targeted college coach.
 
     // Fallbacks when player data is empty in DB
     const fallbacks: Record<string, string> = {

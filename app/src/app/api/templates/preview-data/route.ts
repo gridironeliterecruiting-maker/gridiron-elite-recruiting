@@ -25,7 +25,7 @@ export async function GET() {
   // Fetch sender profile
   const { data: senderProfile } = await supabase
     .from('profiles')
-    .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, primary_video_url, phone, email, title')
+    .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, primary_video_url, phone, email, title, coach_name, coach_phone, coach_email')
     .eq('id', user.id)
     .single()
 
@@ -57,7 +57,7 @@ export async function GET() {
     if (activePlayerId) {
       const { data: pp } = await admin
         .from('profiles')
-        .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, primary_video_url, phone, email')
+        .select('first_name, last_name, position, grad_year, high_school, city, state, gpa, hudl_url, primary_video_url, phone, email, coach_name, coach_phone, coach_email')
         .eq('id', activePlayerId)
         .single()
       playerProfile = pp
@@ -66,8 +66,11 @@ export async function GET() {
     mergeData = {
       'Coach Last Name': '',
       'Coach First Name': '',
-      'Coach Name': '',
       'School Name': '',
+      // Player's HS coach info (from player profile, NOT the target college coach)
+      'Coach Name': playerProfile?.coach_name || '',
+      'Coach Phone': playerProfile?.coach_phone || '',
+      'Coach Email Address': playerProfile?.coach_email || '',
       'Player First Name': playerProfile?.first_name || 'Player',
       'Player Last Name': playerProfile?.last_name || 'Name',
       'Player Position': playerProfile?.position || 'Position',
@@ -88,8 +91,11 @@ export async function GET() {
     mergeData = {
       'Coach Last Name': '',
       'Coach First Name': '',
-      'Coach Name': '',
       'School Name': '',
+      // Player's HS coach info (from their own profile)
+      'Coach Name': (senderProfile as any)?.coach_name || '',
+      'Coach Phone': (senderProfile as any)?.coach_phone || '',
+      'Coach Email Address': (senderProfile as any)?.coach_email || '',
       'Player First Name': senderProfile?.first_name || '',
       'Player Last Name': senderProfile?.last_name || '',
       'Player Position': senderProfile?.position || '',
@@ -101,8 +107,6 @@ export async function GET() {
       'Player Film Link': (senderProfile as any)?.primary_video_url || senderProfile?.hudl_url || '',
       'Player Phone': senderProfile?.phone || '',
       'Player Email': senderProfile?.email || '',
-      'Coach Phone': '',
-      'Coach Email Address': '',
     }
   }
 
