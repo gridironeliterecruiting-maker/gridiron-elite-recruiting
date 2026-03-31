@@ -7,26 +7,18 @@ import type { CampaignGoal, SelectedCoach } from "../types"
 import { resolveMergeTags } from "@/lib/merge-tags"
 
 const DM_MERGE_TAGS = [
-  { key: "Last Name", label: "Coach Last Name" },
+  { key: "Coach Last Name", label: "Coach Last Name" },
   { key: "Coach Name", label: "Coach Full Name" },
-  { key: "School", label: "School" },
-  { key: "First Name", label: "First Name" },
-  { key: "Position", label: "Position" },
-  { key: "Film Link", label: "Film Link" },
+  { key: "School Name", label: "School" },
+  { key: "Player First Name", label: "First Name" },
+  { key: "Player Last Name", label: "Last Name" },
+  { key: "Player Position", label: "Position" },
+  { key: "Player Grad Year", label: "Grad Year" },
+  { key: "Player Film Link", label: "Film Link" },
 ]
 
-const GOAL_DM_TEMPLATES: Record<CampaignGoal, string> = {
-  get_response:
-    "Coach ((Last Name)), my name is ((First Name)) and I'm a ((Position)) very interested in ((School)). I'd love to connect about your program. Here's my film: ((Film Link))",
-  evaluate_film:
-    "Coach ((Last Name)), I wanted to share my latest film with you. I believe I can contribute at ((School)). ((Film Link)) — ((First Name)), ((Position))",
-  build_interest:
-    "Coach ((Last Name)), I've been following ((School)) closely and I'm very interested in your program. I'd love to tell you more about myself. ((First Name)), ((Position))",
-  secure_visit:
-    "Coach ((Last Name)), I'd love to set up a campus visit to ((School)). Is there a good time to connect? ((First Name)), ((Position))",
-  other:
-    "Coach ((Last Name)),\n\n\n\n((First Name))",
-}
+const DEFAULT_DM_TEMPLATE =
+  "Hi Coach ((Coach Last Name)), I'm ((Player First Name)) ((Player Last Name)). I'm a ((Player Grad Year)) ((Player Position)). Are you still recruiting ((Player Grad Year)) ((Player Position))? Here is my video. ((Player Film Link)) - ((Player First Name))"
 
 interface DmComposeStepProps {
   goal: CampaignGoal
@@ -46,7 +38,7 @@ export function DmComposeStep({
   const [campaignName, setCampaignName] = useState("")
   const [nameError, setNameError] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
-  const [messageBody, setMessageBody] = useState(GOAL_DM_TEMPLATES[goal])
+  const [messageBody, setMessageBody] = useState(DEFAULT_DM_TEMPLATE)
   const [showPreview, setShowPreview] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -64,9 +56,11 @@ export function DmComposeStep({
   const previewText = resolveMergeTags(messageBody, {
     coachName: sampleCoach.coachName,
     schoolName: sampleCoach.programName,
-    playerFirstName: "Your Name",
+    playerFirstName: "Your",
+    playerLastName: "Name",
     position: "QB",
-    filmLink: "hudl.com/your-film",
+    gradYear: "2026",
+    filmLink: "x.com/your-video",
   })
 
   const insertMergeTag = (tag: string) => {
