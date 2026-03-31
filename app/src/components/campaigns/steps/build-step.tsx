@@ -790,34 +790,47 @@ function TemplatePreviewOverlay({
   loading: boolean
   onClose: () => void
 }) {
-  // Resolve merge tags using the preview data from the API
-  // Recipient-specific tags (Coach Last Name, School Name) become placeholders
+  // Resolve all merge tags for preview display
   const resolvePreview = (text: string): string => {
     if (!mergeData) return text
-    return text.replace(/\(\(([^)]+)\)\)/g, (_match, tag) => {
-      const trimmed = tag.trim()
-      // Recipient-specific tags — show realistic sample values
-      const sampleValues: Record<string, string> = {
-        'Coach Last Name': 'Smith',
-        'Coach First Name': 'John',
-        'Coach Name': 'John Smith',
-        'School Name': 'State University',
-      }
-      if (trimmed in sampleValues) return sampleValues[trimmed]
 
-      // Try exact match, then underscore variant
-      const variations = [trimmed, trimmed.replace(/_/g, ' '), trimmed.replace(/\s+/g, '_')]
-      for (const v of variations) {
-        if (v in mergeData && mergeData[v]) return mergeData[v]
-      }
-      // Fallback sample values for empty/missing fields
-      const fallbacks: Record<string, string> = {
-        'Player Film Link': 'https://www.hudl.com/video/example',
-        'Player Phone': '(555) 555-1234',
-        'Player Email': 'player@example.com',
-        'Player GPA': '3.5',
-      }
-      return fallbacks[trimmed] || `[${trimmed}]`
+    // Sample values for recipient-specific tags (vary per coach)
+    const samples: Record<string, string> = {
+      'Coach Last Name': 'Smith',
+      'Coach First Name': 'John',
+      'Coach Name': 'John Smith',
+      'School Name': 'State University',
+      'Coach Phone': '(555) 555-0000',
+      'Coach Email Address': 'coach@university.edu',
+    }
+
+    // Fallbacks when player data is empty in DB
+    const fallbacks: Record<string, string> = {
+      'Player Film Link': 'https://www.hudl.com/video/example',
+      'Player Phone': '(555) 555-1234',
+      'Player Email': 'player@example.com',
+      'Player GPA': '3.5',
+    }
+
+    return text.replace(/\(\(([^)]+)\)\)/g, (_match, rawTag) => {
+      const tag = rawTag.trim()
+
+      // 1. Sample values for recipient-specific fields
+      if (samples[tag]) return samples[tag]
+
+      // 2. Real data from the API
+      if (mergeData[tag]) return mergeData[tag]
+      // Try underscore/space variants
+      const alt1 = tag.replace(/_/g, ' ')
+      const alt2 = tag.replace(/\s+/g, '_')
+      if (mergeData[alt1]) return mergeData[alt1]
+      if (mergeData[alt2]) return mergeData[alt2]
+
+      // 3. Fallback for known-empty fields
+      if (fallbacks[tag]) return fallbacks[tag]
+
+      // 4. Unknown tag
+      return `[${tag}]`
     })
   }
 
