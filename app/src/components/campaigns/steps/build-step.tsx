@@ -143,7 +143,10 @@ export function BuildStep({ goal, templates, recruitingEmail, onTemplatesChange,
   }
 
   // Full display list: defaults + user saved + custom
-  const displayTemplates = [...defaultTemplates, ...userTemplates, customTemplate]
+  // Coaches get only the one recommended template + custom (no saved templates)
+  const displayTemplates = audience === 'coach'
+    ? [...defaultTemplates, customTemplate]
+    : [...defaultTemplates, ...userTemplates, customTemplate]
 
   // Load templates from database — also captures audience so we show the right defaults
   useEffect(() => {
