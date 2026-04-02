@@ -189,35 +189,6 @@ export function VideoOverlay() {
             Build Your <span style={{ color: '#d93025' }}>Runway</span>
           </h3>
 
-          {/* Promo code banner — ONLY difference in partner mode */}
-          {promoCode && (
-            <div
-              className="flex w-full flex-wrap items-center justify-center gap-3 px-5 py-2.5"
-              style={{
-                background: 'rgba(212,169,42,0.07)',
-                border: '1px solid rgba(212,169,42,0.28)',
-              }}
-            >
-              <span className="text-[11px] uppercase tracking-wider text-white/35">
-                Your exclusive code:
-              </span>
-              <span
-                className="font-display text-lg font-black tracking-widest"
-                style={{
-                  color: '#D4A92A',
-                  background: 'rgba(212,169,42,0.1)',
-                  border: '1px dashed rgba(212,169,42,0.45)',
-                  padding: '3px 14px',
-                }}
-              >
-                {promoCode}
-              </span>
-              <span className="text-[11px] text-white/28">
-                Applied automatically at checkout
-              </span>
-            </div>
-          )}
-
           {/* Button row */}
           <div className="flex flex-wrap items-center justify-center gap-3.5 max-sm:flex-col max-sm:gap-2.5">
             <button
@@ -226,16 +197,39 @@ export function VideoOverlay() {
             >
               Learn More ↓
             </button>
-            <Link
-              href={ctaHref}
-              className="rounded-lg px-6 py-3 font-display text-sm font-bold uppercase tracking-wider text-white transition hover:-translate-y-0.5"
-              style={{
-                background: 'linear-gradient(135deg, #d93025 0%, #9a1010 100%)',
-                boxShadow: '0 4px 20px rgba(200,32,47,0.4)',
-              }}
-            >
-              Get Started — $50/mo
-            </Link>
+            {promoCode ? (
+              <Link
+                href={ctaHref}
+                className="flex items-center gap-2 rounded-lg px-6 py-3 font-display text-sm font-bold uppercase tracking-wider transition hover:-translate-y-0.5"
+                style={{
+                  background: 'transparent',
+                  border: '1.5px solid #D4A92A',
+                  color: '#D4A92A',
+                }}
+              >
+                Claim Promo —{' '}
+                <span
+                  className="font-black tracking-widest"
+                  style={{
+                    border: '1.5px dashed rgba(212,169,42,0.6)',
+                    padding: '2px 10px',
+                  }}
+                >
+                  {promoCode}
+                </span>
+              </Link>
+            ) : (
+              <Link
+                href={ctaHref}
+                className="rounded-lg px-6 py-3 font-display text-sm font-bold uppercase tracking-wider text-white transition hover:-translate-y-0.5"
+                style={{
+                  background: 'linear-gradient(135deg, #d93025 0%, #9a1010 100%)',
+                  boxShadow: '0 4px 20px rgba(200,32,47,0.4)',
+                }}
+              >
+                Get Started — $50/mo
+              </Link>
+            )}
           </div>
         </div>
       </div>
