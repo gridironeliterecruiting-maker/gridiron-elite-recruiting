@@ -156,6 +156,12 @@ Cookie: `site_session=<value>;path=/;max-age=31536000;samesite=lax` (1 year)
 - Simplify program colors to 2 (primary + secondary, no white)
 - Scope players to current program via `program_members`
 - Coach Phase 2: in-app player invitation flow
+- **Scale optimizations** (not urgent — current stack handles launch fine):
+  - `process-queue`: consolidate duplicate sender profile fetch (lines 101 vs 174), cache email templates per (campaign_id, step) instead of re-fetching per recipient, batch allowlist + unsubscribe checks into two queries before the loop
+  - `process-queue`: add retry logic for transient Zoho send failures (currently marks as permanent `error` with no recovery)
+  - `campaigns/[id]` + `campaigns/[id]/details`: add pagination for recipients and events (prevents timeouts on 500+ recipient campaigns)
+  - `email/thread/[threadId]`: cap messageIds array + add concurrency limit on parallel Zoho fetches
+  - Middleware: consider caching profile/subscription lookup in a short-lived cookie to avoid 2-3 DB calls per page load
 
 ---
 

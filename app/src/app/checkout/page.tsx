@@ -20,7 +20,7 @@ const PLAN_AMOUNTS: Record<Plan, number> = {
   annual: 45000,  // $450.00 in cents
 }
 
-function CheckoutForm({ plan }: { plan: Plan }) {
+function CheckoutForm({ plan, promoCodeId }: { plan: Plan; promoCodeId: string | null }) {
   const stripe = useStripe()
   const elements = useElements()
   const [error, setError] = useState('')
@@ -48,7 +48,7 @@ function CheckoutForm({ plan }: { plan: Plan }) {
       const res = await fetch('/api/stripe/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, promoCodeId }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -108,9 +108,93 @@ function CheckoutForm({ plan }: { plan: Plan }) {
 function CheckoutInner() {
   const searchParams = useSearchParams()
   const initialPlan = (searchParams.get('plan') as Plan) || 'monthly'
+  const initialPromo = searchParams.get('promo') || ''
   const [plan, setPlan] = useState<Plan>(initialPlan)
 
-  const price = plan === 'annual' ? '$450/year' : '$50/month'
+  // Promo code state
+  const [promoInput, setPromoInput] = useState(initialPromo)
+  const [promoCodeId, setPromoCodeId] = useState<string | null>(null)
+  const [promoLabel, setPromoLabel] = useState('')
+  const [promoPercentOff, setPromoPercentOff] = useState<number | null>(null)
+  const [promoAmountOff, setPromoAmountOff] = useState<number | null>(null)
+  const [promoError, setPromoError] = useState('')
+  const [promoLoading, setPromoLoading] = useState(false)
+  const [promoAppliedCode, setPromoAppliedCode] = useState('')
+
+  // Auto-validate promo from URL param on mount
+  const [autoValidated, setAutoValidated] = useState(false)
+  if (initialPromo && !autoValidated) {
+    setAutoValidated(true)
+    // Trigger validation after render
+    setTimeout(() => {
+      validatePromo(initialPromo)
+    }, 0)
+  }
+
+  async function validatePromo(code: string) {
+    if (!code.trim()) return
+    setPromoLoading(true)
+    setPromoError('')
+    try {
+      const res = await fetch('/api/stripe/validate-promo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setPromoError(data.error || 'Invalid promo code')
+        setPromoCodeId(null)
+        setPromoLabel('')
+        setPromoPercentOff(null)
+        setPromoAmountOff(null)
+        setPromoAppliedCode('')
+      } else {
+        setPromoCodeId(data.promoCodeId)
+        setPromoLabel(data.discountLabel)
+        setPromoPercentOff(data.percentOff)
+        setPromoAmountOff(data.amountOff)
+        setPromoAppliedCode(code.trim().toUpperCase())
+        setPromoError('')
+      }
+    } catch {
+      setPromoError('Failed to validate promo code')
+    } finally {
+      setPromoLoading(false)
+    }
+  }
+
+  function removePromo() {
+    setPromoCodeId(null)
+    setPromoLabel('')
+    setPromoPercentOff(null)
+    setPromoAmountOff(null)
+    setPromoAppliedCode('')
+    setPromoInput('')
+    setPromoError('')
+  }
+
+  // Calculate discounted price
+  function getDisplayPrice() {
+    const baseAmount = plan === 'annual' ? 45000 : 5000
+    if (promoPercentOff) {
+      const discounted = baseAmount * (1 - promoPercentOff / 100)
+      return `$${(discounted / 100).toFixed(0)}/${plan === 'annual' ? 'year' : 'month'}`
+    }
+    if (promoAmountOff) {
+      const discounted = Math.max(0, baseAmount - promoAmountOff)
+      return `$${(discounted / 100).toFixed(0)}/${plan === 'annual' ? 'year' : 'month'}`
+    }
+    return plan === 'annual' ? '$450/year' : '$50/month'
+  }
+
+  function getOriginalPrice() {
+    return plan === 'annual' ? '$450/year' : '$50/month'
+  }
+
+  const hasDiscount = !!promoCodeId
+  const price = getDisplayPrice()
+  const originalPrice = getOriginalPrice()
 
   return (
     <div
@@ -163,7 +247,55 @@ function CheckoutInner() {
           </div>
 
           <div className="text-center mb-6">
-            <span className="text-3xl font-black text-[#0047AB]">{price}</span>
+            {hasDiscount ? (
+              <>
+                <span className="text-lg font-semibold text-gray-400 line-through mr-2">{originalPrice}</span>
+                <span className="text-3xl font-black text-[#0047AB]">{price}</span>
+              </>
+            ) : (
+              <span className="text-3xl font-black text-[#0047AB]">{price}</span>
+            )}
+          </div>
+
+          {/* Promo Code */}
+          <div className="mb-6">
+            {promoAppliedCode ? (
+              <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-3 py-2.5">
+                <div>
+                  <span className="text-sm font-semibold text-green-800">{promoAppliedCode}</span>
+                  <span className="ml-2 text-sm text-green-600">— {promoLabel}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={removePromo}
+                  className="text-xs font-semibold text-gray-500 hover:text-red-600"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={promoInput}
+                  onChange={e => { setPromoInput(e.target.value); setPromoError('') }}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); validatePromo(promoInput) } }}
+                  placeholder="Promo code"
+                  className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0047AB]/30 focus:border-[#0047AB]"
+                />
+                <button
+                  type="button"
+                  onClick={() => validatePromo(promoInput)}
+                  disabled={!promoInput.trim() || promoLoading}
+                  className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 disabled:opacity-50 transition"
+                >
+                  {promoLoading ? '...' : 'Apply'}
+                </button>
+              </div>
+            )}
+            {promoError && (
+              <p className="mt-1.5 text-xs text-red-600">{promoError}</p>
+            )}
           </div>
 
           {/* Elements mounts immediately — no API call needed until form submit */}
@@ -181,7 +313,7 @@ function CheckoutInner() {
               },
             }}
           >
-            <CheckoutForm plan={plan} />
+            <CheckoutForm plan={plan} promoCodeId={promoCodeId} />
           </Elements>
         </div>
 

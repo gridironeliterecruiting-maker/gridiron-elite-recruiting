@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: Request) {
   try {
-    const { plan } = await request.json()
+    const { plan, promoCodeId } = await request.json()
 
     if (!plan) {
       return NextResponse.json({ error: 'plan is required' }, { status: 400 })
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       await stripe.subscriptions.cancel(sub.id)
     }
 
-    const subscription = await stripe.subscriptions.create({
+    const subscriptionParams: any = {
       customer: customer.id,
       items: [{ price: priceId }],
       collection_method: 'charge_automatically',
@@ -39,7 +39,14 @@ export async function POST(request: Request) {
         payment_method_types: ['card'],
       },
       expand: ['latest_invoice.payment_intent'],
-    })
+    }
+
+    // Apply promo code discount if provided
+    if (promoCodeId) {
+      subscriptionParams.discounts = [{ promotion_code: promoCodeId }]
+    }
+
+    const subscription = await stripe.subscriptions.create(subscriptionParams)
 
     // Get the invoice ID
     const invoiceRef = subscription.latest_invoice as any
