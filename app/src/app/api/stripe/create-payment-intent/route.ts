@@ -48,9 +48,16 @@ export async function POST(request: Request) {
 
     const subscription = await stripe.subscriptions.create(subscriptionParams)
 
-    // Get the invoice ID
-    const invoiceRef = subscription.latest_invoice as any
-    const invoiceId = typeof invoiceRef === 'string' ? invoiceRef : invoiceRef?.id
+    // If the subscription is already active (e.g. 100% off coupon, $0 invoice),
+    // there's no PaymentIntent — just return success with no clientSecret
+    if (subscription.status === 'active' || subscription.status === 'trialing') {
+      return NextResponse.json({
+        clientSecret: null,
+        subscriptionId: subscription.id,
+        customerId: customer.id,
+        paid: true,
+      })
+    }
 
     // pi.invoice is not populated in list responses for this API version —
     // find the active PI by status instead (we just canceled all stale ones above)
@@ -65,6 +72,7 @@ export async function POST(request: Request) {
       clientSecret: paymentIntent.client_secret,
       subscriptionId: subscription.id,
       customerId: customer.id,
+      paid: false,
     })
 
   } catch (error: any) {

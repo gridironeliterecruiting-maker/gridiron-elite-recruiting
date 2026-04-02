@@ -56,6 +56,13 @@ function CheckoutForm({ plan, promoCodeId }: { plan: Plan; promoCodeId: string |
         setLoading(false)
         return
       }
+
+      // If already paid (e.g. 100% off coupon), redirect directly
+      if (data.paid) {
+        window.location.href = `/profile-setup?sub_id=${data.subscriptionId}&plan=${plan}`
+        return
+      }
+
       clientSecret = data.clientSecret
       subscriptionId = data.subscriptionId
     } catch {
@@ -100,6 +107,63 @@ function CheckoutForm({ plan, promoCodeId }: { plan: Plan; promoCodeId: string |
       </button>
       <p className="text-center text-xs text-gray-400">
         Secured by Stripe · Cancel anytime
+      </p>
+    </form>
+  )
+}
+
+function FreeCheckoutForm({ plan, promoCodeId }: { plan: Plan; promoCodeId: string | null }) {
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    try {
+      const res = await fetch('/api/stripe/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, promoCodeId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Failed to activate subscription')
+        setLoading(false)
+        return
+      }
+      window.location.href = `/profile-setup?sub_id=${data.subscriptionId}&plan=${plan}`
+    } catch {
+      setError('Something went wrong. Please try again.')
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-center">
+        <p className="text-sm font-semibold text-green-800">No payment required</p>
+        <p className="text-xs text-green-600 mt-0.5">Your promo code covers the full cost</p>
+      </div>
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          {error}
+        </div>
+      )}
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full py-4 rounded-xl font-display font-bold uppercase tracking-wider text-white transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:translate-y-0"
+        style={{
+          background: 'linear-gradient(135deg, #d93025 0%, #9a1010 100%)',
+          boxShadow: '0 4px 20px rgba(200,32,47,0.4)',
+        }}
+      >
+        {loading ? 'Processing...' : 'COMPLETE SIGNUP'}
+      </button>
+      <p className="text-center text-xs text-gray-400">
+        Cancel anytime
       </p>
     </form>
   )
@@ -193,6 +257,7 @@ function CheckoutInner() {
   }
 
   const hasDiscount = !!promoCodeId
+  const isFreeCheckout = promoPercentOff === 100 || (promoAmountOff !== null && promoAmountOff >= PLAN_AMOUNTS[plan])
   const price = getDisplayPrice()
   const originalPrice = getOriginalPrice()
 
@@ -298,23 +363,26 @@ function CheckoutInner() {
             )}
           </div>
 
-          {/* Elements mounts immediately — no API call needed until form submit */}
-          <Elements
-            key={plan}
-            stripe={stripePromise}
-            options={{
-              mode: 'subscription',
-              amount: PLAN_AMOUNTS[plan],
-              currency: 'usd',
-              paymentMethodTypes: ['card'],
-              appearance: {
-                theme: 'stripe',
-                variables: { colorPrimary: '#1a3a6e', borderRadius: '8px' },
-              },
-            }}
-          >
-            <CheckoutForm plan={plan} promoCodeId={promoCodeId} />
-          </Elements>
+          {isFreeCheckout ? (
+            <FreeCheckoutForm plan={plan} promoCodeId={promoCodeId} />
+          ) : (
+            <Elements
+              key={plan}
+              stripe={stripePromise}
+              options={{
+                mode: 'subscription',
+                amount: PLAN_AMOUNTS[plan],
+                currency: 'usd',
+                paymentMethodTypes: ['card'],
+                appearance: {
+                  theme: 'stripe',
+                  variables: { colorPrimary: '#1a3a6e', borderRadius: '8px' },
+                },
+              }}
+            >
+              <CheckoutForm plan={plan} promoCodeId={promoCodeId} />
+            </Elements>
+          )}
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-4">
