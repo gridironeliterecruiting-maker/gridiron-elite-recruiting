@@ -21,6 +21,7 @@ export function RegisterForm({ branding }: { branding?: Branding }) {
   const plan = searchParams.get('plan')
   const slug = searchParams.get('slug')
   const code = searchParams.get('code')
+  const promo = searchParams.get('promo')
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -79,7 +80,11 @@ export function RegisterForm({ branding }: { branding?: Branding }) {
       router.push(`/profile-setup?slug=${encodeURIComponent(slug)}&code=${encodeURIComponent(code)}`)
     } else {
       document.cookie = `site_session=main;path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`
-      router.push(plan ? `/checkout?plan=${plan}` : '/checkout')
+      const checkoutParams = new URLSearchParams()
+      if (plan) checkoutParams.set('plan', plan)
+      if (promo) checkoutParams.set('promo', promo)
+      const qs = checkoutParams.toString()
+      router.push(qs ? `/checkout?${qs}` : '/checkout')
     }
   }
 
@@ -88,9 +93,16 @@ export function RegisterForm({ branding }: { branding?: Branding }) {
     setError('')
     const sessionValue = slug || 'main'
     document.cookie = `site_session=${sessionValue};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`
-    const callbackUrl = slug && code
-      ? `${getAppUrl()}/auth/callback?slug=${encodeURIComponent(slug)}&invite_code=${encodeURIComponent(code)}`
-      : `${getAppUrl()}/auth/callback`
+    let callbackUrl: string
+    if (slug && code) {
+      callbackUrl = `${getAppUrl()}/auth/callback?slug=${encodeURIComponent(slug)}&invite_code=${encodeURIComponent(code)}`
+    } else {
+      const cbParams = new URLSearchParams()
+      if (plan) cbParams.set('plan', plan)
+      if (promo) cbParams.set('promo', promo)
+      const cbQs = cbParams.toString()
+      callbackUrl = cbQs ? `${getAppUrl()}/auth/callback?${cbQs}` : `${getAppUrl()}/auth/callback`
+    }
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {

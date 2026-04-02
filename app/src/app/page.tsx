@@ -1,8 +1,12 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { HeroBackground } from '@/components/landing/hero-background'
+import { VideoOverlay } from '@/components/landing/video-overlay'
+import { WatchDemoButton } from '@/components/landing/watch-demo-button'
+import { PromoLink } from '@/components/landing/promo-link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -22,6 +26,11 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-[#04080f] text-white">
 
+      {/* ── VIDEO OVERLAY ──────────────────────────────────────────── */}
+      <Suspense>
+        <VideoOverlay />
+      </Suspense>
+
       {/* ── NAV ─────────────────────────────────────────────────────── */}
       <nav className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-3">
@@ -32,12 +41,15 @@ export default async function HomePage() {
             Runway Recruit
           </span>
         </div>
-        <Link
-          href="/login"
-          className="rounded-lg border border-white/20 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/50 hover:text-white"
-        >
-          Log In
-        </Link>
+        <div className="flex items-center gap-3">
+          <WatchDemoButton />
+          <Link
+            href="/login"
+            className="rounded-lg border border-white/20 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/50 hover:text-white"
+          >
+            Log In
+          </Link>
+        </div>
       </nav>
 
       {/* ── HERO ─────────────────────────────────────────────────────── */}
@@ -75,7 +87,7 @@ export default async function HomePage() {
 
           {/* CTAs */}
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link
+            <PromoLink
               href="/register"
               className="rounded-lg px-10 py-4 font-display text-lg font-bold uppercase tracking-wider text-white transition-all hover:-translate-y-0.5"
               style={{
@@ -84,7 +96,7 @@ export default async function HomePage() {
               }}
             >
               Get Started — $50/mo
-            </Link>
+            </PromoLink>
             <Link
               href="/login"
               className="rounded-lg border border-white/25 px-8 py-4 font-semibold text-white transition hover:border-white/60"
@@ -275,12 +287,12 @@ export default async function HomePage() {
                 <span className="mb-2 text-white/50">/month</span>
               </div>
               <PricingFeatures />
-              <Link
+              <PromoLink
                 href="/register?plan=monthly"
                 className="mt-8 block rounded-lg border border-white/20 px-6 py-3 text-center font-display font-bold uppercase tracking-wider text-white transition hover:border-white/50 hover:bg-white/5"
               >
                 Get Started Monthly
-              </Link>
+              </PromoLink>
             </div>
 
             {/* Annual */}
@@ -304,7 +316,7 @@ export default async function HomePage() {
               </div>
               <div className="mb-6" />
               <PricingFeatures />
-              <Link
+              <PromoLink
                 href="/register?plan=annual"
                 className="mt-8 block rounded-lg px-6 py-3 text-center font-display font-bold uppercase tracking-wider text-white transition hover:-translate-y-0.5"
                 style={{
@@ -313,7 +325,7 @@ export default async function HomePage() {
                 }}
               >
                 Get Started Annually
-              </Link>
+              </PromoLink>
             </div>
           </div>
         </div>
@@ -343,7 +355,7 @@ export default async function HomePage() {
           <p className="mx-auto mb-10 max-w-md text-lg text-gray-500">
             Join athletes who are getting ahead of the recruiting process — before their competition even starts.
           </p>
-          <Link
+          <PromoLink
             href="/register"
             className="inline-block rounded-lg px-12 py-5 font-display text-xl font-black uppercase tracking-wider text-white transition-all hover:-translate-y-1"
             style={{
@@ -352,7 +364,7 @@ export default async function HomePage() {
             }}
           >
             Get Started
-          </Link>
+          </PromoLink>
           <p className="mt-4 text-sm text-gray-400">$50/month · $450/year · Cancel anytime</p>
         </div>
       </section>

@@ -133,7 +133,13 @@ export async function GET(request: Request) {
 
           const isNewUser = !profile || !profile.first_name
           if (isNewUser) {
-            next = '/checkout'
+            const checkoutParams = new URLSearchParams()
+            const planParam = searchParams.get('plan')
+            const promoParam = searchParams.get('promo')
+            if (planParam) checkoutParams.set('plan', planParam)
+            if (promoParam) checkoutParams.set('promo', promoParam)
+            const qs = checkoutParams.toString()
+            next = qs ? `/checkout?${qs}` : '/checkout'
           }
         }
       }
