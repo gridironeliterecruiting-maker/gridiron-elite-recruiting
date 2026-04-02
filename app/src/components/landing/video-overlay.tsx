@@ -200,18 +200,17 @@ export function VideoOverlay() {
             {promoCode ? (
               <Link
                 href={ctaHref}
-                className="flex items-center gap-2 rounded-lg px-6 py-3 font-display text-sm font-bold uppercase tracking-wider transition hover:-translate-y-0.5"
+                className="flex items-center gap-2 rounded-lg px-6 py-3 font-display text-sm font-bold uppercase tracking-wider text-white transition hover:-translate-y-0.5"
                 style={{
-                  background: 'transparent',
-                  border: '1.5px solid #D4A92A',
-                  color: '#D4A92A',
+                  background: '#D4A92A',
+                  boxShadow: '0 4px 20px rgba(212,169,42,0.4)',
                 }}
               >
                 Claim Promo —{' '}
                 <span
                   className="font-black tracking-widest"
                   style={{
-                    border: '1.5px dashed rgba(212,169,42,0.6)',
+                    border: '1.5px dashed rgba(255,255,255,0.6)',
                     padding: '2px 10px',
                   }}
                 >
