@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { getActivePlayerId } from "@/lib/active-player"
 import { getCoachContext } from "@/lib/coach-context"
 import { computeProposedEmail } from "@/lib/workspace"
+import { getMissingProfileFields } from "@/lib/profile-complete"
 import { HubClient } from "./hub-client"
 
 export default async function HubPage() {
@@ -289,6 +290,7 @@ export default async function HubPage() {
       readinessScoreOpen={userProfile?.readiness_score_open ?? true}
       emailBannerDismissed={userProfile?.email_banner_dismissed ?? false}
       recruitingEmail={recruitingEmail}
+      missingProfileFields={displayProfile ? getMissingProfileFields(displayProfile) : []}
     />
   )
 }

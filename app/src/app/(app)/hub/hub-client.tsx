@@ -17,6 +17,7 @@ import { AccessRequestBanner, type PendingRequest } from "@/components/hub/acces
 import { TeamTwitterConnect } from "@/components/hub/team-twitter-connect"
 import { XPartnerProfiles } from "@/components/hub/x-partner-profiles"
 import { WelcomeOverlay } from "@/components/welcome-overlay"
+import { IncompleteProfileBanner } from "@/components/incomplete-profile-banner"
 
 interface AthleteProfile {
   first_name: string | null
@@ -77,6 +78,7 @@ interface HubClientProps {
   readinessScoreOpen: boolean
   emailBannerDismissed: boolean
   recruitingEmail: string | null
+  missingProfileFields?: string[]
 }
 
 export function HubClient({
@@ -102,6 +104,7 @@ export function HubClient({
   readinessScoreOpen,
   emailBannerDismissed: initialEmailBannerDismissed,
   recruitingEmail,
+  missingProfileFields = [],
 }: HubClientProps) {
   const [twitterProfile, setTwitterProfile] = useState<TwitterProfile | null>(null)
   const [twitterLoading, setTwitterLoading] = useState(hasTwitterToken)
@@ -180,6 +183,10 @@ export function HubClient({
           requests={pendingAccessRequests}
           programName={coachProgramName}
         />
+      )}
+
+      {missingProfileFields.length > 0 && (
+        <IncompleteProfileBanner missingFields={missingProfileFields} />
       )}
 
       {/* Main layout: two-column on desktop */}

@@ -24,6 +24,7 @@ export async function POST(request: Request) {
       height,
       weight,
       hudlUrl,
+      primaryVideoUrl,
       twitterHandle,
     } = body
 
@@ -106,6 +107,7 @@ export async function POST(request: Request) {
       height: height || null,
       weight: weight ? parseInt(weight) : null,
       hudl_url: hudlUrl || null,
+      primary_video_url: primaryVideoUrl || null,
       twitter_handle: twitterHandle || null,
       ...(stripeCustomerId ? { stripe_customer_id: stripeCustomerId } : {}),
       is_grandfathered: false,
