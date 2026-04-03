@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { getActivePlayerId } from "@/lib/active-player"
 import { getCoachContext } from "@/lib/coach-context"
 import { computeProposedEmail } from "@/lib/workspace"
+import { getMissingProfileFields } from "@/lib/profile-complete"
 import { OutreachClient } from "./outreach-client"
 
 export default async function OutreachPage({
@@ -15,10 +16,10 @@ export default async function OutreachPage({
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Determine role
+  // Determine role + profile completeness
   const { data: userProfile } = await supabase
     .from("profiles")
-    .select("position, role")
+    .select("position, role, first_name, last_name, grad_year, high_school, city, state, gpa, primary_video_url, phone, coach_name, coach_phone, coach_email")
     .eq("id", user!.id)
     .single()
 
@@ -96,17 +97,20 @@ export default async function OutreachPage({
     ? (allCampaigns || []).filter(c => c.player_id === activePlayerId)
     : (allCampaigns || [])
 
-  // Get player position — from active player for coaches, own profile for athletes
+  // Get player position + profile completeness — from active player for coaches, own profile for athletes
   let playerPosition = ""
+  let missingProfileFields: string[] = []
   if (isCoach && activePlayerId) {
     const { data: playerProfile } = await supabase
       .from("profiles")
-      .select("position")
+      .select("position, first_name, last_name, grad_year, high_school, city, state, gpa, primary_video_url, phone, coach_name, coach_phone, coach_email")
       .eq("id", activePlayerId)
       .single()
     playerPosition = playerProfile?.position || ""
+    missingProfileFields = playerProfile ? getMissingProfileFields(playerProfile) : []
   } else {
     playerPosition = userProfile?.position || ""
+    missingProfileFields = userProfile ? getMissingProfileFields(userProfile) : []
   }
 
   // Get recipient counts and email event stats per campaign
@@ -206,6 +210,7 @@ export default async function OutreachPage({
       twitterStatus={searchParams.twitter}
       hasWorkspaceEmail={hasWorkspaceEmail}
       proposedEmail={proposedEmail}
+      missingProfileFields={missingProfileFields}
     />
   )
 }

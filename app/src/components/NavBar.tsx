@@ -30,9 +30,9 @@ import { useActivePlayer } from "@/components/ActivePlayerContext"
 const athleteRoutes = [
   { label: "Hub", icon: LayoutDashboard, path: "/hub" },
   { label: "Programs", icon: Users, path: "/coaches" },
-  { label: "Pipeline", icon: GitBranch, path: "/pipeline" },
   { label: "Outreach", icon: Mail, path: "/outreach" },
   { label: "Email", icon: Inbox, path: "/email" },
+  { label: "Pipeline", icon: GitBranch, path: "/pipeline" },
   { label: "Profile", icon: User, path: "/profile" },
 ]
 

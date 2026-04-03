@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
+import { Info } from 'lucide-react'
 
 interface Branding {
   name: string
@@ -39,7 +40,7 @@ function ProfileSetupForm({ branding }: { branding?: Branding }) {
     gpa: '',
     height: '',
     weight: '',
-    hudl_url: '',
+    primary_video_url: '',
     twitter_handle: '',
   })
 
@@ -94,7 +95,7 @@ function ProfileSetupForm({ branding }: { branding?: Branding }) {
         gpa: form.gpa || null,
         height: form.height || null,
         weight: form.weight || null,
-        hudlUrl: form.hudl_url || null,
+        primaryVideoUrl: form.primary_video_url || null,
         twitterHandle: form.twitter_handle || null,
       }),
     })
@@ -329,12 +330,20 @@ function ProfileSetupForm({ branding }: { branding?: Branding }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">Hudl Profile URL</label>
+            <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600 mb-1.5">
+              Primary Video Link
+              <span className="group relative inline-flex">
+                <Info className="h-3.5 w-3.5 cursor-pointer text-gray-400 hover:text-gray-600" />
+                <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-72 -translate-x-1/2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-[11px] font-normal normal-case tracking-normal text-gray-700 opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+                  Your primary video link will be used whenever you&apos;re targeting coaches you want to evaluate your film. It is your best highlight reel and should start automatically for coaches. It is highly recommended to use a link to your video on your X account.
+                </span>
+              </span>
+            </label>
             <input
               type="url"
-              value={form.hudl_url}
-              onChange={e => update('hudl_url', e.target.value)}
-              placeholder="https://www.hudl.com/profile/..."
+              value={form.primary_video_url}
+              onChange={e => update('primary_video_url', e.target.value)}
+              placeholder="https://x.com/yourhandle/status/..."
               className={inputClass}
               style={{ borderColor: '#e5e7eb' }}
               onFocus={handleInputFocus}

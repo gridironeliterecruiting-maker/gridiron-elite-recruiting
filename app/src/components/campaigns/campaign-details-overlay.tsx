@@ -28,7 +28,6 @@ import { Card } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
 import { CoachDetail } from "@/components/programs/coach-detail"
 import type { SelectedCoach, CampaignGoal } from "./types"
-import { QuickEmailModal } from "./quick-email-modal"
 
 interface CampaignDetailsProps {
   campaignId: string
@@ -206,7 +205,6 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
   const [savingName, setSavingName] = useState(false)
   const [sortField, setSortField] = useState<'opened' | 'clicked' | null>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
-  const [showGoalPicker, setShowGoalPicker] = useState(false)
   const [showTemplateViewer, setShowTemplateViewer] = useState(false)
   const [selectedTemplateIndex, setSelectedTemplateIndex] = useState(0)
 
@@ -301,11 +299,6 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
 
   const handleFollowup = () => {
     if (!campaign || !onFollowup) return
-    setShowGoalPicker(true)
-  }
-
-  const handleFollowupGoalSelected = (goal: CampaignGoal) => {
-    if (!campaign || !onFollowup) return
     const coaches: SelectedCoach[] = []
     for (const program of campaign.programsWithRecipients) {
       for (const coach of program.coaches) {
@@ -321,8 +314,7 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
         }
       }
     }
-    setShowGoalPicker(false)
-    onFollowup({ goal, selectedCoaches: coaches })
+    onFollowup({ goal: 'other' as CampaignGoal, selectedCoaches: coaches })
   }
 
   const sortCoaches = (coaches: CoachRecipient[]) => {
@@ -625,15 +617,6 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
           </div>
         )}
       </div>
-
-      {showGoalPicker && (
-        <QuickEmailModal
-          title="Send Followup Email"
-          subtitle={`Follow up with ${campaign?.programsWithRecipients?.reduce((sum, p) => sum + p.coaches.length, 0) || 0} coaches`}
-          onContinue={handleFollowupGoalSelected}
-          onClose={() => setShowGoalPicker(false)}
-        />
-      )}
 
       {selectedCoachData && (
         <CoachDetail

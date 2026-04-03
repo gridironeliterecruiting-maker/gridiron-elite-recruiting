@@ -29,6 +29,8 @@ import { CampaignDetailsOverlay } from "@/components/campaigns/campaign-details-
 import { DmCampaignOverlay } from "@/components/campaigns/dm-campaign-overlay"
 import { CampaignCard } from "@/components/campaigns/campaign-card"
 import type { SelectedCoach, CampaignGoal } from "@/components/campaigns/types"
+import { IncompleteProfileBanner } from "@/components/incomplete-profile-banner"
+import { IncompleteProfileOverlay } from "@/components/incomplete-profile-overlay"
 
 interface EmailTemplate {
   id: string
@@ -115,6 +117,7 @@ interface OutreachClientProps {
   twitterStatus?: string
   hasWorkspaceEmail?: boolean
   proposedEmail?: string | null
+  missingProfileFields?: string[]
 }
 
 export function OutreachClient({
@@ -134,6 +137,7 @@ export function OutreachClient({
   twitterStatus,
   hasWorkspaceEmail = true,
   proposedEmail,
+  missingProfileFields = [],
 }: OutreachClientProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -158,7 +162,17 @@ export function OutreachClient({
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
   const [selectedDmCampaignId, setSelectedDmCampaignId] = useState<string | null>(null)
   const [followupData, setFollowupData] = useState<{ goal: CampaignGoal; selectedCoaches: SelectedCoach[] } | null>(null)
-  
+  const [showProfileOverlay, setShowProfileOverlay] = useState(false)
+  const profileIncomplete = missingProfileFields.length > 0
+
+  const handleCreateCampaign = (type: 'email' | 'dm') => {
+    if (profileIncomplete) {
+      setShowProfileOverlay(true)
+    } else {
+      setShowCreateCampaign(type)
+    }
+  }
+
   // Check if we just launched successfully
   useEffect(() => {
     const launched = searchParams.get('launched')
@@ -256,13 +270,20 @@ export function OutreachClient({
     const isQuickEmail = searchParams.get('quickEmail') === 'true'
     const isQuickDm = searchParams.get('quickDm') === 'true'
 
-    if (isQuickEmail && goal && coachId) {
+    if (isQuickEmail) {
       // Close any open campaign overlays first
       setSelectedCampaignId(null)
       setSelectedDmCampaignId(null)
 
-      setQuickEmailData({ goal, coachId, programId })
-      setShowCreateCampaign('email')
+      if (profileIncomplete) {
+        setShowProfileOverlay(true)
+      } else if (goal && coachId) {
+        setQuickEmailData({ goal, coachId, programId })
+        setShowCreateCampaign('email')
+      } else {
+        // From Email tab "Create Campaign" button — no coach pre-selected
+        setShowCreateCampaign('email')
+      }
 
       // Clear URL params
       const url = new URL(window.location.href)
@@ -271,13 +292,19 @@ export function OutreachClient({
       url.searchParams.delete('program')
       url.searchParams.delete('quickEmail')
       window.history.replaceState({}, '', url.pathname + url.search)
-    } else if (isQuickDm && goal && coachId) {
+    } else if (isQuickDm) {
       // Close any open campaign overlays first
       setSelectedCampaignId(null)
       setSelectedDmCampaignId(null)
 
-      setQuickDmData({ goal, coachId, programId })
-      setShowCreateCampaign('dm')
+      if (profileIncomplete) {
+        setShowProfileOverlay(true)
+      } else if (coachId) {
+        setQuickDmData({ goal, coachId, programId })
+        setShowCreateCampaign('dm')
+      } else {
+        setShowCreateCampaign('dm')
+      }
 
       // Clear URL params
       const url = new URL(window.location.href)
@@ -331,14 +358,14 @@ export function OutreachClient({
         </div>
         <div className="flex items-center gap-2">
           <Button
-            onClick={() => setShowCreateCampaign('dm')}
+            onClick={() => handleCreateCampaign('dm')}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />
             X DM Assist
           </Button>
           <Button
-            onClick={() => setShowCreateCampaign('email')}
+            onClick={() => handleCreateCampaign('email')}
             className="bg-accent text-accent-foreground hover:bg-accent/90"
           >
             <Plus className="h-4 w-4" />
@@ -369,6 +396,17 @@ export function OutreachClient({
           onCampaignLaunched={(campaignData) => {
             setLaunchedCampaign(campaignData)
           }}
+        />
+      )}
+
+      {profileIncomplete && (
+        <IncompleteProfileBanner missingFields={missingProfileFields} />
+      )}
+
+      {showProfileOverlay && (
+        <IncompleteProfileOverlay
+          missingFields={missingProfileFields}
+          onClose={() => setShowProfileOverlay(false)}
         />
       )}
 
@@ -420,7 +458,7 @@ export function OutreachClient({
                 Create your first email campaign to start reaching out to college coaches.
               </p>
               <Button
-                onClick={() => setShowCreateCampaign('email')}
+                onClick={() => handleCreateCampaign('email')}
                 className="mt-4 bg-accent text-accent-foreground hover:bg-accent/90"
                 size="sm"
               >

@@ -188,32 +188,6 @@ export async function GET(request: Request) {
           .eq('id', recipient.id)
 
         try {
-          // ============================================================
-          // SAFETY CHECK 2: Email allowlist
-          // Only send to explicitly approved email addresses
-          // ============================================================
-          const { data: allowed } = await admin
-            .from('email_allowlist')
-            .select('id')
-            .eq('email', recipient.coach_email)
-            .single()
-
-          if (!allowed) {
-            console.log(`BLOCKED: ${recipient.coach_email} is NOT on the allowlist. Skipping.`)
-            await admin
-              .from('campaign_recipients')
-              .update({ status: 'error', updated_at: new Date().toISOString() })
-              .eq('id', recipient.id)
-            await admin.from('email_events').insert({
-              campaign_id: recipient.campaign_id,
-              recipient_id: recipient.id,
-              event_type: 'bounced',
-              metadata: { reason: 'not_on_allowlist', email: recipient.coach_email },
-            })
-            totalErrors++
-            continue
-          }
-
           // Check unsubscribe list
           const { data: unsub } = await admin
             .from('unsubscribes')

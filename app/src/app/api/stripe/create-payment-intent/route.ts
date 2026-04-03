@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: Request) {
   try {
-    const { plan } = await request.json()
+    const { plan, promoCodeId } = await request.json()
 
     if (!plan) {
       return NextResponse.json({ error: 'plan is required' }, { status: 400 })
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       await stripe.subscriptions.cancel(sub.id)
     }
 
-    const subscription = await stripe.subscriptions.create({
+    const subscriptionParams: any = {
       customer: customer.id,
       items: [{ price: priceId }],
       collection_method: 'charge_automatically',
@@ -39,11 +39,25 @@ export async function POST(request: Request) {
         payment_method_types: ['card'],
       },
       expand: ['latest_invoice.payment_intent'],
-    })
+    }
 
-    // Get the invoice ID
-    const invoiceRef = subscription.latest_invoice as any
-    const invoiceId = typeof invoiceRef === 'string' ? invoiceRef : invoiceRef?.id
+    // Apply promo code discount if provided
+    if (promoCodeId) {
+      subscriptionParams.discounts = [{ promotion_code: promoCodeId }]
+    }
+
+    const subscription = await stripe.subscriptions.create(subscriptionParams)
+
+    // If the subscription is already active (e.g. 100% off coupon, $0 invoice),
+    // there's no PaymentIntent — just return success with no clientSecret
+    if (subscription.status === 'active' || subscription.status === 'trialing') {
+      return NextResponse.json({
+        clientSecret: null,
+        subscriptionId: subscription.id,
+        customerId: customer.id,
+        paid: true,
+      })
+    }
 
     // pi.invoice is not populated in list responses for this API version —
     // find the active PI by status instead (we just canceled all stale ones above)
@@ -58,6 +72,7 @@ export async function POST(request: Request) {
       clientSecret: paymentIntent.client_secret,
       subscriptionId: subscription.id,
       customerId: customer.id,
+      paid: false,
     })
 
   } catch (error: any) {
