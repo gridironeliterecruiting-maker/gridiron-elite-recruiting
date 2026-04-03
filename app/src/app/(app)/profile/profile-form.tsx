@@ -4,7 +4,7 @@ import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Save, Check, Link2, Unlink, X, Loader2, Info } from "lucide-react"
+import { Save, Check, Link2, Unlink, X, Loader2, Info, Smartphone } from "lucide-react"
 
 interface Profile {
   id: string
@@ -27,6 +27,7 @@ interface Profile {
   coach_name: string | null
   coach_phone: string | null
   coach_email: string | null
+  sms_notifications_enabled: boolean
 }
 
 const inputClass =
@@ -74,6 +75,7 @@ export function ProfileForm({
     coach_name: profile?.coach_name || "",
     coach_phone: profile?.coach_phone || "",
     coach_email: profile?.coach_email || "",
+    sms_notifications_enabled: profile?.sms_notifications_enabled ?? true,
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -116,6 +118,7 @@ export function ProfileForm({
         coach_name: form.coach_name || null,
         coach_phone: form.coach_phone || null,
         coach_email: form.coach_email || null,
+        sms_notifications_enabled: form.sms_notifications_enabled,
       })
       .eq("id", profile.id)
     setSaving(false)
@@ -184,6 +187,27 @@ export function ProfileForm({
           </div>
 
           <Field label="Phone" value={form.phone} onChange={(v) => update("phone", v)} placeholder="(555) 123-4567" />
+
+          {/* SMS Notifications Toggle */}
+          <div className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2">
+            <div className="flex items-center gap-2">
+              <Smartphone className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Text Notifications</p>
+                <p className="text-[11px] text-muted-foreground">Get a text when a coach emails you</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={form.sms_notifications_enabled}
+              onClick={() => { setForm(f => ({ ...f, sms_notifications_enabled: !f.sms_notifications_enabled })); setSaved(false) }}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${form.sms_notifications_enabled ? 'bg-primary' : 'bg-border'}`}
+            >
+              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${form.sms_notifications_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+
           <Field label="GPA" value={form.gpa} onChange={(v) => update("gpa", v)} placeholder="3.5" />
           <Field label="City" value={form.city} onChange={(v) => update("city", v)} placeholder="Cedar Rapids" />
           <Field label="State" value={form.state} onChange={(v) => update("state", v)} placeholder="IA" />

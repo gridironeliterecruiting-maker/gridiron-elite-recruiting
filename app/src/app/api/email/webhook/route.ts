@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendSms, normalizePhone } from '@/lib/twilio'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,7 +55,7 @@ async function handleNewMail(payload: any) {
   // Look up which user owns this account_key
   const { data: profile } = await admin
     .from('profiles')
-    .select('id, workspace_email')
+    .select('id, workspace_email, phone, sms_notifications_enabled')
     .eq('zoho_account_key', accountKey)
     .maybeSingle()
 
@@ -87,8 +88,30 @@ async function handleNewMail(payload: any) {
     console.log('[email/webhook] Notification saved for user:', profile.id, '| from:', fromAddress)
   }
 
-  // TODO: Send SMS/text notification to athlete when coach emails them
-  // This is where we'd check if fromAddress is a coach and send a text
+  // Send SMS notification if the athlete has it enabled
+  if (profile.sms_notifications_enabled && profile.phone) {
+    const normalizedPhone = normalizePhone(profile.phone)
+    if (normalizedPhone) {
+      // Try to match sender to a coach + school for a richer message
+      const { data: coach } = await admin
+        .from('coaches')
+        .select('first_name, last_name, program_id, programs(school_name)')
+        .eq('email', fromAddress)
+        .limit(1)
+        .maybeSingle()
+
+      let message: string
+      if (coach && (coach.programs as any)?.school_name) {
+        message = `You received an email from ${coach.first_name} ${coach.last_name} at ${(coach.programs as any).school_name}. View it now: runwayrecruit.com/email`
+      } else {
+        message = `You received a new recruiting email. View it now: runwayrecruit.com/email`
+      }
+
+      void sendSms(normalizedPhone, message).catch((err) => {
+        console.error('[email/webhook] SMS send error:', err)
+      })
+    }
+  }
 }
 
 // GET handler for webhook verification (some providers send a GET to verify the URL)
