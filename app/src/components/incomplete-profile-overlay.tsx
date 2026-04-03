@@ -38,7 +38,7 @@ export function IncompleteProfileOverlay({
         </div>
 
         <p className="text-sm text-muted-foreground">
-          Your campaign emails use profile information to personalize every message.
+          Your campaign emails and DMs use profile information to personalize every message.
           Missing fields will appear as blank spaces — coaches will notice.
         </p>
 

@@ -292,13 +292,19 @@ export function OutreachClient({
       url.searchParams.delete('program')
       url.searchParams.delete('quickEmail')
       window.history.replaceState({}, '', url.pathname + url.search)
-    } else if (isQuickDm && goal && coachId) {
+    } else if (isQuickDm) {
       // Close any open campaign overlays first
       setSelectedCampaignId(null)
       setSelectedDmCampaignId(null)
 
-      setQuickDmData({ goal, coachId, programId })
-      setShowCreateCampaign('dm')
+      if (profileIncomplete) {
+        setShowProfileOverlay(true)
+      } else if (coachId) {
+        setQuickDmData({ goal, coachId, programId })
+        setShowCreateCampaign('dm')
+      } else {
+        setShowCreateCampaign('dm')
+      }
 
       // Clear URL params
       const url = new URL(window.location.href)

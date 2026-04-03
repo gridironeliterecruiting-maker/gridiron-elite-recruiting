@@ -20,11 +20,11 @@ export function IncompleteProfileBanner({
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-amber-900">
-            Complete your profile to send campaigns
+            Complete your profile to send campaigns and DMs
           </p>
           <p className="mt-0.5 text-sm text-amber-700">
-            Campaign emails use your profile info to personalize messages. Missing fields will appear
-            as blank spaces in your emails. Fill in:{" "}
+            Campaign emails and DMs use your profile info to personalize messages. Missing fields will appear
+            as blank spaces. Fill in:{" "}
             <span className="font-medium">{missingFields.join(", ")}</span>
           </p>
           <Link
