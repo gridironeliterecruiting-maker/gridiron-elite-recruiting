@@ -19,7 +19,7 @@ export default async function OutreachPage({
   // Determine role + profile completeness
   const { data: userProfile } = await supabase
     .from("profiles")
-    .select("position, role, first_name, last_name, grad_year, high_school, city, state")
+    .select("position, role, first_name, last_name, grad_year, high_school, city, state, gpa, primary_video_url, phone, coach_name, coach_phone, coach_email")
     .eq("id", user!.id)
     .single()
 
@@ -103,7 +103,7 @@ export default async function OutreachPage({
   if (isCoach && activePlayerId) {
     const { data: playerProfile } = await supabase
       .from("profiles")
-      .select("position, first_name, last_name, grad_year, high_school, city, state")
+      .select("position, first_name, last_name, grad_year, high_school, city, state, gpa, primary_video_url, phone, coach_name, coach_phone, coach_email")
       .eq("id", activePlayerId)
       .single()
     playerPosition = playerProfile?.position || ""

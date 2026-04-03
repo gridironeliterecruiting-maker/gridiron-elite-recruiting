@@ -13,6 +13,12 @@ export const REQUIRED_PROFILE_FIELDS = [
   { key: 'high_school', label: 'High School' },
   { key: 'city', label: 'City' },
   { key: 'state', label: 'State' },
+  { key: 'gpa', label: 'GPA' },
+  { key: 'primary_video_url', label: 'Primary Video Link' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'coach_name', label: 'Coach Name' },
+  { key: 'coach_phone', label: 'Coach Phone' },
+  { key: 'coach_email', label: 'Coach Email' },
 ] as const
 
 export function getMissingProfileFields(profile: Record<string, unknown>): string[] {

@@ -15,7 +15,7 @@ export default async function HubPage() {
   const { data: userProfile } = user
     ? await supabase
         .from("profiles")
-        .select("first_name, last_name, position, grad_year, high_school, hudl_url, city, state, twitter_handle, instagram_handle, role, readiness_score_open, workspace_email, jersey_number, email_banner_dismissed")
+        .select("first_name, last_name, position, grad_year, high_school, hudl_url, city, state, twitter_handle, instagram_handle, role, readiness_score_open, workspace_email, jersey_number, email_banner_dismissed, gpa, primary_video_url, phone, coach_name, coach_phone, coach_email")
         .eq("id", user.id)
         .single()
     : { data: null }
@@ -63,7 +63,7 @@ export default async function HubPage() {
     if (activePlayerId) {
       const { data: pp } = await supabase
         .from("profiles")
-        .select("first_name, last_name, position, grad_year, high_school, hudl_url, city, state, twitter_handle, instagram_handle")
+        .select("first_name, last_name, position, grad_year, high_school, hudl_url, city, state, twitter_handle, instagram_handle, gpa, primary_video_url, phone, coach_name, coach_phone, coach_email")
         .eq("id", activePlayerId)
         .single()
       playerProfile = pp
