@@ -4,4 +4,4 @@
  */
 
 /** When false, the video overlay and "Watch Demo" nav button are hidden. */
-export const OVERLAY_ENABLED = true
+export const OVERLAY_ENABLED = false
