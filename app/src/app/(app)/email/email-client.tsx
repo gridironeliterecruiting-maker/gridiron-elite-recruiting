@@ -770,7 +770,7 @@ interface SentThread {
   schoolName: string | null
 }
 
-function SentView({ isActive, refreshTrigger }: { isActive: boolean; refreshTrigger?: number }) {
+function SentView({ isActive, refreshTrigger, onArchived }: { isActive: boolean; refreshTrigger?: number; onArchived?: () => void }) {
   const [threads, setThreads] = useState<SentThread[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null)
@@ -840,7 +840,7 @@ function SentView({ isActive, refreshTrigger }: { isActive: boolean; refreshTrig
       <ConversationView
         thread={selectedThread}
         onBack={handleBack}
-        onArchived={() => { setThreads(prev => prev.filter(t => t.threadId !== selectedThread.threadId)); setSelectedThread(null) }}
+        onArchived={() => { setThreads(prev => prev.filter(t => t.threadId !== selectedThread.threadId)); setSelectedThread(null); onArchived?.() }}
         onDeleted={() => { setThreads(prev => prev.filter(t => t.threadId !== selectedThread.threadId)); setSelectedThread(null) }}
       />
     )
@@ -1047,7 +1047,11 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
             />
           </div>
           {isSent && (
-            <SentView isActive={isSent} refreshTrigger={sentRefreshTrigger} />
+            <SentView
+              isActive={isSent}
+              refreshTrigger={sentRefreshTrigger}
+              onArchived={() => setInboxRefreshTrigger(n => n + 1)}
+            />
           )}
           {selectedProgram && (
             <ArchiveProgramView
