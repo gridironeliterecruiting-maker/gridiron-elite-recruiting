@@ -153,13 +153,13 @@ export default async function HomePage() {
             <PillarCard
               number="02"
               title="Academic Accomplishments"
-              description="Good grades expand your options and are a core part of what coaches evaluate. The classroom matters as much as the field."
+              description="Good grades expand your options and are a core part of what coaches evaluate — the classroom matters as much as the field."
               ours={false}
             />
             <PillarCard
               number="03"
               title="Exposure"
-              description="This is where we live. Connect with coaches, manage your outreach, build your recruiting presence - all powered by Runway Recruit."
+              description="This is where we live. Connect with coaches, manage your outreach, build your recruiting presence — all powered by Runway Recruit."
               ours={true}
             />
           </div>
@@ -219,7 +219,7 @@ export default async function HomePage() {
             <FeatureCard
               icon="📱"
               title="Social Integration"
-              description="Integration and optimization of your brand across all of your social media platforms — engage coaches wherever they are to maximize results."
+              description="Integration and optimization of your brand across all of your social media platforms — reach coaches wherever they are to maximize engagement and stay top of mind."
             />
           </div>
         </div>
