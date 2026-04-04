@@ -192,15 +192,15 @@ export function ProfileForm({
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Text Notifications</label>
             <div className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2">
-              <span className="text-[11px] text-muted-foreground whitespace-nowrap">When a coach emails you</span>
+              <span className="text-sm text-muted-foreground whitespace-nowrap">When a coach emails you</span>
               <button
                 type="button"
                 role="switch"
                 aria-checked={form.sms_notifications_enabled}
                 onClick={() => { setForm(f => ({ ...f, sms_notifications_enabled: !f.sms_notifications_enabled })); setSaved(false) }}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${form.sms_notifications_enabled ? 'bg-primary' : 'bg-border'}`}
+                className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${form.sms_notifications_enabled ? 'bg-primary' : 'bg-border'}`}
               >
-                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${form.sms_notifications_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ${form.sms_notifications_enabled ? 'translate-x-4' : 'translate-x-0'}`} />
               </button>
             </div>
           </div>
