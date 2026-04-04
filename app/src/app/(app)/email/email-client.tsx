@@ -1027,12 +1027,13 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
                     key={prog.programName}
                     onClick={() => setNav({ type: "archive", programName: prog.programName })}
                     className={cn(
-                      "relative flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors md:px-4",
+                      "relative flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors md:px-4",
                       isSelected
                         ? "bg-primary/10 text-primary font-semibold border-l-2 border-primary"
                         : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                     )}
                   >
+                    <span className="md:hidden truncate text-[10px]">{schoolAcronym(prog.programName)}</span>
                     <span className="hidden md:inline truncate text-xs">{prog.programName}</span>
                     {prog.unreadCount > 0 && (
                       <Badge className="ml-auto hidden h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 p-0 text-[10px] font-bold text-white md:flex">
