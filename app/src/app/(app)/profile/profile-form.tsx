@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,18 +27,19 @@ interface Profile {
   coach_name: string | null
   coach_phone: string | null
   coach_email: string | null
+  sms_notifications_enabled: boolean
 }
 
 const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
 
-function Field({ label, value, onChange, placeholder, type = "text" }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string
+function Field({ label, value, onChange, placeholder, type = "text", inputRef }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; inputRef?: React.Ref<HTMLInputElement>
 }) {
   return (
     <div>
       <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</label>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={inputClass} />
+      <input ref={inputRef} type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={inputClass} />
     </div>
   )
 }
@@ -74,6 +75,7 @@ export function ProfileForm({
     coach_name: profile?.coach_name || "",
     coach_phone: profile?.coach_phone || "",
     coach_email: profile?.coach_email || "",
+    sms_notifications_enabled: profile?.sms_notifications_enabled ?? true,
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -86,6 +88,16 @@ export function ProfileForm({
   const [emailChanging, setEmailChanging] = useState(false)
   const [emailChangeError, setEmailChangeError] = useState("")
   const [pendingEmail, setPendingEmail] = useState<string | null>(null)
+
+  // Match toggle container height to input fields exactly
+  const phoneInputRef = useRef<HTMLInputElement>(null)
+  const toggleContainerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (phoneInputRef.current && toggleContainerRef.current) {
+      const h = phoneInputRef.current.offsetHeight
+      toggleContainerRef.current.style.height = `${h}px`
+    }
+  }, [])
 
   const update = (key: string, val: string) => {
     setForm((f) => ({ ...f, [key]: val }))
@@ -116,6 +128,7 @@ export function ProfileForm({
         coach_name: form.coach_name || null,
         coach_phone: form.coach_phone || null,
         coach_email: form.coach_email || null,
+        sms_notifications_enabled: form.sms_notifications_enabled,
       })
       .eq("id", profile.id)
     setSaving(false)
@@ -183,7 +196,25 @@ export function ProfileForm({
             )}
           </div>
 
-          <Field label="Phone" value={form.phone} onChange={(v) => update("phone", v)} placeholder="(555) 123-4567" />
+          <Field label="Phone" value={form.phone} onChange={(v) => update("phone", v)} placeholder="(555) 123-4567" inputRef={phoneInputRef} />
+
+          {/* SMS Notifications Toggle */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Text Notifications</label>
+            <div ref={toggleContainerRef} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background px-3">
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap">When a coach emails you</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={form.sms_notifications_enabled}
+                onClick={() => { setForm(f => ({ ...f, sms_notifications_enabled: !f.sms_notifications_enabled })); setSaved(false) }}
+                className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${form.sms_notifications_enabled ? 'bg-primary' : 'bg-border'}`}
+              >
+                <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ${form.sms_notifications_enabled ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+          </div>
+
           <Field label="GPA" value={form.gpa} onChange={(v) => update("gpa", v)} placeholder="3.5" />
           <Field label="City" value={form.city} onChange={(v) => update("city", v)} placeholder="Cedar Rapids" />
           <Field label="State" value={form.state} onChange={(v) => update("state", v)} placeholder="IA" />

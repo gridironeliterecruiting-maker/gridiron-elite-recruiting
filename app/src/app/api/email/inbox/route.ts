@@ -271,6 +271,56 @@ export async function GET() {
       }
     }
 
+    // 7. Include archived compose-sent emails (no inbox messages, only in filed_emails + compose_emails)
+    const { data: composeRows } = await admin
+      .from('compose_emails')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('sent_at', { ascending: false })
+
+    if (composeRows && composeRows.length > 0) {
+      for (const row of composeRows) {
+        const key = `${row.to_address.toLowerCase()}::${normalizeSubject(row.subject)}`
+        // Only include if it's archived AND not already in archivedThreads (from inbox matching)
+        if (archivedKeys.has(key)) {
+          const alreadyIncluded = archivedThreads.some(
+            t => t.otherEmail.toLowerCase() === row.to_address.toLowerCase()
+              && normalizeSubject(t.subject) === normalizeSubject(row.subject)
+          )
+          if (!alreadyIncluded) {
+            const latestAt = row.sent_at || new Date().toISOString()
+            archivedThreads.push({
+              threadId: row.message_id,
+              latestMessageId: row.message_id,
+              allMessageIds: [row.message_id],
+              allMessages: [{
+                id: row.message_id,
+                from_name: 'You',
+                from_email: workspaceEmail,
+                subject: row.subject,
+                snippet: '',
+                received_at: latestAt,
+                is_sent: true,
+                is_read: true,
+              }],
+              subject: row.subject,
+              latestAt,
+              otherName: row.to_address,
+              otherEmail: row.to_address.toLowerCase(),
+              snippet: '',
+              unreadCount: 0,
+              messageCount: 1,
+              hasUnread: false,
+              latestReceivedId: row.message_id,
+              logoUrl: null,
+              schoolName: null,
+              programName: archivedProgramMap.get(key) || 'Other',
+            })
+          }
+        }
+      }
+    }
+
     const unreadCount = inboxThreads.reduce((sum, t) => sum + t.unreadCount, 0)
     return NextResponse.json({ threads: inboxThreads, archivedThreads, unreadCount })
   } catch (err: any) {
