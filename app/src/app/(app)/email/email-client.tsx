@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { RecruitingEmailBadge } from "@/components/recruiting-email-badge"
+import { ComposeOverlay } from "@/components/email/compose-overlay"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -77,8 +78,8 @@ interface ArchiveProgram {
   unreadCount: number
 }
 
-// Nav state: "inbox" or a program name from archives
-type NavSelection = { type: "inbox" } | { type: "archive"; programName: string }
+// Nav state: "inbox", "sent", or a program name from archives
+type NavSelection = { type: "inbox" } | { type: "sent" } | { type: "archive"; programName: string }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -95,10 +96,11 @@ function formatDate(ts: string | null): string {
 
 // ─── Program Logo (matches coaches/pipeline pages exactly) ────────────────────
 
-function ThreadLogo({ logoUrl, schoolName, otherName }: {
+function ThreadLogo({ logoUrl, schoolName, otherName, showMailIcon }: {
   logoUrl: string | null
   schoolName: string | null
   otherName: string
+  showMailIcon?: boolean
 }) {
   const [imgError, setImgError] = useState(false)
   const initials = (schoolName || otherName).slice(0, 2).toUpperCase()
@@ -117,6 +119,13 @@ function ThreadLogo({ logoUrl, schoolName, otherName }: {
       </div>
     )
   }
+  if (showMailIcon) {
+    return (
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 ring-1 ring-primary/20">
+        <Mail className="h-4 w-4 text-primary" />
+      </div>
+    )
+  }
   return (
     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[10px] font-bold text-primary ring-1 ring-primary/20">
       {initials}
@@ -131,6 +140,7 @@ function ThreadRow({ thread, selected, onClick }: {
   selected: boolean
   onClick: () => void
 }) {
+  const showMailIcon = !thread.logoUrl && !thread.schoolName
   return (
     <button
       onClick={onClick}
@@ -140,7 +150,7 @@ function ThreadRow({ thread, selected, onClick }: {
         thread.hasUnread && !selected && "bg-blue-50/50"
       )}
     >
-      <ThreadLogo logoUrl={thread.logoUrl} schoolName={thread.schoolName} otherName={thread.otherName} />
+      <ThreadLogo logoUrl={thread.logoUrl} schoolName={thread.schoolName} otherName={thread.otherName} showMailIcon={showMailIcon} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <span className={cn(
@@ -315,7 +325,7 @@ function ConversationView({ thread, onBack, onArchived, onDeleted, isArchived = 
             snippet: thread.snippet,
             receivedAt: thread.latestAt,
             coachName: thread.otherName,
-            programName: thread.schoolName || null,
+            programName: thread.schoolName || "Other",
           }),
         })
       }
@@ -740,6 +750,129 @@ function ArchiveProgramView({ program, onMovedToInbox, onUnreadCleared }: { prog
   )
 }
 
+// ─── Sent View ───────────────────────────────────────────────────────────────
+
+interface SentThread {
+  threadId: string
+  latestMessageId: string
+  allMessageIds: string[]
+  allMessages: MessageMeta[]
+  subject: string
+  latestAt: string
+  otherName: string
+  otherEmail: string
+  snippet: string
+  unreadCount: number
+  messageCount: number
+  hasUnread: boolean
+  latestReceivedId: string
+  logoUrl: string | null
+  schoolName: string | null
+}
+
+function SentView({ isActive, refreshTrigger }: { isActive: boolean; refreshTrigger?: number }) {
+  const [threads, setThreads] = useState<SentThread[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedThread, setSelectedThread] = useState<Thread | null>(null)
+  const listScrollRef = useRef<HTMLDivElement>(null)
+  const savedScrollTop = useRef(0)
+
+  const loadSent = useCallback(async () => {
+    try {
+      const res = await fetch("/api/email/sent")
+      if (!res.ok) return
+      const data = await res.json()
+      setThreads(data.threads || [])
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadSent()
+  }, [loadSent])
+
+  // Refresh when trigger changes (e.g. after sending a new email)
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0) loadSent()
+  }, [refreshTrigger, loadSent])
+
+  // Reset thread view when nav switches to sent
+  useEffect(() => {
+    if (isActive) setSelectedThread(null)
+  }, [isActive])
+
+  const handleSelectThread = (thread: SentThread) => {
+    savedScrollTop.current = listScrollRef.current?.scrollTop || 0
+    setSelectedThread(thread as Thread)
+  }
+
+  const handleBack = () => {
+    setSelectedThread(null)
+    requestAnimationFrame(() => {
+      if (listScrollRef.current) {
+        listScrollRef.current.scrollTop = savedScrollTop.current
+      }
+    })
+  }
+
+  if (loading) {
+    return (
+      <div className="h-full">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="flex items-center gap-3 border-b border-border px-4 py-3">
+            <Skeleton className="h-9 w-9 rounded-md shrink-0" />
+            <div className="flex-1">
+              <div className="flex justify-between mb-1.5">
+                <Skeleton className="h-3.5 w-32" />
+                <Skeleton className="h-3 w-10" />
+              </div>
+              <Skeleton className="h-3 w-48" />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (selectedThread) {
+    return (
+      <ConversationView
+        thread={selectedThread}
+        onBack={handleBack}
+        onArchived={() => { setThreads(prev => prev.filter(t => t.threadId !== selectedThread.threadId)); setSelectedThread(null) }}
+        onDeleted={() => { setThreads(prev => prev.filter(t => t.threadId !== selectedThread.threadId)); setSelectedThread(null) }}
+      />
+    )
+  }
+
+  if (threads.length === 0) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center py-16 text-center px-4">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+          <Send className="h-8 w-8 text-muted-foreground/40" />
+        </div>
+        <p className="mt-4 text-sm font-medium text-muted-foreground">
+          No sent emails yet. Click +New Email to compose one.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative h-full overflow-y-auto" ref={listScrollRef}>
+      {threads.map(thread => (
+        <ThreadRow
+          key={thread.threadId}
+          thread={thread as Thread}
+          selected={false}
+          onClick={() => handleSelectThread(thread)}
+        />
+      ))}
+    </div>
+  )
+}
+
 // ─── Main EmailClient ─────────────────────────────────────────────────────────
 
 export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | null }) {
@@ -747,6 +880,8 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
   const [unreadCount, setUnreadCount] = useState(0)
   const [archivePrograms, setArchivePrograms] = useState<ArchiveProgram[]>([])
   const [inboxRefreshTrigger, setInboxRefreshTrigger] = useState(0)
+  const [showCompose, setShowCompose] = useState(false)
+  const [sentRefreshTrigger, setSentRefreshTrigger] = useState(0)
 
   // Build archive programs from archived threads returned by inbox API
   const handleArchivedThreadsUpdate = useCallback((archivedThreads: ArchivedThread[]) => {
@@ -758,7 +893,12 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
       programMap.set(key, existing)
     }
     const programs: ArchiveProgram[] = [...programMap.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
+      .sort(([a], [b]) => {
+        // "Other" always sorts last
+        if (a === 'Other') return 1
+        if (b === 'Other') return -1
+        return a.localeCompare(b)
+      })
       .map(([name, threads]) => ({
         programName: name,
         threads,
@@ -768,6 +908,7 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
   }, [])
 
   const isInbox = nav.type === "inbox"
+  const isSent = nav.type === "sent"
   const selectedProgram = nav.type === "archive"
     ? archivePrograms.find(p => p.programName === nav.programName) || null
     : null
@@ -786,6 +927,13 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
           </div>
           <div className="flex items-center gap-3 shrink-0">
             {recruitingEmail && <RecruitingEmailBadge email={recruitingEmail} />}
+            <Button
+              variant="outline"
+              onClick={() => setShowCompose(true)}
+            >
+              <Plus className="h-4 w-4" />
+              New Email
+            </Button>
             <Button
               onClick={() => {
                 const segs = window.location.pathname.split('/').filter(Boolean)
@@ -826,6 +974,20 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
             {unreadCount > 0 && (
               <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-accent md:hidden" />
             )}
+          </button>
+
+          {/* Sent row */}
+          <button
+            onClick={() => setNav({ type: "sent" })}
+            className={cn(
+              "relative flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors md:px-4",
+              isSent
+                ? "bg-primary/10 text-primary font-semibold border-l-2 border-primary"
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            )}
+          >
+            <Send className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline">Sent</span>
           </button>
 
           {/* Archives section */}
@@ -884,6 +1046,9 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
               refreshTrigger={inboxRefreshTrigger}
             />
           </div>
+          {isSent && (
+            <SentView isActive={isSent} refreshTrigger={sentRefreshTrigger} />
+          )}
           {selectedProgram && (
             <ArchiveProgramView
               key={selectedProgram.programName}
@@ -910,6 +1075,18 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
           )}
         </div>
       </div>
+
+      {/* Compose Overlay */}
+      {showCompose && (
+        <ComposeOverlay
+          onClose={() => setShowCompose(false)}
+          onSent={() => {
+            setSentRefreshTrigger(n => n + 1)
+            // Switch to Sent folder so user sees their email
+            setNav({ type: "sent" })
+          }}
+        />
+      )}
     </div>
   )
 }
