@@ -191,8 +191,8 @@ export function ProfileForm({
           {/* SMS Notifications Toggle */}
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Text Notifications</label>
-            <div className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2">
-              <span className="text-sm text-muted-foreground whitespace-nowrap">When a coach emails you</span>
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2">
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap">When a coach emails you</span>
               <button
                 type="button"
                 role="switch"
