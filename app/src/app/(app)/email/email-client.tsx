@@ -1060,8 +1060,9 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
                     ? { ...p, threads: p.threads.filter(t => t.threadId !== threadId) }
                     : p
                 ))
-                // Trigger inbox refresh so the thread appears there
+                // Trigger inbox + sent refresh so the thread appears in the right place
                 setInboxRefreshTrigger(n => n + 1)
+                setSentRefreshTrigger(n => n + 1)
               }}
               onUnreadCleared={(count) => {
                 // Immediately deduct from the program's badge

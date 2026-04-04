@@ -21,6 +21,13 @@ export async function POST(req: NextRequest) {
       .delete()
       .eq('user_id', user.id)
       .eq('thread_id', threadId)
+
+    // Also try by gmail_message_id (compose-sent emails store messageId here)
+    await admin
+      .from('filed_emails')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('gmail_message_id', threadId)
   }
 
   if (fromEmail) {
