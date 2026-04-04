@@ -83,6 +83,15 @@ type NavSelection = { type: "inbox" } | { type: "sent" } | { type: "archive"; pr
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+/** Generate acronym from school name: "Oregon State University" → "OSU" */
+function schoolAcronym(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(w => w.length > 0)
+    .map(w => w[0].toUpperCase())
+    .join('')
+}
+
 function formatDate(ts: string | null): string {
   if (!ts) return ""
   const d = new Date(ts)
@@ -157,7 +166,12 @@ function ThreadRow({ thread, selected, onClick }: {
             "truncate text-sm",
             thread.hasUnread ? "font-bold text-foreground" : "font-medium text-foreground"
           )}>
-            {thread.otherName}
+            {thread.schoolName ? (
+              <>
+                <span className="sm:hidden">{schoolAcronym(thread.schoolName)}</span>
+                <span className="hidden sm:inline">{thread.otherName}</span>
+              </>
+            ) : thread.otherName}
           </span>
           <span className="shrink-0 text-xs text-muted-foreground">{formatDate(thread.latestAt)}</span>
         </div>
@@ -354,35 +368,37 @@ function ConversationView({ thread, onBack, onArchived, onDeleted, isArchived = 
   return (
     <div className="flex flex-col h-full">
       {/* Pinned action bar */}
-      <div className="shrink-0 border-b border-border bg-card px-4 py-3 flex items-center gap-3">
+      <div className="shrink-0 border-b border-border bg-card px-3 py-2.5 sm:px-4 sm:py-3 flex items-center gap-2 sm:gap-3">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-semibold text-foreground hover:bg-muted transition-colors shrink-0"
+          className="flex items-center gap-1 rounded-md p-1.5 sm:px-2 sm:py-1.5 text-sm font-semibold text-foreground hover:bg-muted transition-colors shrink-0"
           aria-label="Back to inbox"
         >
-          <ChevronLeft className="h-5 w-5" />
-          Back
+          <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+          <span className="hidden sm:inline">Back</span>
         </button>
         <div className="flex-1 min-w-0">
-          <span className="font-semibold text-sm text-foreground truncate block">{thread.subject}</span>
-          <span className="text-xs text-muted-foreground">{messages.length > 0 ? `${messages.length} message${messages.length !== 1 ? 's' : ''}` : ''}</span>
+          <span className="font-semibold text-xs sm:text-sm text-foreground truncate block">{thread.subject}</span>
+          <span className="text-[10px] sm:text-xs text-muted-foreground">{messages.length > 0 ? `${messages.length} msg${messages.length !== 1 ? 's' : ''}` : ''}</span>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-md p-1.5 sm:px-2.5 sm:py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+            aria-label="Delete"
           >
             {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-            Delete
+            <span className="hidden sm:inline">Delete</span>
           </button>
           <button
             onClick={handleArchive}
             disabled={archiving}
-            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-md p-1.5 sm:px-2.5 sm:py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
+            aria-label={isArchived ? "Move to Inbox" : "Archive"}
           >
             {archiving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isArchived ? <Inbox className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
-            {isArchived ? "Move to Inbox" : "Archive"}
+            <span className="hidden sm:inline">{isArchived ? "Move to Inbox" : "Archive"}</span>
           </button>
           <button
             onClick={() => setShowReply(r => !r)}
@@ -917,36 +933,34 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
     <div className="flex flex-col -mx-4 -my-6 lg:-mx-8 lg:-my-8 h-[calc(100vh-4rem)] overflow-hidden">
       {/* Page header — pinned */}
       <div className="shrink-0 border-b border-border bg-card px-4 pb-4 pt-6 lg:px-8 lg:pt-8">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">Email</h1>
-            <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Mail className="h-3.5 w-3.5 text-accent" />
-              FOLLOW UP. BUILD RELATIONSHIPS.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            {recruitingEmail && <RecruitingEmailBadge email={recruitingEmail} />}
-            <Button
-              onClick={() => setShowCompose(true)}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              <Plus className="h-4 w-4" />
-              New Email
-            </Button>
-            <Button
-              onClick={() => {
-                const segs = window.location.pathname.split('/').filter(Boolean)
-                const appRoutes = ['hub', 'coaches', 'pipeline', 'outreach', 'profile', 'email']
-                const base = segs.length >= 2 && appRoutes.includes(segs[1]) ? `/${segs[0]}` : ''
-                window.location.href = `${base}/outreach?quickEmail=true`
-              }}
-              className="bg-accent text-accent-foreground hover:bg-accent/90"
-            >
-              <Plus className="h-4 w-4" />
-              Create Campaign
-            </Button>
-          </div>
+        <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">Email</h1>
+        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Mail className="h-3.5 w-3.5 text-accent" />
+          FOLLOW UP. BUILD RELATIONSHIPS.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
+          {recruitingEmail && <RecruitingEmailBadge email={recruitingEmail} />}
+          <Button
+            size="sm"
+            onClick={() => setShowCompose(true)}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            New Email
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => {
+              const segs = window.location.pathname.split('/').filter(Boolean)
+              const appRoutes = ['hub', 'coaches', 'pipeline', 'outreach', 'profile', 'email']
+              const base = segs.length >= 2 && appRoutes.includes(segs[1]) ? `/${segs[0]}` : ''
+              window.location.href = `${base}/outreach?quickEmail=true`
+            }}
+            className="bg-accent text-accent-foreground hover:bg-accent/90"
+          >
+            <Plus className="h-4 w-4" />
+            Create Campaign
+          </Button>
         </div>
       </div>
 

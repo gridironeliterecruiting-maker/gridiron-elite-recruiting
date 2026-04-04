@@ -16,7 +16,6 @@ import {
   Pause,
   Users,
   MailOpen,
-  Reply,
   XCircle,
   Loader2,
   MessageCircle,
@@ -339,7 +338,6 @@ export function OutreachClient({
   const dmCampaigns = campaigns.filter(c => c.type === 'dm')
   const totalSent = emailCampaigns.reduce((sum, c) => sum + c.stats.sent, 0)
   const totalOpened = emailCampaigns.reduce((sum, c) => sum + c.stats.opened, 0)
-  const totalReplied = emailCampaigns.reduce((sum, c) => sum + c.stats.replied, 0)
   const totalClicked = emailCampaigns.reduce((sum, c) => sum + c.stats.clicked, 0)
   const totalDmSent = dmCampaigns.reduce((sum, c) => sum + c.stats.sent, 0)
 
@@ -411,12 +409,11 @@ export function OutreachClient({
       )}
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
           { label: "Emails Sent", value: totalSent, icon: Send, color: "accent" },
           { label: "DMs Sent", value: totalDmSent, icon: MessageCircle, color: "primary" },
           { label: "Opened", value: totalOpened, icon: MailOpen, color: "primary" },
-          { label: "Replied", value: totalReplied, icon: Reply, color: "primary" },
           { label: "Clicks", value: totalClicked, icon: MousePointerClick, color: "primary" },
         ].map((stat) => (
           <Card key={stat.label} className="relative overflow-hidden">
