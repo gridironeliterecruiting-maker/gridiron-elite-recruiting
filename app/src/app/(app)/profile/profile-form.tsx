@@ -202,7 +202,7 @@ export function ProfileForm({
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Text Notifications</label>
             <div ref={toggleContainerRef} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background px-3">
-              <span className="text-[11px] text-muted-foreground whitespace-nowrap">When a coach emails you</span>
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap"><span className="sm:hidden">Coach Emails</span><span className="hidden sm:inline">When a coach emails you</span></span>
               <button
                 type="button"
                 role="switch"

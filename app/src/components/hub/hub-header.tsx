@@ -22,33 +22,31 @@ export function HubHeader({ firstName, isCoach = false, activePlayerName }: HubH
   })
 
   return (
-    <div className="flex items-center justify-between">
-      <div>
+    <div>
+      <div className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
           {greeting}, {firstName}
         </h1>
-        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-          {isCoach ? (
-            <>
-              <Users className="h-3.5 w-3.5 text-accent" />
-              {activePlayerName
-                ? `MANAGING ${activePlayerName.toUpperCase()}'S RECRUITING.`
-                : "SELECT A PLAYER TO GET STARTED."}
-            </>
-          ) : (
-            <>
-              <Flame className="h-3.5 w-3.5 text-accent" />
-              COACHES ARE WATCHING. MAKE EVERY POST COUNT.
-            </>
-          )}
-        </p>
-      </div>
-      <div className="flex flex-col items-end gap-1">
         {isCoach && <PlayerSwitcher />}
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <CalendarDays className="h-3.5 w-3.5" />
-          {formattedDate}
-        </div>
+      </div>
+      <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+        {isCoach ? (
+          <>
+            <Users className="h-3.5 w-3.5 text-accent" />
+            {activePlayerName
+              ? `MANAGING ${activePlayerName.toUpperCase()}'S RECRUITING.`
+              : "SELECT A PLAYER TO GET STARTED."}
+          </>
+        ) : (
+          <>
+            <Flame className="h-3.5 w-3.5 text-accent" />
+            COACHES ARE WATCHING. MAKE EVERY POST COUNT.
+          </>
+        )}
+      </p>
+      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <CalendarDays className="h-3.5 w-3.5" />
+        {formattedDate}
       </div>
     </div>
   )
