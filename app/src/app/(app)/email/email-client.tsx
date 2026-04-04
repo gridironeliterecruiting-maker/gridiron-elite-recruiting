@@ -84,10 +84,11 @@ type NavSelection = { type: "inbox" } | { type: "sent" } | { type: "archive"; pr
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Generate acronym from school name: "Oregon State University" → "OSU" */
+const ACRONYM_SKIP = new Set(['of', 'the', 'at', 'and'])
 function schoolAcronym(name: string): string {
   return name
     .split(/\s+/)
-    .filter(w => w.length > 0)
+    .filter(w => w.length > 0 && !ACRONYM_SKIP.has(w.toLowerCase()))
     .map(w => w[0].toUpperCase())
     .join('')
 }
@@ -1033,7 +1034,7 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
                         : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                     )}
                   >
-                    <span className="md:hidden truncate text-[10px]">{schoolAcronym(prog.programName)}</span>
+                    <span className="md:hidden truncate text-[10px]">{prog.programName.includes(' ') ? schoolAcronym(prog.programName) : prog.programName}</span>
                     <span className="hidden md:inline truncate text-xs">{prog.programName}</span>
                     {prog.unreadCount > 0 && (
                       <Badge className="ml-auto hidden h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 p-0 text-[10px] font-bold text-white md:flex">
