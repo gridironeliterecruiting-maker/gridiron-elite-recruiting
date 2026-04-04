@@ -17,8 +17,8 @@ function normalizeSubject(subject: string): string {
 
 /**
  * GET /api/email/sent
- * Returns compose-sent emails that have NOT yet received a reply.
- * Once a reply arrives, the thread moves to Inbox and disappears from here.
+ * Returns compose-sent emails that have NOT yet received a reply
+ * and have NOT been archived.
  */
 export async function GET() {
   const supabase = await createClient()
@@ -51,11 +51,25 @@ export async function GET() {
       return NextResponse.json({ threads: [] })
     }
 
-    // 2. Fetch inbox messages from Zoho to detect replies
+    // 2. Check which compose emails have been archived (filed_emails)
+    const { data: filedRows } = await admin
+      .from('filed_emails')
+      .select('from_email, subject')
+      .eq('user_id', user.id)
+
+    const archivedKeys = new Set<string>()
+    if (filedRows) {
+      for (const row of filedRows) {
+        const key = `${(row.from_email || '').toLowerCase()}::${normalizeSubject(row.subject || '')}`
+        archivedKeys.add(key)
+      }
+    }
+
+    // 3. Fetch inbox messages from Zoho to detect replies
     const folders = await getZohoFolders(accountKey)
     const inboxFolderId = findFolderId(folders, 'inbox')
 
-    let inboxEmails: string[] = []
+    const inboxKeySet = new Set<string>()
     if (inboxFolderId) {
       const inboxRes = await zohoFetch(
         `${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${inboxFolderId}&limit=200`,
@@ -64,53 +78,30 @@ export async function GET() {
       if (inboxRes.ok) {
         const inboxData = await inboxRes.json()
         const inboxMessages: any[] = inboxData?.data || []
-        // Build set of "fromEmail::normalizedSubject" keys for all inbox messages
         for (const msg of inboxMessages) {
           const fromRaw = (msg.fromAddress || '').toLowerCase()
-          // Extract just the email from fromAddress
           const emailMatch = fromRaw.match(/([^\s<>]+@[^\s<>]+)/)
           const fromEmail = emailMatch ? emailMatch[1] : fromRaw
           const normSubj = normalizeSubject(msg.subject || '')
-          inboxEmails.push(`${fromEmail}::${normSubj}`)
+          inboxKeySet.add(`${fromEmail}::${normSubj}`)
         }
       }
     }
 
-    const inboxKeySet = new Set(inboxEmails)
-
-    // 3. Filter out compose emails that have received a reply (now in inbox)
-    const unreplied = composeRows.filter(row => {
-      const key = `${row.to_address.toLowerCase()}::${normalizeSubject(row.subject)}`
-      return !inboxKeySet.has(key)
+    // 4. Filter: remove replied (in inbox) AND archived (in filed_emails)
+    const visible = composeRows.filter(row => {
+      const toKey = `${row.to_address.toLowerCase()}::${normalizeSubject(row.subject)}`
+      // If reply exists in inbox → hide from Sent (it's now an inbox thread)
+      if (inboxKeySet.has(toKey)) return false
+      // If archived → hide from Sent
+      // Archive stores from_email as the "other party" email (the recipient for compose emails)
+      if (archivedKeys.has(toKey)) return false
+      return true
     })
 
-    // 4. Fetch sent message bodies from Zoho for unreplied compose emails
-    const sentFolderId = findFolderId(folders, 'sent')
-    let sentMessagesMap = new Map<string, any>()
-
-    if (sentFolderId) {
-      const sentRes = await zohoFetch(
-        `${ZOHO_API_BASE}/accounts/${accountKey}/messages?folderId=${sentFolderId}&limit=200`,
-        {}
-      )
-      if (sentRes.ok) {
-        const sentData = await sentRes.json()
-        const sentMessages: any[] = sentData?.data || []
-        for (const msg of sentMessages) {
-          sentMessagesMap.set(String(msg.messageId || ''), msg)
-        }
-      }
-    }
-
-    // 5. Build thread-shaped data for each unreplied compose email
-    const threads = unreplied.map(row => {
-      const zohoMsg = sentMessagesMap.get(row.message_id)
-      const sentAtMs = zohoMsg
-        ? parseInt(zohoMsg.sentDateInGMT || zohoMsg.receivedTime || '0', 10)
-        : 0
-      const latestAt = sentAtMs
-        ? new Date(sentAtMs).toISOString()
-        : row.sent_at || new Date().toISOString()
+    // 5. Build thread-shaped data — use DB sent_at for time (always correct UTC)
+    const threads = visible.map(row => {
+      const latestAt = row.sent_at || new Date().toISOString()
 
       return {
         threadId: row.message_id,

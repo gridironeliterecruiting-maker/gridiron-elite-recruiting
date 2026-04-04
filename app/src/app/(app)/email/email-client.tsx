@@ -928,8 +928,8 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
           <div className="flex items-center gap-3 shrink-0">
             {recruitingEmail && <RecruitingEmailBadge email={recruitingEmail} />}
             <Button
-              variant="outline"
               onClick={() => setShowCompose(true)}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Plus className="h-4 w-4" />
               New Email
