@@ -4,7 +4,7 @@ import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Save, Check, Link2, Unlink, X, Loader2, Info, Smartphone } from "lucide-react"
+import { Save, Check, Link2, Unlink, X, Loader2, Info } from "lucide-react"
 
 interface Profile {
   id: string
@@ -189,23 +189,20 @@ export function ProfileForm({
           <Field label="Phone" value={form.phone} onChange={(v) => update("phone", v)} placeholder="(555) 123-4567" />
 
           {/* SMS Notifications Toggle */}
-          <div className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2">
-            <div className="flex items-center gap-2">
-              <Smartphone className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Text Notifications</p>
-                <p className="text-[11px] text-muted-foreground">Get a text when a coach emails you</p>
-              </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Text Notifications</label>
+            <div className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2">
+              <span className="text-sm text-muted-foreground">Get a text when a coach emails you</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={form.sms_notifications_enabled}
+                onClick={() => { setForm(f => ({ ...f, sms_notifications_enabled: !f.sms_notifications_enabled })); setSaved(false) }}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${form.sms_notifications_enabled ? 'bg-primary' : 'bg-border'}`}
+              >
+                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${form.sms_notifications_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={form.sms_notifications_enabled}
-              onClick={() => { setForm(f => ({ ...f, sms_notifications_enabled: !f.sms_notifications_enabled })); setSaved(false) }}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${form.sms_notifications_enabled ? 'bg-primary' : 'bg-border'}`}
-            >
-              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${form.sms_notifications_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
-            </button>
           </div>
 
           <Field label="GPA" value={form.gpa} onChange={(v) => update("gpa", v)} placeholder="3.5" />
