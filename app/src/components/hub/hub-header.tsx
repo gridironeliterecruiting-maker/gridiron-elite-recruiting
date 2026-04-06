@@ -23,33 +23,65 @@ export function HubHeader({ firstName, isCoach = false, activePlayerName }: HubH
 
   return (
     <div>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
-          {greeting}, {firstName}
-        </h1>
-        <div className="flex items-center gap-2">
+      {/* Desktop: side-by-side with date right-aligned (original layout) */}
+      <div className="hidden sm:flex sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-foreground">
+            {greeting}, {firstName}
+          </h1>
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+            {isCoach ? (
+              <>
+                <Users className="h-3.5 w-3.5 text-accent" />
+                {activePlayerName
+                  ? `MANAGING ${activePlayerName.toUpperCase()}'S RECRUITING.`
+                  : "SELECT A PLAYER TO GET STARTED."}
+              </>
+            ) : (
+              <>
+                <Flame className="h-3.5 w-3.5 text-accent" />
+                COACHES ARE WATCHING. MAKE EVERY POST COUNT.
+              </>
+            )}
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          {isCoach && <PlayerSwitcher />}
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <CalendarDays className="h-3.5 w-3.5" />
             {formattedDate}
           </div>
-          {isCoach && <PlayerSwitcher />}
         </div>
       </div>
-      <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-        {isCoach ? (
-          <>
-            <Users className="h-3.5 w-3.5 text-accent" />
-            {activePlayerName
-              ? `MANAGING ${activePlayerName.toUpperCase()}'S RECRUITING.`
-              : "SELECT A PLAYER TO GET STARTED."}
-          </>
-        ) : (
-          <>
-            <Flame className="h-3.5 w-3.5 text-accent" />
-            COACHES ARE WATCHING. MAKE EVERY POST COUNT.
-          </>
-        )}
-      </p>
+
+      {/* Mobile: stacked with date below tagline (mobile optimization) */}
+      <div className="sm:hidden">
+        <div className="flex items-center justify-between">
+          <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground">
+            {greeting}, {firstName}
+          </h1>
+          {isCoach && <PlayerSwitcher />}
+        </div>
+        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+          {isCoach ? (
+            <>
+              <Users className="h-3.5 w-3.5 text-accent" />
+              {activePlayerName
+                ? `MANAGING ${activePlayerName.toUpperCase()}'S RECRUITING.`
+                : "SELECT A PLAYER TO GET STARTED."}
+            </>
+          ) : (
+            <>
+              <Flame className="h-3.5 w-3.5 text-accent" />
+              COACHES ARE WATCHING. MAKE EVERY POST COUNT.
+            </>
+          )}
+        </p>
+        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <CalendarDays className="h-3.5 w-3.5" />
+          {formattedDate}
+        </div>
+      </div>
     </div>
   )
 }
