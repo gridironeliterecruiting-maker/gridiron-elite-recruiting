@@ -23,11 +23,11 @@ export function HubHeader({ firstName, isCoach = false, activePlayerName }: HubH
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
           {greeting}, {firstName}
         </h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <CalendarDays className="h-3.5 w-3.5" />
             {formattedDate}

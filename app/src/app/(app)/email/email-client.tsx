@@ -934,7 +934,7 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
     <div className="flex flex-col -mx-4 -my-6 lg:-mx-8 lg:-my-8 h-[calc(100vh-4rem)] overflow-hidden">
       {/* Page header — pinned */}
       <div className="shrink-0 border-b border-border bg-card px-4 pb-4 pt-6 lg:px-8 lg:pt-8">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">Email</h1>
             <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -942,10 +942,9 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
               FOLLOW UP. BUILD RELATIONSHIPS.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2">
             {recruitingEmail && <RecruitingEmailBadge email={recruitingEmail} />}
             <Button
-              size="sm"
               onClick={() => setShowCompose(true)}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
@@ -953,7 +952,6 @@ export function EmailClient({ recruitingEmail }: { recruitingEmail?: string | nu
               New Email
             </Button>
             <Button
-              size="sm"
               onClick={() => {
                 const segs = window.location.pathname.split('/').filter(Boolean)
                 const appRoutes = ['hub', 'coaches', 'pipeline', 'outreach', 'profile', 'email']
