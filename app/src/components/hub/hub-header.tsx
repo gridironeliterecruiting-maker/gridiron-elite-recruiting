@@ -23,11 +23,17 @@ export function HubHeader({ firstName, isCoach = false, activePlayerName }: HubH
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
         <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl">
           {greeting}, {firstName}
         </h1>
-        {isCoach && <PlayerSwitcher />}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CalendarDays className="h-3.5 w-3.5" />
+            {formattedDate}
+          </div>
+          {isCoach && <PlayerSwitcher />}
+        </div>
       </div>
       <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
         {isCoach ? (
@@ -44,10 +50,6 @@ export function HubHeader({ firstName, isCoach = false, activePlayerName }: HubH
           </>
         )}
       </p>
-      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-        <CalendarDays className="h-3.5 w-3.5" />
-        {formattedDate}
-      </div>
     </div>
   )
 }
