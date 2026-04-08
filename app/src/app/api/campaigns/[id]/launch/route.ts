@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { calculateSendSchedule } from '@/lib/gmail'
 import { getAppUrl } from '@/lib/app-url'
 
@@ -110,12 +111,20 @@ export async function POST(
       })
       .eq('id', id)
 
-    // Trigger email processing immediately — await so Vercel doesn't kill the fetch before it fires
+    // Trigger email processing
     if (!launchTime || launchTime <= new Date()) {
+      // Send now — trigger immediately
       const processUrl = `${getAppUrl()}/api/email/process-queue`
       await fetch(processUrl, {
         headers: { 'Authorization': `Bearer ${process.env.CRON_SECRET}` },
       }).catch(err => console.error('Error triggering email queue:', err))
+    } else {
+      // Future send — schedule a one-time pg_cron job to fire at the exact time
+      const admin = createAdminClient()
+      await admin.rpc('schedule_campaign_send', {
+        p_campaign_id: id,
+        p_send_at: launchTime.toISOString(),
+      })
     }
 
     return NextResponse.json({
