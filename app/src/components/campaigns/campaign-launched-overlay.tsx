@@ -76,11 +76,7 @@ export function CampaignLaunchedOverlay({
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary">✓</span>
-                  <span>Track opens and replies in the Pipeline</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary">✓</span>
-                  <span>Follow-ups send automatically on schedule</span>
+                  <span>Track opens and clicks in the Outreach Center</span>
                 </li>
               </ul>
             </div>

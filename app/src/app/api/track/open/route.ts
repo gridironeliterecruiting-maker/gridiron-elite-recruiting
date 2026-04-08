@@ -28,6 +28,7 @@ const BOT_UA_PATTERNS = [
   /mimecast/i,
   /barracuda/i,
   /proofpoint/i,
+  /X11;.*Linux.*Chrome\/124/i, // link security scanner fingerprint
 ]
 
 function isBotUserAgent(ua: string): boolean {

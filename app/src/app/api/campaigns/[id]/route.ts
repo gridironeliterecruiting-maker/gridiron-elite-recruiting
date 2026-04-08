@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(
   request: Request,
@@ -157,22 +158,28 @@ export async function PATCH(
       return NextResponse.json({ error: 'Failed to update campaign' }, { status: 500 })
     }
 
-    // If pausing, update all scheduled recipients to pending
+    // If pausing, update all scheduled recipients to pending and cancel the pg_cron job
     if (status === 'paused') {
       await supabase
         .from('campaign_recipients')
         .update({ status: 'pending', next_send_at: null })
         .eq('campaign_id', id)
         .eq('status', 'scheduled')
+
+      const admin = createAdminClient()
+      await admin.rpc('unschedule_campaign_send', { p_campaign_id: id })
     }
 
-    // If cancelling, update all non-final recipients
+    // If cancelling, update all non-final recipients and cancel the pg_cron job
     if (status === 'cancelled') {
       await supabase
         .from('campaign_recipients')
         .update({ status: 'pending', next_send_at: null })
         .eq('campaign_id', id)
         .in('status', ['pending', 'scheduled'])
+
+      const admin = createAdminClient()
+      await admin.rpc('unschedule_campaign_send', { p_campaign_id: id })
     }
 
     return NextResponse.json({ success: true })
