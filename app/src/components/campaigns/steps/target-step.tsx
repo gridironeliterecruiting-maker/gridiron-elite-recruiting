@@ -228,6 +228,8 @@ export function TargetStep({
     let eligible = coaches
     if (channelFilter === 'dm') {
       eligible = coaches.filter(isDmEligible)
+    } else {
+      eligible = coaches.filter((c) => !!c.email)
     }
     const autoSelected = eligible.filter((c) => shouldAutoSelect(c.title, playerPosition))
 
@@ -263,6 +265,8 @@ export function TargetStep({
       let eligible = coaches
       if (channelFilter === 'dm') {
         eligible = coaches.filter(isDmEligible)
+      } else {
+        eligible = coaches.filter((c) => !!c.email)
       }
       const autoSelected = eligible.filter((c) => shouldAutoSelect(c.title, playerPosition))
 
@@ -712,14 +716,16 @@ function CoachSelectionOverlay({
               const isSelected = selectedCoaches.some((sc) => sc.coachId === coach.id)
               const isRecommended = shouldAutoSelect(coach.title, playerPosition)
               const dmIneligible = channelFilter === 'dm' && (!coach.twitter_dm_open || !coach.twitter_handle)
+              const emailIneligible = channelFilter !== 'dm' && !coach.email
+              const ineligible = dmIneligible || emailIneligible
               return (
                 <button
                   key={coach.id}
                   type="button"
-                  onClick={() => !dmIneligible && onToggleCoach(coach)}
-                  disabled={dmIneligible}
+                  onClick={() => !ineligible && onToggleCoach(coach)}
+                  disabled={ineligible}
                   className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-all ${
-                    dmIneligible
+                    ineligible
                       ? "border-border bg-secondary/30 opacity-50 cursor-not-allowed"
                       : isSelected
                         ? "border-primary/30 bg-primary/[0.03]"
@@ -743,7 +749,7 @@ function CoachSelectionOverlay({
                       <p className="text-sm font-semibold text-foreground">
                         {coach.first_name} {coach.last_name}
                       </p>
-                      {isRecommended && !dmIneligible && (
+                      {isRecommended && !ineligible && (
                         <Badge variant="outline" className="border-0 bg-primary/10 text-[9px] font-semibold text-primary">
                           Recommended
                         </Badge>
@@ -751,6 +757,11 @@ function CoachSelectionOverlay({
                       {dmIneligible && (
                         <Badge variant="outline" className="border-0 bg-muted text-[9px] font-semibold text-muted-foreground">
                           DMs not open
+                        </Badge>
+                      )}
+                      {emailIneligible && (
+                        <Badge variant="outline" className="border-0 bg-muted text-[9px] font-semibold text-muted-foreground">
+                          No email
                         </Badge>
                       )}
                     </div>
