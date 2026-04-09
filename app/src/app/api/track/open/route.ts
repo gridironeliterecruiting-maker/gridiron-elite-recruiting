@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { runCohortAnalysis } from '@/lib/scanner-detection'
 
 // 1x1 transparent GIF
 const PIXEL = Buffer.from(
@@ -28,13 +29,19 @@ const BOT_UA_PATTERNS = [
   /mimecast/i,
   /barracuda/i,
   /proofpoint/i,
-  /X11;.*Linux.*Chrome\/124/i, // link security scanner fingerprint
+  /X11;.*Linux.*Chrome\/124/i,   // link security scanner fingerprint
+  /Chrome\/109\.0\.0\.0/i,       // Microsoft Defender Safe Links scanner
+  /Edge\/12\./i,                  // ancient Edge = scanner (Edge 12 is from 2015)
 ]
 
 function isBotUserAgent(ua: string): boolean {
   if (!ua) return true // empty UA = scanner
   return BOT_UA_PATTERNS.some(pattern => pattern.test(ua))
 }
+
+// Scanner window: events within this many seconds of send are blocked
+// when honeypot or cohort analysis has flagged the recipient
+const SCANNER_WINDOW_SECONDS = 180
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -49,14 +56,23 @@ export async function GET(request: Request) {
       try {
         const admin = createAdminClient()
 
-        // Look up recipient sent_at and check for existing open
+        // Look up recipient
         const { data: recipient } = await admin
           .from('campaign_recipients')
-          .select('sent_at, opened_at')
+          .select('sent_at, opened_at, scanner_detected_at')
           .eq('id', recipientId)
           .single()
 
         const now = new Date()
+
+        // If honeypot/cohort flagged this recipient AND we're still in the scanner window, skip
+        if (recipient?.scanner_detected_at && recipient?.sent_at) {
+          const sentAt = new Date(recipient.sent_at)
+          const secondsSinceSend = (now.getTime() - sentAt.getTime()) / 1000
+          if (secondsSinceSend < SCANNER_WINDOW_SECONDS) {
+            return new NextResponse(PIXEL, { status: 200, headers: pixelHeaders() })
+          }
+        }
 
         // Skip if email was sent less than 15 seconds ago (catches scanner prefetch on delivery)
         if (recipient?.sent_at) {
@@ -92,6 +108,9 @@ export async function GET(request: Request) {
               .update({ opened_at: now.toISOString() })
               .eq('id', recipientId)
           }
+
+          // Run cohort analysis async — may detect domain-wide scanner pattern
+          runCohortAnalysis(admin, recipientId, campaignId).catch(() => {})
         }
       } catch (error) {
         console.error('Track open error:', error)
