@@ -62,7 +62,7 @@ const PLAYER_TEMPLATES: EmailTemplate[] = [
   {
     name: "Genuine Interest",
     subject: "((Player First Name)) ((Player Last Name)) ((Player Grad Year)) ((Player Position))",
-    body: "Hi Coach ((Coach Last Name)),\n\nI'm genuinely interested in ((School Name)).\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere is my video:\n((Player Film Link))\n\nThanks,\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
+    body: "Hi Coach ((Coach Last Name)),\n\nI'm genuinely interested in ((School Name with The)).\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere is my video:\n((Player Film Link))\n\nThanks,\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
     delayDays: null
   },
 ]
@@ -81,6 +81,7 @@ const PLAYER_MERGE_TAGS = [
   "Coach Last Name",
   "Coach First Name",
   "School Name",
+  "School Name with The",
   "Player First Name",
   "Player Last Name",
   "Player Position",
@@ -103,6 +104,7 @@ const COACH_MERGE_TAGS = [
   "Coach Last Name",
   "Coach First Name",
   "School Name",
+  "School Name with The",
   "Player First Name",
   "Player Last Name",
   "Player Position",
@@ -806,13 +808,18 @@ function TemplatePreviewOverlay({
     const coachName = firstCoach?.coachName || ''
     const coachLast = coachName.split(' ').pop() || ''
     const coachFirst = coachName.split(' ')[0] || ''
-    const schoolName = firstCoach?.programName || ''
+    const rawSchoolName = firstCoach?.programName || ''
+    const schoolName = rawSchoolName.replace(/\s+-\s+.+$/, '')
+    const schoolNameWithThe = /^(University of|College of)/i.test(schoolName)
+      ? 'the ' + schoolName
+      : schoolName
 
     // Target college coach data (the recipient)
     const coachValues: Record<string, string> = {
       'Coach Last Name': coachLast,
       'Coach First Name': coachFirst,
       'School Name': schoolName,
+      'School Name with The': schoolNameWithThe,
     }
     // NOTE: ((Coach Name)), ((Coach Phone)), ((Coach Email Address)) are the
     // player's HIGH SCHOOL coach — they come from mergeData (the API), NOT
