@@ -80,12 +80,13 @@ export async function GET(request: Request) {
           }
         }
 
-        // A click implies an open — backfill if no open event exists
+        // A click implies an open — backfill if no real (unflagged) open exists
         const { count } = await admin
           .from('email_events')
           .select('id', { count: 'exact', head: true })
           .eq('recipient_id', recipientId)
           .eq('event_type', 'opened')
+          .is('scanner_flagged_at', null)
 
         if ((count ?? 0) === 0) {
           await admin.from('email_events').insert({

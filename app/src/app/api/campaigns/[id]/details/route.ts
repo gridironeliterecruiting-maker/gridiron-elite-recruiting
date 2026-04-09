@@ -45,11 +45,12 @@ export async function GET(
       return NextResponse.json({ error: 'Failed to fetch recipients' }, { status: 500 })
     }
 
-    // Get email events for this campaign (include clicked)
+    // Get email events for this campaign (exclude scanner-flagged)
     const { data: events } = await supabase
       .from('email_events')
       .select('recipient_id, event_type, created_at')
       .eq('campaign_id', id)
+      .is('scanner_flagged_at', null)
 
     // Create event lookup map
     const eventsByRecipient = new Map<string, any[]>()

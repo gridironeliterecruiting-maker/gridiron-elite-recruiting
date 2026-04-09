@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 
-// Scanner window: how far after send to clean events when scanner is detected
+// Scanner window: how far after send to flag events when scanner is detected
 const SCANNER_WINDOW_MS = 3 * 60 * 1000 // 3 minutes
 
 // Cohort cluster threshold: if ALL recipients at a domain have first-events
@@ -20,10 +20,10 @@ const COHORT_CLUSTER_MS = 2 * 60 * 1000 // 2 minutes
  *
  * When detected:
  * 1. Flags all recipients at that domain with scanner_detected_at
- * 2. Deletes all their opens/clicks within the scanner window (3 min of send)
+ * 2. Soft-deletes their opens/clicks within the scanner window (sets scanner_flagged_at)
  * 3. Clears opened_at on those recipients
  *
- * Call this after recording any open, click, or honeypot event.
+ * Data is NEVER hard-deleted — only flagged for exclusion from stats.
  */
 export async function runCohortAnalysis(
   admin: SupabaseClient,
@@ -55,7 +55,7 @@ export async function runCohortAnalysis(
     // Already flagged? Skip re-processing
     if (cohort.every(r => r.scanner_detected_at)) return
 
-    // For each cohort member, find their earliest open or click event
+    // For each cohort member, find their earliest unflagged open or click event
     const firstEvents: { recipientId: string; firstAt: Date }[] = []
 
     for (const r of cohort) {
@@ -64,6 +64,7 @@ export async function runCohortAnalysis(
         .select('created_at')
         .eq('recipient_id', r.id)
         .in('event_type', ['opened', 'clicked'])
+        .is('scanner_flagged_at', null)
         .order('created_at', { ascending: true })
         .limit(1)
         .single()
@@ -94,16 +95,18 @@ export async function runCohortAnalysis(
       .update({ scanner_detected_at: now })
       .in('id', recipientIds)
 
-    // For each recipient, delete events within the scanner window of their send time
+    // For each recipient, soft-delete events within the scanner window of their send time
     for (const r of cohort) {
       if (!r.sent_at) continue
       const windowEnd = new Date(new Date(r.sent_at).getTime() + SCANNER_WINDOW_MS).toISOString()
 
+      // Flag events as scanner-generated (soft-delete — never hard-delete)
       await admin
         .from('email_events')
-        .delete()
+        .update({ scanner_flagged_at: now })
         .eq('recipient_id', r.id)
         .in('event_type', ['opened', 'clicked'])
+        .is('scanner_flagged_at', null)
         .lte('created_at', windowEnd)
 
       // Clear opened_at if it was set during the scanner window
@@ -120,8 +123,10 @@ export async function runCohortAnalysis(
 }
 
 /**
- * Honeypot cleanup: flag a specific recipient and clean their scanner events.
+ * Honeypot cleanup: flag a specific recipient and soft-delete their scanner events.
  * Called when the honeypot link is triggered.
+ *
+ * Data is NEVER hard-deleted — only flagged for exclusion from stats.
  */
 export async function handleHoneypotDetection(
   admin: SupabaseClient,
@@ -130,11 +135,12 @@ export async function handleHoneypotDetection(
 ): Promise<void> {
   try {
     const now = new Date()
+    const nowISO = now.toISOString()
 
     // Flag this recipient
     await admin
       .from('campaign_recipients')
-      .update({ scanner_detected_at: now.toISOString() })
+      .update({ scanner_detected_at: nowISO })
       .eq('id', recipientId)
 
     // Get sent_at for scanner window calculation
@@ -149,12 +155,13 @@ export async function handleHoneypotDetection(
         new Date(recipient.sent_at).getTime() + SCANNER_WINDOW_MS
       ).toISOString()
 
-      // Delete all opens/clicks within the scanner window
+      // Flag events as scanner-generated (soft-delete)
       await admin
         .from('email_events')
-        .delete()
+        .update({ scanner_flagged_at: nowISO })
         .eq('recipient_id', recipientId)
         .in('event_type', ['opened', 'clicked'])
+        .is('scanner_flagged_at', null)
         .lte('created_at', windowEnd)
 
       // Clear opened_at if it was set during the scanner window
