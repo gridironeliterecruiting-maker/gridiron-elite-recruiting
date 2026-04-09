@@ -79,6 +79,38 @@ function stripQuotedReply(text: string): string {
 }
 
 /**
+ * Detect bounce/mailer-daemon messages and extract a clean summary.
+ * Returns null if it's not a bounce — caller should use normal stripHtml.
+ */
+function parseBounce(html: string): string | null {
+  const text = html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+  const decoded = decodeEntities(text)
+
+  // Look for the failed address pattern: <address@domain>
+  const addrMatch = decoded.match(/permanent fatal errors\s*-+\s*\n?\s*<?([^\s<>]+@[^\s<>]+)>?/i)
+    || decoded.match(/could not be delivered to:\s*\n?\s*<?([^\s<>]+@[^\s<>]+)>?/i)
+    || decoded.match(/delivery to the following recipient(?:s)? failed.*\n\s*<?([^\s<>]+@[^\s<>]+)>?/i)
+    || decoded.match(/Undeliverable.*\n.*<?([^\s<>]+@[^\s<>]+)>?/i)
+  const failedAddr = addrMatch?.[1] || 'unknown address'
+
+  // Look for a reason
+  const reasonMatch = decoded.match(/\(reason:\s*\d+\s+[\d.]+\s+(.+?)(?:\s+https?:\/\/|\))/i)
+    || decoded.match(/Remote server returned:\s*.*?-\s*(.+)/i)
+    || decoded.match(/\d+\s+[\d.]+\s+(.+?)(?:\s*\[|$)/im)
+  const reason = reasonMatch?.[1]?.trim() || 'The recipient server rejected the message.'
+
+  // Only return a bounce summary if we found an address
+  if (!addrMatch) return null
+
+  return `⚠ Email delivery failed\n\nTo: ${failedAddr}\nReason: ${reason}`
+}
+
+/**
  * Convert an HTML email body to clean readable plain text.
  * Removes quoted reply content, strips tags, decodes entities.
  */
@@ -148,7 +180,10 @@ export async function GET(
     await Promise.all(
       messageIds.map(async (id) => {
         const html = await fetchMessageBody(accountKey, id)
-        bodies[id] = html ? stripHtml(html) : ''
+        if (!html) { bodies[id] = ''; return }
+        // Try bounce detection first — return clean summary instead of SMTP gibberish
+        const bounce = parseBounce(html)
+        bodies[id] = bounce || stripHtml(html)
       })
     )
 
