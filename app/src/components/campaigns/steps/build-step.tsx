@@ -62,7 +62,7 @@ const PLAYER_TEMPLATES: EmailTemplate[] = [
   {
     name: "Genuine Interest",
     subject: "((Player First Name)) ((Player Last Name)) ((Player Grad Year)) ((Player Position))",
-    body: "Hi Coach ((Coach Last Name)),\n\nI'm genuinely interested in ((School Name)).\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere is my video:\n((Player Film Link))\n\nThanks,\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
+    body: "Hi Coach ((Coach Last Name)),\n\nI'm genuinely interested in ((School Name with The)).\n\nDo you need a ((Player Grad Year)) ((Player Position))?\n\nHere is my video:\n((Player Film Link))\n\nThanks,\n((Player First Name)) ((Player Last Name))\n((Player Phone))",
     delayDays: null
   },
 ]
