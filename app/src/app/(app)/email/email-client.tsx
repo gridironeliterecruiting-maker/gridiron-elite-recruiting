@@ -426,19 +426,24 @@ function ConversationView({ thread, onBack, onArchived, onDeleted, isArchived = 
         ) : messages.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">No messages found.</p>
         ) : (
-          messages.map((msg, i) => (
+          messages.map((msg, i) => {
+            const isBounce = /mailer-daemon|postmaster/i.test(msg.from_email)
+              || /^(Returned mail|Undeliverable|Mail delivery failed)/i.test(msg.subject)
+            return (
             <div
               key={msg.id || i}
               className={cn(
                 "max-w-[75%] rounded-2xl px-4 py-3",
-                msg.is_sent
+                isBounce
+                  ? "mx-auto bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700/40"  // bounce — centered, amber
+                  : msg.is_sent
                   ? "ml-auto bg-primary/10 border border-primary/30"        // athlete — right, blue tint + blue border
                   : "mr-auto bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30"  // coach — left, light red + red border
               )}
             >
               <div className="flex items-baseline gap-2 mb-1">
                 <span className="text-[11px] font-semibold text-muted-foreground">
-                  {msg.is_sent ? "Me" : thread.otherName || msg.from_name || msg.from_email}
+                  {isBounce ? "System" : msg.is_sent ? "Me" : thread.otherName || msg.from_name || msg.from_email}
                 </span>
                 <span className="text-[10px] text-muted-foreground/70 ml-auto">
                   {formatDate(msg.received_at)}
@@ -448,7 +453,8 @@ function ConversationView({ thread, onBack, onArchived, onDeleted, isArchived = 
                 {(msg.body || msg.snippet || "(No content)").replace(/\n{2,}/g, '\n')}
               </p>
             </div>
-          ))
+            )
+          })
         )}
 
         {/* Reply compose — inside scrollable area, like Gmail */}
