@@ -62,6 +62,7 @@ interface CampaignDetails {
   status: string
   type?: string
   created_at: string
+  scheduled_at?: string | null
   stats: {
     total: number
     sent: number
@@ -512,11 +513,11 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
                         <Mail className="h-5 w-5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-foreground">{campaign.emails[0].name || campaign.emails[0].subject}</p>
+                        <p className="truncate text-sm font-semibold text-foreground">Template: {campaign.emails[0].name || campaign.emails[0].subject}</p>
                         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          {campaign.emails[0].delay_days === 0
-                            ? 'Sent immediately'
-                            : `Sent after ${campaign.emails[0].delay_days} day${campaign.emails[0].delay_days > 1 ? 's' : ''}`}
+                          {campaign.scheduled_at
+                            ? `Sent ${new Date(campaign.scheduled_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} at ${new Date(campaign.scheduled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                            : `Sent ${new Date(campaign.created_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}`}
                         </p>
                       </div>
                     </Card>
