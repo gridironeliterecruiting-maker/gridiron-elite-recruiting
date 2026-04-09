@@ -102,12 +102,18 @@ function parseBounce(html: string): string | null {
   const reasonMatch = decoded.match(/\(reason:\s*\d+\s+[\d.]+\s+(.+?)(?:\s+https?:\/\/|\))/i)
     || decoded.match(/Remote server returned:\s*.*?-\s*(.+)/i)
     || decoded.match(/\d+\s+[\d.]+\s+(.+?)(?:\s*\[|$)/im)
-  const reason = reasonMatch?.[1]?.trim() || 'The recipient server rejected the message.'
+  let reason = reasonMatch?.[1]?.trim() || 'The recipient server rejected the message.'
+  // Strip trailing fragments like "For more information see" or "Please check..."
+  reason = reason.replace(/\.?\s*For more information\b.*$/i, '.')
+    .replace(/\.?\s*Please (check|see|visit)\b.*$/i, '.')
+    .replace(/\.?\s*Learn more\b.*$/i, '.')
+    .replace(/\.{2,}/g, '.')
+    .trim()
 
   // Only return a bounce summary if we found an address
   if (!addrMatch) return null
 
-  return `⚠ Email delivery failed\n\nTo: ${failedAddr}\nReason: ${reason}`
+  return `Email delivery failed\n\nTo: ${failedAddr}\nReason: ${reason}`
 }
 
 /**
