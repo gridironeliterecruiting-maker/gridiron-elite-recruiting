@@ -228,6 +228,29 @@ export function wrapLinksForTracking(
 }
 
 /**
+ * Add a honeypot link that only email security scanners will follow.
+ * Invisible to humans (0-size, transparent, no text). When triggered,
+ * flags the recipient so we can discard scanner-generated opens/clicks.
+ */
+export function addHoneypotLink(
+  html: string,
+  recipientId: string,
+  campaignId: string
+): string {
+  const appUrl = getAppUrl()
+  const nonce = Math.random().toString(36).slice(2)
+  const honeypotUrl = `${appUrl}/api/track/honeypot?rid=${recipientId}&cid=${campaignId}&t=${nonce}`
+  // Invisible link: 0-size, no text, transparent — scanners follow all hrefs regardless of CSS
+  const link = `<a href="${honeypotUrl}" style="font-size:0;line-height:0;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;color:transparent;" aria-hidden="true">&nbsp;</a>`
+
+  // Insert before the tracking pixel (before </body> or at the end)
+  if (html.includes('</body>')) {
+    return html.replace('</body>', `${link}</body>`)
+  }
+  return html + link
+}
+
+/**
  * Add unsubscribe footer to email
  */
 export function addUnsubscribeFooter(

@@ -7,6 +7,7 @@ import {
   resolveEmailMergeTags,
   addTrackingPixel,
   wrapLinksForTracking,
+  addHoneypotLink,
   addUnsubscribeFooter,
 } from '@/lib/gmail'
 import { sendZohoEmail } from '@/lib/workspace'
@@ -403,6 +404,7 @@ export async function GET(request: Request) {
           // Add tracking
           // Unsubscribe footer removed — these are personal recruiting emails, not marketing
           htmlBody = wrapLinksForTracking(htmlBody, recipient.id, recipient.campaign_id)
+          htmlBody = addHoneypotLink(htmlBody, recipient.id, recipient.campaign_id)
           htmlBody = addTrackingPixel(htmlBody, recipient.id, recipient.campaign_id)
 
           // Wrap in basic HTML email template
