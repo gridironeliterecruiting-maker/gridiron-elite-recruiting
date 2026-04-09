@@ -40,11 +40,12 @@ export async function GET(
       .select('id, coach_name, coach_email, program_name, status, current_step')
       .eq('campaign_id', id)
 
-    // Get event counts — deduplicate opens/clicks by recipient
+    // Get event counts — deduplicate opens/clicks by recipient, exclude scanner-flagged
     const { data: events } = await supabase
       .from('email_events')
       .select('event_type, recipient_id')
       .eq('campaign_id', id)
+      .is('scanner_flagged_at', null)
 
     const uniqueOpened = new Set(
       events?.filter(e => e.event_type === 'opened').map(e => e.recipient_id) || []

@@ -83,12 +83,13 @@ export async function GET(request: Request) {
           }
         }
 
-        // Skip if already logged an open for this recipient (deduplication)
+        // Skip if already logged a real (unflagged) open for this recipient
         const { count } = await admin
           .from('email_events')
           .select('id', { count: 'exact', head: true })
           .eq('recipient_id', recipientId)
           .eq('event_type', 'opened')
+          .is('scanner_flagged_at', null)
 
         if ((count ?? 0) === 0) {
           await admin.from('email_events').insert({
