@@ -11,6 +11,21 @@ import {
 } from '@/lib/gmail'
 import { sendZohoEmail } from '@/lib/workspace'
 
+/** Strip disambiguator suffix (e.g. " - Penn", " - Indiana") from school names */
+function cleanSchoolName(name: string): string {
+  if (!name) return ''
+  return name.replace(/\s+-\s+.+$/, '')
+}
+
+/** Prepend "the" for schools starting with "University of" or "College of" */
+function schoolNameWithThe(name: string): string {
+  const cleaned = cleanSchoolName(name)
+  if (/^(University of|College of)/i.test(cleaned)) {
+    return 'the ' + cleaned
+  }
+  return cleaned
+}
+
 /**
  * Process the email send queue.
  * Called by Vercel Cron or external cron.
@@ -279,7 +294,8 @@ export async function GET(request: Request) {
             'Coach_Last_Name':    coachLastName,
             'Coach_First_Name':   coachFirstName,
             // College / program
-            'School_Name':        recipient.program_name || '',
+            'School_Name':        cleanSchoolName(recipient.program_name || ''),
+            'School_Name_with_The': schoolNameWithThe(recipient.program_name || ''),
             // Player's HS coach info (from player profile, NOT the target college coach)
             'Coach_Name':         (mergeProfile as any)?.coach_name || '',
             'Coach_Phone':        (mergeProfile as any)?.coach_phone || '',
@@ -305,7 +321,7 @@ export async function GET(request: Request) {
 
             // ── Legacy aliases (backwards compat) ───────────────────────────
             'Last_Name_Coach':    coachLastName,
-            'School':             recipient.program_name || '',
+            'School':             cleanSchoolName(recipient.program_name || ''),
             'First_Name':         mergeProfile?.first_name || '',
             'Last_Name':          mergeProfile?.last_name || '',
             'Position':           mergeProfile?.position || '',
