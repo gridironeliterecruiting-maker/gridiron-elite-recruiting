@@ -7,7 +7,7 @@ export default function TermsPage() {
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="mx-auto max-w-3xl bg-white rounded-xl shadow-sm p-8 sm:p-12">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Terms of Service</h1>
-        <p className="text-sm text-gray-500 mb-8">Effective Date: March 1, 2026 &nbsp;|&nbsp; Last Updated: March 1, 2026</p>
+        <p className="text-sm text-gray-500 mb-8">Effective Date: March 1, 2026 &nbsp;|&nbsp; Last Updated: April 8, 2026</p>
 
         <p className="text-gray-700 mb-6">
           These Terms of Service ("Terms") govern your access to and use of Runway Recruit, operated by{" "}
@@ -43,10 +43,22 @@ export default function TermsPage() {
 
         <section className="mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-3">3. Description of Service</h2>
-          <p className="text-gray-700">
-            Runway Recruit is a platform designed to help high school student-athletes manage their college
-            recruiting outreach. Features include coach and program discovery, email campaign management via the Gmail
-            API, direct message campaigns via the Twitter/X API, a recruiting pipeline tracker, and profile management.
+          <p className="text-gray-700 mb-3">
+            Runway Recruit is a paid subscription platform operated by Runway Sports Technologies that helps high
+            school student-athletes manage their college recruiting outreach. The platform provides:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 space-y-2">
+            <li>A searchable database of college coaching staff and program information</li>
+            <li>Email campaign tools to contact coaches directly from a platform-provided recruiting email address</li>
+            <li>Direct message campaign tools via the Twitter/X API</li>
+            <li>SMS notifications alerting athletes when coaches respond to their outreach</li>
+            <li>An outreach pipeline tracker to manage and organize recruiting communications</li>
+            <li>Athlete profile and highlight film management</li>
+          </ul>
+          <p className="text-gray-700 mt-3">
+            Athletes subscribe at <strong>runwayrecruit.com</strong>, create a profile, and use the platform to
+            initiate and manage recruiting conversations with college coaches. All outreach is initiated by the
+            athlete — coaches are not contacted without the athlete&apos;s explicit direction.
           </p>
         </section>
 
@@ -68,7 +80,39 @@ export default function TermsPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-3">5. Acceptable Use</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">5. SMS Notifications &amp; Opt-In</h2>
+          <p className="text-gray-700 mb-3">
+            Runway Recruit sends SMS text message notifications to keep athletes informed about their recruiting
+            activity. By providing your phone number during account registration and completing your subscription,
+            you expressly consent to receive automated SMS notifications from Runway Recruit.
+          </p>
+          <p className="text-gray-700 font-semibold mb-2">What messages you will receive:</p>
+          <ul className="list-disc list-inside text-gray-700 space-y-2 mb-3">
+            <li>Notifications when a college coach replies to one of your outreach emails</li>
+            <li>Notifications when a college coach responds to a direct message you sent</li>
+            <li>Important account and subscription alerts</li>
+          </ul>
+          <p className="text-gray-700 font-semibold mb-2">Frequency and cost:</p>
+          <ul className="list-disc list-inside text-gray-700 space-y-2 mb-3">
+            <li>Message frequency varies based on your recruiting activity and coach responses (typically 1–10 messages per month)</li>
+            <li>Message and data rates may apply depending on your mobile carrier and plan</li>
+          </ul>
+          <p className="text-gray-700 font-semibold mb-2">How to opt out:</p>
+          <ul className="list-disc list-inside text-gray-700 space-y-2 mb-3">
+            <li>Reply <strong>STOP</strong> to any SMS message to immediately stop all text notifications</li>
+            <li>Reply <strong>HELP</strong> for support information</li>
+            <li>You may also contact us at <a href="mailto:support@runwayrecruit.com" className="text-blue-600 hover:underline">support@runwayrecruit.com</a> to manage your SMS preferences</li>
+          </ul>
+          <p className="text-gray-700">
+            Opting out of SMS notifications does not affect your account or subscription — you will still receive
+            all notifications within the Runway Recruit platform. Your phone number is never shared with third
+            parties for marketing purposes. SMS notifications are sent via Twilio, our messaging infrastructure
+            provider, solely for the purposes described above.
+          </p>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">6. Acceptable Use</h2>
           <p className="text-gray-700 mb-3">You agree not to:</p>
           <ul className="list-disc list-inside text-gray-700 space-y-2">
             <li>Use the platform for any unlawful purpose</li>
@@ -82,7 +126,7 @@ export default function TermsPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-3">6. Payments and Subscriptions</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">7. Payments and Subscriptions</h2>
           <p className="text-gray-700">
             Certain features of the platform may require a paid subscription. Payments are processed securely through
             Stripe. Subscription fees are billed on a recurring basis as described at the time of purchase. You may
@@ -92,7 +136,7 @@ export default function TermsPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-3">7. Intellectual Property</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">8. Intellectual Property</h2>
           <p className="text-gray-700">
             All content, features, and functionality of the platform — including logos, text, software, and design —
             are owned by Runway Sports Technologies and protected by applicable intellectual property laws. You may not
@@ -103,7 +147,7 @@ export default function TermsPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-3">8. Disclaimers</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">9. Disclaimers</h2>
           <p className="text-gray-700">
             The platform is provided "as is" and "as available" without warranties of any kind, express or implied. We
             do not guarantee that the service will be uninterrupted, error-free, or that any particular recruiting
@@ -113,7 +157,7 @@ export default function TermsPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-3">9. Limitation of Liability</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">10. Limitation of Liability</h2>
           <p className="text-gray-700">
             To the fullest extent permitted by law, Runway Sports Technologies shall not be liable for any indirect,
             incidental, special, consequential, or punitive damages arising out of your use of or inability to use the
@@ -123,7 +167,7 @@ export default function TermsPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-3">10. Termination</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">11. Termination</h2>
           <p className="text-gray-700">
             We reserve the right to suspend or terminate your access to the platform at any time for violation of these
             Terms or for any other reason at our sole discretion. You may delete your account at any time. Upon
@@ -132,7 +176,7 @@ export default function TermsPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-3">11. Governing Law and Disputes</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">12. Governing Law and Disputes</h2>
           <p className="text-gray-700">
             These Terms are governed by the laws of the State of Iowa, without regard to its conflict of law
             provisions. Any disputes arising from these Terms or your use of the platform shall be resolved in the
@@ -141,7 +185,7 @@ export default function TermsPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-3">12. Changes to These Terms</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">13. Changes to These Terms</h2>
           <p className="text-gray-700">
             We may update these Terms from time to time. We will notify you of material changes by posting the updated
             Terms with a new effective date. Continued use of the platform after changes constitutes your acceptance of
@@ -150,7 +194,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold text-gray-900 mb-3">13. Contact Us</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">14. Contact Us</h2>
           <p className="text-gray-700">
             If you have questions about these Terms, please contact us at:
           </p>
