@@ -46,6 +46,32 @@ export async function POST(request: Request) {
     let stripeCustomerId: string | null = null
     let currentPeriodEnd: string | null = null
 
+    // Check if user is grandfathered or admin/coach (exempt from payment)
+    const { data: existingProfile } = await admin
+      .from('profiles')
+      .select('role, is_grandfathered')
+      .eq('id', userId)
+      .single()
+
+    const isExempt = existingProfile?.is_grandfathered
+      || existingProfile?.role === 'admin'
+      || existingProfile?.role === 'coach'
+
+    // Non-exempt users MUST provide a valid subscription — no free rides
+    if (!isExempt && !subscriptionId) {
+      // Double-check: maybe they already have an active subscription (e.g. page reload)
+      const { data: existingSub } = await admin
+        .from('subscriptions')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .single()
+
+      if (!existingSub) {
+        return NextResponse.json({ error: 'Active subscription required' }, { status: 402 })
+      }
+    }
+
     // Verify subscription if provided
     if (subscriptionId) {
       // Check that the subscription hasn't already been used

@@ -227,6 +227,27 @@ export async function updateSession(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/profile-setup')) {
     // User must always be logged in to access profile setup
     if (!user) return redirectTo('/login')
+
+    // Subscription gate — non-grandfathered, non-admin/coach users must have
+    // an active subscription (i.e. completed checkout) before reaching profile setup.
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, is_grandfathered')
+      .eq('id', user.id)
+      .single()
+
+    const needsPayment = !profile || (!profile.is_grandfathered && profile.role !== 'admin' && profile.role !== 'coach')
+    if (needsPayment) {
+      const { data: sub } = await supabase
+        .from('subscriptions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .single()
+
+      if (!sub) return redirectTo('/checkout')
+    }
+
     return passThrough()
   }
 
