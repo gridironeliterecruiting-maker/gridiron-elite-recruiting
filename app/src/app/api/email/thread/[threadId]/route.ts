@@ -79,41 +79,80 @@ function stripQuotedReply(text: string): string {
 }
 
 /**
+ * Indicators that an email body is a bounce/NDR (Non-Delivery Report).
+ * If any of these match, treat the message as a bounce.
+ */
+const BOUNCE_INDICATORS = [
+  /permanent fatal errors/i,
+  /could not be delivered/i,
+  /delivery (has )?failed/i,
+  /undeliverable/i,
+  /returned mail/i,
+  /mail delivery failed/i,
+  /diagnostic-code:/i,
+  /action:\s*failed/i,
+  /status:\s*5\.\d/i,
+  /\b5\d\d\s+5\.\d\.\d/,            // SMTP 5xx codes
+  /recipient address rejected/i,
+  /user unknown/i,
+  /mailbox unavailable/i,
+  /does not exist/i,
+  /address not found/i,
+  /no such user/i,
+  /relay access denied/i,
+]
+
+/**
  * Detect bounce/mailer-daemon messages and extract a clean summary.
  * Returns null if it's not a bounce — caller should use normal stripHtml.
  */
 function parseBounce(html: string): string | null {
   const text = html
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
     .replace(/<\/div>/gi, '\n')
     .replace(/<[^>]+>/g, '')
   const decoded = decodeEntities(text)
 
-  // Look for the failed address pattern: <address@domain>
+  // Is this a bounce at all?
+  const isBounce = BOUNCE_INDICATORS.some(p => p.test(decoded))
+  if (!isBounce) return null
+
+  // Try to extract the failed recipient address
   const addrMatch = decoded.match(/permanent fatal errors\s*-+\s*\n?\s*<?([^\s<>]+@[^\s<>]+)>?/i)
     || decoded.match(/could not be delivered to:\s*\n?\s*<?([^\s<>]+@[^\s<>]+)>?/i)
-    || decoded.match(/delivery to the following recipient(?:s)? failed.*\n\s*<?([^\s<>]+@[^\s<>]+)>?/i)
-    || decoded.match(/Undeliverable.*\n.*<?([^\s<>]+@[^\s<>]+)>?/i)
-  const failedAddr = addrMatch?.[1] || 'unknown address'
+    || decoded.match(/delivery (?:has )?failed (?:to )?(?:these recipients?\s*(?:or groups)?:?)?\s*\n?\s*<?([^\s<>]+@[^\s<>]+)>?/i)
+    || decoded.match(/Final-Recipient:\s*rfc822;\s*([^\s<>]+@[^\s<>]+)/i)
+    || decoded.match(/Original-Recipient:\s*rfc822;\s*([^\s<>]+@[^\s<>]+)/i)
+    || decoded.match(/<([^\s<>]+@[^\s<>]+)>:?\s*(?:host|user unknown|does not exist|address)/i)
+    || decoded.match(/recipient address rejected:?[^<\n]*<?([^\s<>]+@[^\s<>]+)>?/i)
 
-  // Look for a reason
+  // Try to extract a human-readable reason
   const reasonMatch = decoded.match(/\(reason:\s*\d+\s+[\d.]+\s+(.+?)(?:\s+https?:\/\/|\))/i)
-    || decoded.match(/Remote server returned:\s*.*?-\s*(.+)/i)
-    || decoded.match(/\d+\s+[\d.]+\s+(.+?)(?:\s*\[|$)/im)
+    || decoded.match(/Diagnostic-Code:\s*smtp;\s*\d+\s+[\d.]+\s+(.+?)(?:\n|$)/i)
+    || decoded.match(/Remote server returned:?\s*['"]?\d+\s+[\d.]+\s+(.+?)(?:['"]|\n|$)/i)
+    || decoded.match(/Remote server returned:\s*.*?-\s*(.+?)(?:\n|$)/i)
+    || decoded.match(/\b5\d\d\s+5\.\d\.\d\s+(.+?)(?:\s*\[|$|\n)/im)
+    || decoded.match(/(user unknown|does not exist|mailbox unavailable|address not found|no such user|recipient address rejected[^.\n]*|relay access denied)/i)
+
   let reason = reasonMatch?.[1]?.trim() || 'The recipient server rejected the message.'
-  // Strip trailing fragments like "For more information see" or "Please check..."
+  // Strip trailing fragments
   reason = reason.replace(/\.?\s*For more information\b.*$/i, '.')
-    .replace(/\.?\s*Please (check|see|visit)\b.*$/i, '.')
+    .replace(/\.?\s*Please (check|see|visit|contact)\b.*$/i, '.')
     .replace(/\.?\s*Learn more\b.*$/i, '.')
+    .replace(/\.?\s*See\s+https?:\/\/.*$/i, '.')
     .replace(/\.{2,}/g, '.')
     .trim()
+  // Cap the reason length so it stays one line
+  if (reason.length > 200) reason = reason.slice(0, 197) + '...'
 
-  // Only return a bounce summary if we found an address
-  if (!addrMatch) return null
-
-  return `Email delivery failed\n\nTo: ${failedAddr}\nReason: ${reason}`
+  // Build summary — always show something, even if we couldn't find the address
+  if (addrMatch) {
+    return `Email delivery failed\n\nTo: ${addrMatch[1]}\nReason: ${reason}`
+  }
+  return `Email delivery failed\n\nReason: ${reason}`
 }
 
 /**
