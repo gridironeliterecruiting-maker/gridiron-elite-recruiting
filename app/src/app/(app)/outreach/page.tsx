@@ -125,10 +125,12 @@ export default async function OutreachPage({
       .in("campaign_id", campaignIds)
 
     // Get email events per campaign (include recipient_id for unique counting)
+    // Exclude scanner-flagged events so stats reflect only real engagement
     const { data: events } = await supabase
       .from("email_events")
       .select("campaign_id, recipient_id, event_type")
       .in("campaign_id", campaignIds)
+      .is("scanner_flagged_at", null)
 
     // Build a map of campaign type for quick lookup
     const campaignTypeMap: Record<string, string> = {}
