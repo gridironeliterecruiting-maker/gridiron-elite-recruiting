@@ -228,9 +228,23 @@ export function wrapLinksForTracking(
 }
 
 /**
- * Add a honeypot link that only email security scanners will follow.
- * Invisible to humans (0-size, transparent, no text). When triggered,
- * flags the recipient so we can discard scanner-generated opens/clicks.
+ * Add multiple honeypot links that only email security scanners will follow.
+ *
+ * Sophisticated scanners (like the Chrome/144 deferred scanner) have
+ * anti-honeypot logic — they skip links with obvious "hidden" CSS like
+ * font-size:0, opacity:0, display:none. To defeat them we deploy multiple
+ * traps using DIFFERENT visibility techniques. Each scanner has different
+ * heuristics; using multiple decoys maximizes the chance one trap fires.
+ *
+ * Strategies used:
+ *   v) "View in browser" link positioned off-screen (left:-9999px)
+ *      — looks like a legitimate footer link, no suspicious CSS
+ *   u) Single period styled white-on-white in the footer
+ *      — real text content, normal font size, just color matched
+ *   p) Image link wrapping a 1x1 pixel
+ *      — looks like a tracked image, scanners often follow image links
+ *
+ * The `h` query param tells us which trap fired (useful for analytics).
  */
 export function addHoneypotLink(
   html: string,
@@ -239,15 +253,27 @@ export function addHoneypotLink(
 ): string {
   const appUrl = getAppUrl()
   const nonce = Math.random().toString(36).slice(2)
-  const honeypotUrl = `${appUrl}/api/track/honeypot?rid=${recipientId}&cid=${campaignId}&t=${nonce}`
-  // Invisible link: 0-size, no text, transparent — scanners follow all hrefs regardless of CSS
-  const link = `<a href="${honeypotUrl}" style="font-size:0;line-height:0;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;color:transparent;" aria-hidden="true">&nbsp;</a>`
+  const baseUrl = `${appUrl}/api/track/honeypot?rid=${recipientId}&cid=${campaignId}&t=${nonce}`
+
+  // Trap 1: "View in browser" link, positioned off-screen.
+  // Looks like a normal footer link — no suspicious "invisible" CSS.
+  const trapOffScreen = `<div style="position:absolute;left:-9999px;top:-9999px;height:1px;overflow:hidden;"><a href="${baseUrl}&h=v" style="color:#999999;text-decoration:underline;">View this message in your browser</a></div>`
+
+  // Trap 2: Period in the footer styled white-on-white.
+  // Real text, normal size, just color-matched. Hard to detect heuristically.
+  const trapColorMatched = `<a href="${baseUrl}&h=u" style="color:#ffffff;text-decoration:none;">.</a>`
+
+  // Trap 3: Image link with a 1x1 transparent pixel.
+  // Many scanners follow image links because they look like asset URLs.
+  const trapImageLink = `<a href="${baseUrl}&h=p"><img src="${appUrl}/api/track/honeypot?rid=${recipientId}&cid=${campaignId}&t=${nonce}&h=i" width="1" height="1" alt="" border="0" style="display:block;" /></a>`
+
+  const traps = `${trapOffScreen}${trapColorMatched}${trapImageLink}`
 
   // Insert before the tracking pixel (before </body> or at the end)
   if (html.includes('</body>')) {
-    return html.replace('</body>', `${link}</body>`)
+    return html.replace('</body>', `${traps}</body>`)
   }
-  return html + link
+  return html + traps
 }
 
 /**
