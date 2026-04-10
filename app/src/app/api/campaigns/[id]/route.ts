@@ -40,19 +40,13 @@ export async function GET(
       .select('id, coach_name, coach_email, program_name, status, current_step')
       .eq('campaign_id', id)
 
-    // Get event counts — deduplicate opens/clicks by recipient, exclude scanner-flagged
-    const { data: events } = await supabase
-      .from('email_events')
-      .select('event_type, recipient_id')
+    // Single source of truth for opens/clicks — see campaign_clean_stats view in DB.
+    // Excludes scanner-flagged events. NEVER query email_events directly for stats.
+    const { data: cleanStats } = await supabase
+      .from('campaign_clean_stats')
+      .select('unique_opens, unique_clickers')
       .eq('campaign_id', id)
-      .is('scanner_flagged_at', null)
-
-    const uniqueOpened = new Set(
-      events?.filter(e => e.event_type === 'opened').map(e => e.recipient_id) || []
-    )
-    const uniqueClicked = new Set(
-      events?.filter(e => e.event_type === 'clicked').map(e => e.recipient_id) || []
-    )
+      .single()
 
     const stats = {
       total: recipients?.length || 0,
@@ -61,8 +55,8 @@ export async function GET(
       sent: recipients?.filter(r => r.status === 'sent').length || 0,
       replied: recipients?.filter(r => r.status === 'replied').length || 0,
       bounced: recipients?.filter(r => r.status === 'bounced').length || 0,
-      opened: uniqueOpened.size,
-      clicked: uniqueClicked.size,
+      opened: cleanStats?.unique_opens || 0,
+      clicked: cleanStats?.unique_clickers || 0,
     }
 
     return NextResponse.json({ campaign, emails, recipients, stats })
