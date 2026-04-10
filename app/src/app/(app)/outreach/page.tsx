@@ -118,74 +118,46 @@ export default async function OutreachPage({
   let campaignStats: Record<string, { total: number; sent: number; opened: number; clicked: number; replied: number; error: number }> = {}
 
   if (campaignIds.length > 0) {
-    // Get recipients per campaign (include dm_sent_at for DM campaigns)
-    const { data: recipients } = await supabase
+    // Single source of truth for all campaign stats — see campaign_clean_stats view in DB.
+    // Excludes scanner-flagged events. NEVER query email_events directly for stats.
+    const { data: stats } = await supabase
+      .from("campaign_clean_stats")
+      .select("campaign_id, total_recipients, sent_count, unique_opens, unique_clickers, replied_count, error_count")
+      .in("campaign_id", campaignIds)
+
+    // For DM campaigns we need dm_sent_at — opens/clicks don't apply
+    const { data: dmRecipients } = await supabase
       .from("campaign_recipients")
-      .select("id, campaign_id, status, dm_sent_at")
+      .select("id, campaign_id, dm_sent_at")
       .in("campaign_id", campaignIds)
 
-    // Get email events per campaign (include recipient_id for unique counting)
-    // Exclude scanner-flagged events so stats reflect only real engagement
-    const { data: events } = await supabase
-      .from("email_events")
-      .select("campaign_id, recipient_id, event_type")
-      .in("campaign_id", campaignIds)
-      .is("scanner_flagged_at", null)
-
-    // Build a map of campaign type for quick lookup
     const campaignTypeMap: Record<string, string> = {}
     for (const c of campaigns) {
       campaignTypeMap[c.id] = c.type || 'email'
     }
 
     for (const cid of campaignIds) {
-      const cRecipients = (recipients || []).filter((r) => r.campaign_id === cid)
       const isDm = campaignTypeMap[cid] === 'dm'
+      const s = (stats || []).find((x) => x.campaign_id === cid)
 
       if (isDm) {
-        // DM campaigns: count dm_sent_at for sent
-        const sentCount = cRecipients.filter((r) => r.dm_sent_at !== null).length
+        const cDmRecipients = (dmRecipients || []).filter((r) => r.campaign_id === cid)
         campaignStats[cid] = {
-          total: cRecipients.length,
-          sent: sentCount,
+          total: s?.total_recipients || 0,
+          sent: cDmRecipients.filter((r) => r.dm_sent_at !== null).length,
           opened: 0,
           clicked: 0,
           replied: 0,
           error: 0,
         }
       } else {
-        // Email campaigns: use email events
-        const cEvents = (events || []).filter((e) => e.campaign_id === cid)
-
-        const sentRecipientIds = new Set(
-          cEvents.filter((e) => e.event_type === 'sent').map((e) => e.recipient_id)
-        )
-        const sentCount = sentRecipientIds.size
-
-        const openedRecipientIds = new Set(
-          cEvents.filter((e) => e.event_type === 'opened').map((e) => e.recipient_id)
-        )
-        const openedCount = openedRecipientIds.size
-
-        const clickedRecipientIds = new Set(
-          cEvents.filter((e) => e.event_type === 'clicked').map((e) => e.recipient_id)
-        )
-        const clickedCount = clickedRecipientIds.size
-
-        const repliedRecipientIds = new Set(
-          cEvents.filter((e) => e.event_type === 'replied').map((e) => e.recipient_id)
-        )
-        const repliedCount = repliedRecipientIds.size
-
-        const errorCount = cRecipients.filter((r) => ['bounced', 'error'].includes(r.status)).length
-
         campaignStats[cid] = {
-          total: cRecipients.length,
-          sent: sentCount,
-          opened: openedCount,
-          clicked: clickedCount,
-          replied: repliedCount,
-          error: errorCount,
+          total: s?.total_recipients || 0,
+          sent: s?.sent_count || 0,
+          opened: s?.unique_opens || 0,
+          clicked: s?.unique_clickers || 0,
+          replied: s?.replied_count || 0,
+          error: s?.error_count || 0,
         }
       }
     }
