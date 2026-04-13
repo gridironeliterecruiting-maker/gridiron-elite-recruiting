@@ -24,7 +24,7 @@ const BOT_UA_PATTERNS = [
   /barracuda/i,
   /proofpoint/i,
   /X11;.*Linux.*Chrome\/124/i,   // link security scanner fingerprint
-  /Chrome\/109\.0\.0\.0/i,       // Microsoft Defender Safe Links scanner
+  /Chrome\/\d+\.0\.0\.0/i,       // headless Chrome — real Chrome reports specific build numbers (e.g. 144.0.1234.567)
   /Edge\/12\./i,                  // ancient Edge = scanner (Edge 12 is from 2015)
 ]
 
