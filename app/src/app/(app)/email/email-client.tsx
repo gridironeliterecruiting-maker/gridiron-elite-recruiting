@@ -355,12 +355,20 @@ function ConversationView({ thread, onBack, onArchived, onDeleted, isArchived = 
   const handleDelete = async () => {
     if (!confirm("Delete this conversation?")) return
     setDeleting(true)
-    if (thread.latestReceivedId) {
-      await fetch("/api/email/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gmailMessageId: thread.latestReceivedId }),
-      }).catch(() => {})
+    try {
+      // Delete all messages in the thread from Zoho
+      const allIds = thread.allMessageIds || (thread.latestReceivedId ? [thread.latestReceivedId] : [])
+      for (const mid of allIds) {
+        await fetch("/api/email/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messageId: mid }),
+        })
+      }
+      // Clear from session cache so it doesn't ghost back
+      threadBodyCache.delete(thread.threadId)
+    } catch {
+      // fall through — still remove from UI
     }
     setDeleting(false)
     onDeleted(thread.threadId)
