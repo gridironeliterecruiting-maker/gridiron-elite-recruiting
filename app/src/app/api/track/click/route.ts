@@ -62,11 +62,18 @@ export async function GET(request: Request) {
           .eq('id', recipientId)
           .single()
 
-        // If honeypot/cohort flagged this recipient AND we're still in the scanner window, skip
+        // If honeypot/cohort flagged this recipient, block events until the scanner
+        // window closes. Window extends to whichever is later:
+        //   a) sent_at + SCANNER_WINDOW_SECONDS
+        //   b) scanner_detected_at (the moment the honeypot fired)
         if (recipient?.scanner_detected_at && recipient?.sent_at) {
           const sentAt = new Date(recipient.sent_at)
-          const secondsSinceSend = (now.getTime() - sentAt.getTime()) / 1000
-          if (secondsSinceSend < SCANNER_WINDOW_SECONDS) {
+          const detectedAt = new Date(recipient.scanner_detected_at)
+          const windowEnd = Math.max(
+            sentAt.getTime() + SCANNER_WINDOW_SECONDS * 1000,
+            detectedAt.getTime()
+          )
+          if (now.getTime() < windowEnd) {
             return NextResponse.redirect(targetUrl, 302)
           }
         }

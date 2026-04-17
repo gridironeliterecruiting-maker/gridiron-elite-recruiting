@@ -151,9 +151,14 @@ export async function handleHoneypotDetection(
       .single()
 
     if (recipient?.sent_at) {
-      const windowEnd = new Date(
-        new Date(recipient.sent_at).getTime() + SCANNER_WINDOW_MS
-      ).toISOString()
+      // The scanner window extends to whichever is later:
+      //   a) sent_at + 3 minutes (the standard scanner burst window)
+      //   b) NOW (the moment the honeypot fired)
+      // This matters because some scanners hit the real link BEFORE the
+      // honeypot (e.g. at 4 min) but the honeypot fires at 7 min.
+      // Using just sent_at + 3min would miss the 4-minute event.
+      const fixedWindowEnd = new Date(recipient.sent_at).getTime() + SCANNER_WINDOW_MS
+      const windowEnd = new Date(Math.max(fixedWindowEnd, now.getTime())).toISOString()
 
       // Flag events as scanner-generated (soft-delete)
       await admin
