@@ -159,6 +159,7 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
       .from("coaches")
       .select("id, program_id, first_name, last_name, title, email, phone, twitter_handle, twitter_dm_open")
       .eq("program_id", programId)
+      .eq("is_active", true)
       .order("last_name")
     setProgramCoaches(data || [])
     setLoadingCoaches(false)
@@ -170,6 +171,7 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
     let q = supabase
       .from("coaches")
       .select("id, program_id, first_name, last_name, title, email, phone, twitter_handle, twitter_dm_open, programs(id, school_name, division, conference, logo_url)", { count: "exact" })
+      .eq("is_active", true)
       .order("last_name")
       .range(page * COACH_PAGE_SIZE, (page + 1) * COACH_PAGE_SIZE - 1)
 
