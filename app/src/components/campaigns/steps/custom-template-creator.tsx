@@ -186,9 +186,9 @@ export function CustomTemplateCreator({ onSave, onClose }: CustomTemplateCreator
           <div className="mt-6 rounded-md border border-border bg-secondary/50 p-4">
             <h4 className="mb-2 text-xs font-semibold text-foreground">Tips for Great Templates</h4>
             <ul className="space-y-1 text-[10px] text-muted-foreground">
-              <li>• Keep it personal and authentic to the athlete's voice</li>
+              <li>• Keep it personal and authentic to the athlete&apos;s voice</li>
               <li>• Use merge tags to personalize each email</li>
-              <li>• Focus on why they're interested in that specific program</li>
+              <li>• Focus on why they&apos;re interested in that specific program</li>
               <li>• Keep initial emails short (3-5 sentences)</li>
               <li>• Always include a clear call-to-action</li>
             </ul>

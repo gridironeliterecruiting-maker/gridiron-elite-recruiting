@@ -242,8 +242,8 @@ export default async function HomePage() {
             className="mb-8 font-display text-3xl font-black uppercase leading-tight tracking-tight md:text-5xl"
             style={{ color: '#0a1525' }}
           >
-            "The athletes who get recruited didn&apos;t just train harder.{' '}
-            <span style={{ color: '#d93025' }}>They prepared smarter</span> — and they started earlier."
+            &quot;The athletes who get recruited didn&apos;t just train harder.{' '}
+            <span style={{ color: '#d93025' }}>They prepared smarter</span> — and they started earlier.&quot;
           </h2>
           <p className="mx-auto max-w-2xl text-lg leading-relaxed text-gray-500">
             You&apos;re already investing in your game and your grades. But the recruiting process

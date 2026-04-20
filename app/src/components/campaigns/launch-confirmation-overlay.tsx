@@ -295,7 +295,7 @@ export function LaunchConfirmationOverlay({
                 ) : (
                   <>
                     <Rocket className="h-4 w-4" />
-                    Let's Go 🚀
+                    Let&apos;s Go 🚀
                   </>
                 )}
               </Button>
