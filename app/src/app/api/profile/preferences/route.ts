@@ -8,7 +8,7 @@ export async function PATCH(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const updates: Record<string, any> = {}
+  const updates: Record<string, unknown> = {}
   if (body.readiness_score_open !== undefined) updates.readiness_score_open = body.readiness_score_open
   if (body.title !== undefined) updates.title = body.title
 

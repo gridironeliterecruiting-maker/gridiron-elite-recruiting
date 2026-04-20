@@ -32,8 +32,8 @@ export async function GET() {
     .eq('id', user.id)
     .single()
 
-  const accountKey = (profile as any)?.zoho_account_key as string | null
-  const workspaceEmail = ((profile as any)?.workspace_email as string | null)?.toLowerCase() || ''
+  const accountKey = (profile?.zoho_account_key as string | null) ?? null
+  const workspaceEmail = ((profile?.workspace_email as string | null) ?? '').toLowerCase()
 
   if (!accountKey) {
     return NextResponse.json({ threads: [] })
@@ -77,7 +77,7 @@ export async function GET() {
       )
       if (inboxRes.ok) {
         const inboxData = await inboxRes.json()
-        const inboxMessages: any[] = inboxData?.data || []
+        const inboxMessages: Array<{ fromAddress?: string; subject?: string }> = inboxData?.data || []
         for (const msg of inboxMessages) {
           const fromRaw = (msg.fromAddress || '').toLowerCase()
           const emailMatch = fromRaw.match(/([^\s<>]+@[^\s<>]+)/)
@@ -132,8 +132,9 @@ export async function GET() {
     })
 
     return NextResponse.json({ threads })
-  } catch (err: any) {
-    console.error('[email/sent] unexpected error:', err?.message || err)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[email/sent] unexpected error:', msg)
     return NextResponse.json({ threads: [] })
   }
 }

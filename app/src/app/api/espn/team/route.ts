@@ -34,7 +34,14 @@ export async function GET(req: NextRequest) {
       .map(([text, href]) => ({ text, href }))
 
     // Extract news
-    const news = (newsData.articles || []).map((a: any) => ({
+    type EspnArticle = {
+      headline?: string
+      description?: string
+      published?: string
+      links?: { web?: { href?: string } }
+      images?: Array<{ url?: string }>
+    }
+    const news = ((newsData.articles || []) as EspnArticle[]).map((a) => ({
       headline: a.headline,
       description: a.description,
       published: a.published,
@@ -42,10 +49,14 @@ export async function GET(req: NextRequest) {
       image: a.images?.[0]?.url,
     }))
 
+    type StandingStat = { name: string; displayValue: string }
+    type StandingEntry = { team?: { id?: string }; stats?: StandingStat[] }
+    type StandingGroup = { standings?: { entries?: StandingEntry[] } }
+
     // Find team in standings — try current season first, fall back to previous
     let record: Record<string, string> = {}
-    const allEntries = standingsData.children?.flatMap((c: any) => c.standings?.entries || []) || []
-    const teamStanding = allEntries.find((e: any) => e.team?.id === espnId)
+    const allEntries = ((standingsData.children as StandingGroup[] | undefined) || []).flatMap((c) => c.standings?.entries || [])
+    const teamStanding = allEntries.find((e) => e.team?.id === espnId)
 
     if (teamStanding) {
       for (const s of teamStanding.stats || []) {
@@ -58,8 +69,8 @@ export async function GET(req: NextRequest) {
       try {
         const prevRes = await fetch(`${ESPN_BASE}/v2/sports/football/college-football/standings?season=2024&group=80`, { next: { revalidate: 86400 } })
         const prevData = await prevRes.json()
-        const prevEntries = prevData.children?.flatMap((c: any) => c.standings?.entries || []) || []
-        const prevStanding = prevEntries.find((e: any) => e.team?.id === espnId)
+        const prevEntries = ((prevData.children as StandingGroup[] | undefined) || []).flatMap((c) => c.standings?.entries || [])
+        const prevStanding = prevEntries.find((e) => e.team?.id === espnId)
         if (prevStanding) {
           record = {}
           for (const s of prevStanding.stats || []) {

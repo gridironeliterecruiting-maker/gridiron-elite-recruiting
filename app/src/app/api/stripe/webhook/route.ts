@@ -13,8 +13,9 @@ export async function POST(request: Request) {
   let event: Stripe.Event
   try {
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
-  } catch (err: any) {
-    console.error('[stripe/webhook] Signature verification failed:', err.message)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[stripe/webhook] Signature verification failed:', msg)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
@@ -23,10 +24,9 @@ export async function POST(request: Request) {
   try {
     switch (event.type) {
       case 'customer.subscription.updated': {
-        const sub = event.data.object as Stripe.Subscription
-        const subAny = sub as any
-        const currentPeriodEnd = subAny.current_period_end
-          ? new Date(subAny.current_period_end * 1000).toISOString()
+        const sub = event.data.object as Stripe.Subscription & { current_period_end?: number }
+        const currentPeriodEnd = sub.current_period_end
+          ? new Date(sub.current_period_end * 1000).toISOString()
           : null
 
         await admin.from('subscriptions')
@@ -54,8 +54,9 @@ export async function POST(request: Request) {
           .eq('stripe_customer_id', typeof sub.customer === 'string' ? sub.customer : sub.customer.id)
           .single()
 
-        if ((profile as any)?.zoho_account_key) {
-          await deleteZohoAccount((profile as any).zoho_account_key).catch(err =>
+        const zohoKey = profile?.zoho_account_key as string | undefined
+        if (zohoKey) {
+          await deleteZohoAccount(zohoKey).catch(err =>
             console.error('[webhook] Failed to delete Zoho account:', err)
           )
         }
@@ -64,11 +65,10 @@ export async function POST(request: Request) {
       }
 
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice
-        const invoiceAny = invoice as any
-        const subId = typeof invoiceAny.subscription === 'string'
-          ? invoiceAny.subscription
-          : invoiceAny.subscription?.id
+        const invoice = event.data.object as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null }
+        const subId = typeof invoice.subscription === 'string'
+          ? invoice.subscription
+          : invoice.subscription?.id
 
         if (subId) {
           await admin.from('subscriptions')

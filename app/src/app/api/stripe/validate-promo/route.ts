@@ -57,8 +57,9 @@ export async function POST(request: Request) {
       percentOff: coupon.percent_off ?? null,
       amountOff: coupon.amount_off ?? null,
     })
-  } catch (error: any) {
-    console.error('[validate-promo]', error?.message)
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    console.error('[validate-promo]', msg)
     return NextResponse.json({ error: 'Failed to validate promo code' }, { status: 500 })
   }
 }

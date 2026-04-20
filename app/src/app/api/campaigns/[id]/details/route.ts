@@ -52,9 +52,11 @@ export async function GET(
       .eq('campaign_id', id)
       .is('scanner_flagged_at', null)
 
+    type EmailEvent = { recipient_id: string; event_type: string; created_at: string }
+
     // Create event lookup map
-    const eventsByRecipient = new Map<string, any[]>()
-    events?.forEach((event: any) => {
+    const eventsByRecipient = new Map<string, EmailEvent[]>()
+    events?.forEach((event) => {
       if (!eventsByRecipient.has(event.recipient_id)) {
         eventsByRecipient.set(event.recipient_id, [])
       }
@@ -79,9 +81,27 @@ export async function GET(
       }
     }
 
+    type CoachRow = {
+      id: string
+      coach_id: string | null
+      coach_name: string | null
+      coach_email: string | null
+      status: string | null
+      sent_at: string | null
+      opened_at: string | null
+      clicked_at: string | null
+      replied_at: string | null
+    }
+    type ProgramGroup = {
+      program_name: string
+      program_id: string | null
+      logo_url: string | null
+      coaches: CoachRow[]
+    }
+
     // Group recipients by program
-    const programsWithRecipients: Record<string, any> = {}
-    recipients?.forEach((r: any) => {
+    const programsWithRecipients: Record<string, ProgramGroup> = {}
+    recipients?.forEach((r) => {
       const programName = r.program_name || 'Unknown Program'
       if (!programsWithRecipients[programName]) {
         const pData = programDataMap[programName]
@@ -100,7 +120,7 @@ export async function GET(
       let replied_at: string | null = null
 
       const recipientEvents = eventsByRecipient.get(r.id) || []
-      recipientEvents.forEach((event: any) => {
+      recipientEvents.forEach((event) => {
         if (event.event_type === 'sent' && (!sent_at || new Date(event.created_at) < new Date(sent_at))) {
           sent_at = event.created_at
         }
@@ -147,7 +167,7 @@ export async function GET(
     stats.total = totalCount || 0
 
     // Count events by type
-    const eventCounts = events?.reduce((acc, event) => {
+    const eventCounts = events?.reduce<Record<string, Set<string>>>((acc, event) => {
       const key = event.event_type as string
       if (['sent', 'opened', 'clicked', 'replied', 'error'].includes(key)) {
         if (!acc[`${key}_recipients`]) {
@@ -156,7 +176,7 @@ export async function GET(
         acc[`${key}_recipients`].add(event.recipient_id)
       }
       return acc
-    }, {} as any) || {}
+    }, {}) || {}
 
     // Update stats with unique recipient counts
     if (eventCounts.sent_recipients) {

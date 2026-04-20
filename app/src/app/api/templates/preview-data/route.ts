@@ -29,6 +29,25 @@ export async function GET() {
     .eq('id', user.id)
     .single()
 
+  type ProfileExtras = {
+    first_name?: string | null
+    last_name?: string | null
+    position?: string | null
+    grad_year?: number | null
+    high_school?: string | null
+    city?: string | null
+    state?: string | null
+    gpa?: number | null
+    hudl_url?: string | null
+    primary_video_url?: string | null
+    phone?: string | null
+    email?: string | null
+    coach_name?: string | null
+    coach_phone?: string | null
+    coach_email?: string | null
+    title?: string | null
+  }
+
   let mergeData: Record<string, string> = {}
 
   if (isCoach && membership) {
@@ -53,7 +72,7 @@ export async function GET() {
       activePlayerId = players?.[0]?.user_id || null
     }
 
-    let playerProfile: any = null
+    let playerProfile: ProfileExtras | null = null
     if (activePlayerId) {
       const { data: pp } = await admin
         .from('profiles')
@@ -84,7 +103,7 @@ export async function GET() {
       'Player Email': playerProfile?.email || '',
       'My First Name': senderProfile?.first_name || '',
       'My Last Name': senderProfile?.last_name || '',
-      'My Title': (senderProfile as any)?.title || 'Head Coach',
+      'My Title': (senderProfile as ProfileExtras | null)?.title || 'Head Coach',
     }
   } else {
     // Athlete — sender IS the player
@@ -93,9 +112,9 @@ export async function GET() {
       'Coach First Name': '',
       'School Name': '',
       // Player's HS coach info (from their own profile)
-      'Coach Name': (senderProfile as any)?.coach_name || '',
-      'Coach Phone': (senderProfile as any)?.coach_phone || '',
-      'Coach Email Address': (senderProfile as any)?.coach_email || '',
+      'Coach Name': (senderProfile as ProfileExtras | null)?.coach_name || '',
+      'Coach Phone': (senderProfile as ProfileExtras | null)?.coach_phone || '',
+      'Coach Email Address': (senderProfile as ProfileExtras | null)?.coach_email || '',
       'Player First Name': senderProfile?.first_name || '',
       'Player Last Name': senderProfile?.last_name || '',
       'Player Position': senderProfile?.position || '',
@@ -104,7 +123,7 @@ export async function GET() {
       'Player City': senderProfile?.city || '',
       'Player State': senderProfile?.state || '',
       'Player GPA': formatGPA(senderProfile?.gpa) || '',
-      'Player Film Link': (senderProfile as any)?.primary_video_url || senderProfile?.hudl_url || '',
+      'Player Film Link': (senderProfile as ProfileExtras | null)?.primary_video_url || senderProfile?.hudl_url || '',
       'Player Phone': senderProfile?.phone || '',
       'Player Email': senderProfile?.email || '',
     }

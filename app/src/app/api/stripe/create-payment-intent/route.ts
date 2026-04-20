@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import type Stripe from 'stripe'
 import { getStripe, findOrCreateCustomer, getPriceId } from '@/lib/stripe'
 import { createClient } from '@/lib/supabase/server'
 
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
       await stripe.subscriptions.cancel(sub.id)
     }
 
-    const subscriptionParams: any = {
+    const subscriptionParams: Stripe.SubscriptionCreateParams = {
       customer: customer.id,
       items: [{ price: priceId }],
       collection_method: 'charge_automatically',
@@ -61,8 +62,8 @@ export async function POST(request: Request) {
 
     // pi.invoice is not populated in list responses for this API version —
     // find the active PI by status instead (we just canceled all stale ones above)
-    const piList = await stripe.paymentIntents.list({ customer: customer.id, limit: 10 }) as any
-    const paymentIntent = piList.data.find((pi: any) => pi.status === 'requires_payment_method')
+    const piList = await stripe.paymentIntents.list({ customer: customer.id, limit: 10 })
+    const paymentIntent = piList.data.find((pi) => pi.status === 'requires_payment_method')
 
     if (!paymentIntent?.client_secret) {
       return NextResponse.json({ error: `No active payment intent found. sub=${subscription.id}` }, { status: 500 })
@@ -75,8 +76,10 @@ export async function POST(request: Request) {
       paid: false,
     })
 
-  } catch (error: any) {
-    console.error('[create-payment-intent] type:', error?.constructor?.name, 'message:', error?.message, 'code:', error?.code, 'cause:', error?.cause?.message)
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })
+  } catch (error) {
+    const e = error as { constructor?: { name?: string }; message?: string; code?: string; cause?: { message?: string } } | null
+    console.error('[create-payment-intent] type:', e?.constructor?.name, 'message:', e?.message, 'code:', e?.code, 'cause:', e?.cause?.message)
+    const message = error instanceof Error ? error.message : 'Internal server error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

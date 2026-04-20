@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       total: tokens.length,
       success: 0,
       failed: 0,
-      errors: [] as any[]
+      errors: [] as Array<{ email: string; error: string }>
     }
 
     for (const token of tokens) {

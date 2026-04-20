@@ -139,7 +139,7 @@ export async function GET(request: Request) {
       // - Grandfathered users: personal Gmail OAuth token (legacy)
       let accessToken: string = ''
       let fromEmail: string = ''
-      const isZohoUser = !!(userProfile as any).zoho_account_key && userProfile.workspace_email
+      const isZohoUser = !!userProfile.zoho_account_key && userProfile.workspace_email
 
       if (!isZohoUser) {
         // Grandfathered user — use their personal Gmail OAuth token
@@ -286,7 +286,19 @@ export async function GET(request: Request) {
           const playerCity = programCity || mergeProfile?.city || ''
           const playerState = programState || mergeProfile?.state || ''
           const cityState = [playerCity, playerState].filter(Boolean).join(', ')
-          const playerEmail = (mergeProfile as any)?.email || userProfile?.email || ''
+          type MergeProfileExtras = {
+            email?: string | null
+            coach_name?: string | null
+            coach_phone?: string | null
+            coach_email?: string | null
+            primary_video_url?: string | null
+            height?: string | null
+            weight?: number | null
+            title?: string | null
+          }
+          const mp = (mergeProfile as typeof mergeProfile & MergeProfileExtras) || null
+          const sp = senderProfile as (typeof senderProfile & MergeProfileExtras) | null
+          const playerEmail = mp?.email || userProfile?.email || ''
 
           const profileData: Record<string, string> = {
             // ── Canonical tags (preferred) ────────────────────────────────────
@@ -297,9 +309,9 @@ export async function GET(request: Request) {
             'School_Name':        cleanSchoolName(recipient.program_name || ''),
             'School_Name_with_The': schoolNameWithThe(recipient.program_name || ''),
             // Player's HS coach info (from player profile, NOT the target college coach)
-            'Coach_Name':         (mergeProfile as any)?.coach_name || '',
-            'Coach_Phone':        (mergeProfile as any)?.coach_phone || '',
-            'Coach_Email_Address': (mergeProfile as any)?.coach_email || '',
+            'Coach_Name':         mp?.coach_name || '',
+            'Coach_Phone':        mp?.coach_phone || '',
+            'Coach_Email_Address': mp?.coach_email || '',
             // Player being recruited
             'Player_First_Name':  mergeProfile?.first_name || '',
             'Player_Last_Name':   mergeProfile?.last_name || '',
@@ -309,15 +321,15 @@ export async function GET(request: Request) {
             'Player_City':        playerCity,
             'Player_State':       playerState,
             'Player_GPA':         formatGPA(mergeProfile?.gpa),
-            'Player_Film_Link':   (mergeProfile as any)?.primary_video_url || mergeProfile?.hudl_url || '',
-            'Player_Height':      (mergeProfile as any)?.height || '',
-            'Player_Weight':      (mergeProfile as any)?.weight?.toString() || '',
+            'Player_Film_Link':   mp?.primary_video_url || mergeProfile?.hudl_url || '',
+            'Player_Height':      mp?.height || '',
+            'Player_Weight':      mp?.weight?.toString() || '',
             'Player_Phone':       mergeProfile?.phone || '',
             'Player_Email':       playerEmail,
             // Sender (for coach campaigns — the sending coach's own name)
             'My_First_Name':      senderProfile?.first_name || '',
             'My_Last_Name':       senderProfile?.last_name || '',
-            'My_Title':           (senderProfile as any)?.title || '',
+            'My_Title':           sp?.title || '',
 
             // ── Legacy aliases (backwards compat) ───────────────────────────
             'Last_Name_Coach':    coachLastName,
@@ -331,7 +343,7 @@ export async function GET(request: Request) {
             'State':              playerState,
             'City_State':         cityState,
             'GPA':                formatGPA(mergeProfile?.gpa),
-            'Film_Link':          (mergeProfile as any)?.primary_video_url || mergeProfile?.hudl_url || '',
+            'Film_Link':          mp?.primary_video_url || mergeProfile?.hudl_url || '',
             'Hudl_URL':           mergeProfile?.hudl_url || '',
             'Phone':              mergeProfile?.phone || '',
             'Email':              playerEmail,
@@ -419,7 +431,7 @@ export async function GET(request: Request) {
           let sentMessageId: string
           if (isZohoUser) {
             const zohoResult = await sendZohoEmail(
-              (userProfile as any).zoho_account_key,
+              userProfile.zoho_account_key as string,
               userProfile.workspace_email!,
               recipient.coach_email,
               subject,

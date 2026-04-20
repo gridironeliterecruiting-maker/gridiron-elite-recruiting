@@ -52,7 +52,7 @@ export async function POST(
     }
 
     // Zoho users don't need Gmail — skip Gmail check if zoho_account_key is set
-    if (!(profile as any).zoho_account_key) {
+    if (!profile.zoho_account_key) {
       const { data: gmailToken } = await supabase
         .from('gmail_tokens')
         .select('token_expiry')
