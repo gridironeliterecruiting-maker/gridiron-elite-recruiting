@@ -8,7 +8,6 @@ import {
   addTrackingPixel,
   wrapLinksForTracking,
   addHoneypotLink,
-  addUnsubscribeFooter,
 } from '@/lib/gmail'
 import { sendZohoEmail } from '@/lib/workspace'
 

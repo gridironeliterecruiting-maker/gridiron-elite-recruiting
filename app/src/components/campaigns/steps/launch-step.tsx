@@ -37,7 +37,6 @@ interface LaunchStepProps {
   goal: CampaignGoal
   selectedCoaches: SelectedCoach[]
   templates: EmailTemplate[]
-  gmailEmail: string | null
   hasGmailToken: boolean
   gmailTokenExpired: boolean
   activePlayerId?: string | null
@@ -57,7 +56,6 @@ export function LaunchStep({
   goal,
   selectedCoaches,
   templates,
-  gmailEmail,
   hasGmailToken,
   gmailTokenExpired,
   activePlayerId,
@@ -98,7 +96,7 @@ export function LaunchStep({
           name: campaignName,
           goal,
           playerId: activePlayerId || undefined,
-          templates: templates.map((t, i) => ({
+          templates: templates.map((t) => ({
             subject: t.subject,
             body: t.body,
             delayDays: t.delayDays,
@@ -382,7 +380,6 @@ export function LaunchStep({
           goal={goal}
           selectedCoaches={selectedCoaches}
           templates={templates}
-          gmailEmail={gmailEmail}
           hasGmailToken={hasGmailToken}
           gmailTokenExpired={gmailTokenExpired}
           campaignName={campaignName}

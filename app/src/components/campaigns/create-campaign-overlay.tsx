@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { useRouter } from "next/navigation"
 import { ArrowLeft, Mail, MessageCircle, Check } from "lucide-react"
 import { TargetStep } from "./steps/target-step"
 import { BuildStep } from "./steps/build-step"
@@ -40,7 +39,6 @@ const DM_STEPS = [
 interface CreateCampaignOverlayProps {
   programs: Program[]
   playerPosition: string
-  gmailEmail: string | null
   hasGmailToken: boolean
   gmailTokenExpired: boolean
   quickEmailData?: {
@@ -68,8 +66,7 @@ interface CreateCampaignOverlayProps {
   }) => void
 }
 
-export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, hasGmailToken, gmailTokenExpired, quickEmailData, quickDmData, followupData, initialCampaignType = 'email', activePlayerId, recruitingEmail, onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
-  const router = useRouter()
+export function CreateCampaignOverlay({ programs, playerPosition, hasGmailToken, gmailTokenExpired, quickEmailData, quickDmData, followupData, initialCampaignType = 'email', activePlayerId, recruitingEmail, onClose, onCampaignLaunched }: CreateCampaignOverlayProps) {
   const campaignType = initialCampaignType
   // Campaign goal is always "get_response" — no goal selection step
   const campaignGoal: CampaignGoal = 'get_response'
@@ -79,7 +76,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
   const [draft, setDraft] = useState<CampaignDraft>({ goal: campaignGoal, selectedCoaches: followupData?.selectedCoaches || [], templates: [] })
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [showSaveDraftDialog, setShowSaveDraftDialog] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  const [, setIsSaving] = useState(false)
   const [dmCampaignId, setDmCampaignId] = useState<string | null>(null)
   const [dmAllSent, setDmAllSent] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -386,7 +383,6 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
         {/* Email flow: Template (step 2) */}
         {currentStep === 2 && campaignType !== 'dm' && (
           <BuildStep
-            goal={campaignGoal}
             templates={draft.templates}
             recruitingEmail={recruitingEmail}
             selectedCoaches={draft.selectedCoaches}
@@ -405,7 +401,6 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
             goal={campaignGoal}
             selectedCoaches={draft.selectedCoaches}
             templates={draft.templates}
-            gmailEmail={gmailEmail}
             hasGmailToken={hasGmailToken}
             gmailTokenExpired={gmailTokenExpired}
             activePlayerId={activePlayerId}
@@ -428,7 +423,6 @@ export function CreateCampaignOverlay({ programs, playerPosition, gmailEmail, ha
         {/* DM flow: Compose (step 2) */}
         {currentStep === 2 && campaignType === 'dm' && (
           <DmComposeStep
-            goal={campaignGoal}
             selectedCoaches={draft.selectedCoaches}
             onCreateDmCampaign={handleCreateDmCampaign}
             onBack={() => goToStep(1)}

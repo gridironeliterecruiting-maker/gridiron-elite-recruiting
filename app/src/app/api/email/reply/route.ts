@@ -19,11 +19,9 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { messageId: directId, gmailMessageId, toEmail, toName, replyBody } = body as {
+  const { messageId: directId, gmailMessageId, replyBody } = body as {
     messageId?: string
     gmailMessageId?: string
-    toEmail: string
-    toName?: string
     replyBody: string
   }
   const messageId = directId || gmailMessageId || ''

@@ -76,7 +76,7 @@ export function CustomTemplateCreator({ onSave, onClose }: CustomTemplateCreator
         subject: subject.trim(),
         body: body.trim()
       })
-    } catch (err) {
+    } catch {
       setError('Failed to save template')
       setSaving(false)
     }

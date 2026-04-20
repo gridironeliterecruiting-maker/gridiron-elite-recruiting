@@ -48,21 +48,14 @@ export default async function OutreachPage({
     }
   }
 
-  // Filter templates by role
-  const templateRole = isCoach ? 'coach' : 'athlete'
-
   const [
-    { data: templates },
     { data: programs },
     { data: gmailToken },
-    { data: twitterToken },
     { data: allCampaigns },
     { data: zohoProfile },
   ] = await Promise.all([
-    supabase.from("email_templates").select("*").eq("for_role", templateRole).order("name"),
     supabase.from("programs").select("id, school_name, division, conference, logo_url").order("school_name"),
     admin.from("gmail_tokens").select("email, connected_at, token_expiry").eq("user_id", user!.id).single(),
-    admin.from("twitter_tokens").select("twitter_handle, connected_at, token_expiry").eq("user_id", user!.id).single(),
     supabase.from("campaigns").select("*").eq("user_id", user!.id).order("created_at", { ascending: false }),
     admin.from("profiles").select("zoho_account_key, workspace_email").eq("id", user!.id).single(),
   ])
@@ -165,14 +158,10 @@ export default async function OutreachPage({
 
   return (
     <OutreachClient
-      templates={templates || []}
       programs={programs || []}
       playerPosition={playerPosition}
-      gmailEmail={effectiveGmailToken?.email || null}
       hasGmailToken={!!effectiveGmailToken}
       gmailTokenExpired={effectiveGmailToken ? new Date(effectiveGmailToken.token_expiry) <= new Date() : false}
-      twitterHandle={twitterToken?.twitter_handle || null}
-      hasTwitterToken={!!twitterToken}
       campaigns={campaigns.map((c) => ({
         ...c,
         stats: campaignStats[c.id] || { total: 0, sent: 0, opened: 0, clicked: 0, replied: 0, error: 0 },
@@ -181,8 +170,6 @@ export default async function OutreachPage({
       resumeCampaignId={searchParams.campaign}
       resumeStep={searchParams.resume}
       gmailStatus={searchParams.gmail}
-      twitterStatus={searchParams.twitter}
-      hasWorkspaceEmail={hasWorkspaceEmail}
       proposedEmail={proposedEmail}
       missingProfileFields={missingProfileFields}
     />

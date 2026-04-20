@@ -83,7 +83,6 @@ export function ReadinessScore({ twitterProfile, athleteProfile, defaultOpen, on
     const bio = twitterProfile.description || ""
     const name = twitterProfile.name || ""
     const handle = twitterProfile.username || ""
-    const fullName = `${athleteProfile.first_name || ""} ${athleteProfile.last_name || ""}`.trim().toLowerCase()
     const firstName = (athleteProfile.first_name || "").toLowerCase()
     const lastName = (athleteProfile.last_name || "").toLowerCase()
 
