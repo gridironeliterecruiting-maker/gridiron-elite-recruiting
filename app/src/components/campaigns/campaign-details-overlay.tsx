@@ -130,15 +130,35 @@ function ProgramLogo({ logoUrl, schoolName, size = 40 }: { logoUrl: string | nul
   )
 }
 
+type CoachRow = {
+  id: string
+  program_id: string
+  first_name: string
+  last_name: string
+  title: string
+  email: string
+  phone: string | null
+  twitter_handle: string | null
+  twitter_dm_open: boolean
+  [key: string]: unknown
+}
+
+type ProgramRow = {
+  id: string
+  school_name: string
+  division: string
+  conference: string
+}
+
 /** Look up a coach by ID or by name+program fallback, then open CoachDetail */
 async function fetchCoachAndProgram(
   coachId: string | null,
   coachName: string,
   programName: string,
-): Promise<{ coach: any; program: any } | null> {
+): Promise<{ coach: CoachRow; program: ProgramRow } | null> {
   const supabase = createClient()
 
-  let coachData: any = null
+  let coachData: CoachRow | null = null
 
   // Try by coach_id first
   if (coachId) {
@@ -197,8 +217,8 @@ export function CampaignDetailsOverlay({ campaignId, onClose, onStatusChange, on
   const [toggling, setToggling] = useState(false)
   const [expandedProgram, setExpandedProgram] = useState<string | null>(null)
   const [selectedCoachData, setSelectedCoachData] = useState<{
-    coach: any
-    program: any
+    coach: CoachRow
+    program: ProgramRow
   } | null>(null)
   const [loadingCoach, setLoadingCoach] = useState<string | null>(null)
   const [editingName, setEditingName] = useState(false)

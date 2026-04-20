@@ -158,11 +158,20 @@ export async function checkZohoHealth(): Promise<{ ok: boolean; error?: string }
   }
 }
 
+export interface ZohoFolder {
+  folderId?: string | number
+  id?: string | number
+  folderName?: string
+  name?: string
+  folderType?: string
+  type?: string
+}
+
 /**
  * Get all Zoho Mail360 folders for an account.
  * Returns raw folder objects from Zoho — callers find specific folders by name/type.
  */
-export async function getZohoFolders(accountKey: string): Promise<any[]> {
+export async function getZohoFolders(accountKey: string): Promise<ZohoFolder[]> {
   const res = await zohoFetch(`${ZOHO_API_BASE}/accounts/${accountKey}/folders`, {})
   if (!res.ok) {
     const err = await res.text()
@@ -176,9 +185,9 @@ export async function getZohoFolders(accountKey: string): Promise<any[]> {
 /**
  * Find a specific folder ID by matching common name/type fields.
  */
-export function findFolderId(folders: any[], ...names: string[]): string | null {
+export function findFolderId(folders: ZohoFolder[], ...names: string[]): string | null {
   const lower = names.map(n => n.toLowerCase())
-  const found = folders.find((f: any) =>
+  const found = folders.find((f) =>
     lower.includes((f.folderName || '').toLowerCase()) ||
     lower.includes((f.name || '').toLowerCase()) ||
     lower.includes((f.folderType || '').toLowerCase()) ||

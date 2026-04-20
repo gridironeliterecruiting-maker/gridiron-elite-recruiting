@@ -61,8 +61,9 @@ export default async function OutreachPage({
   ])
 
   // Compute proposed email for athletes without a workspace email
-  const hasWorkspaceEmail = !!(zohoProfile as any)?.workspace_email
-  let proposedEmail: string | null = (zohoProfile as any)?.workspace_email || null
+  const workspaceEmailValue = (zohoProfile?.workspace_email as string | null) ?? null
+  const hasWorkspaceEmail = !!workspaceEmailValue
+  let proposedEmail: string | null = workspaceEmailValue
   if (!isCoach && !hasWorkspaceEmail && userProfile?.position !== undefined) {
     const { data: fullProfile } = await admin
       .from('profiles')
@@ -80,9 +81,9 @@ export default async function OutreachPage({
   }
 
   // Zoho users don't need Gmail — treat them as having a valid connected account
-  const isZohoUser = !!(zohoProfile as any)?.zoho_account_key
+  const isZohoUser = !!(zohoProfile?.zoho_account_key as string | null)
   const effectiveGmailToken = isZohoUser
-    ? { email: (zohoProfile as any).workspace_email, token_expiry: new Date(Date.now() + 86400000).toISOString() }
+    ? { email: workspaceEmailValue, token_expiry: new Date(Date.now() + 86400000).toISOString() }
     : gmailToken
 
   // Filter campaigns: for coaches, only show campaigns for the active player

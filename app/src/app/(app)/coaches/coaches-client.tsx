@@ -52,6 +52,8 @@ interface Stage {
   display_order: number
 }
 
+type CoachWithProgram = Coach & { programs?: Program | Program[] | null }
+
 type SortField = "school_name" | "division" | "conference" | "state"
 type CoachSortField = "last_name" | "school_name" | "has_email" | "dm_open"
 
@@ -102,7 +104,7 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
   const [loadingCoaches, setLoadingCoaches] = useState(false)
 
   // Coach search state (for coaches tab)
-  const [coachResults, setCoachResults] = useState<any[]>([])
+  const [coachResults, setCoachResults] = useState<CoachWithProgram[]>([])
   const [coachTotal, setCoachTotal] = useState(0)
   const [coachPage, setCoachPage] = useState(0)
   const [coachLoading, setCoachLoading] = useState(false)
@@ -126,14 +128,14 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
         supabase.from("pipeline_entries").select("program_id"),
       ])
       if (stagesRes.data) setPipelineStages(stagesRes.data)
-      if (entriesRes.data) setPipelineProgramIds(entriesRes.data.map((e: any) => e.program_id))
+      if (entriesRes.data) setPipelineProgramIds(entriesRes.data.map((e) => e.program_id))
     }
     fetchPipelineData()
   }, [supabase])
 
   const refreshPipelineEntries = useCallback(async () => {
     const { data } = await supabase.from("pipeline_entries").select("program_id")
-    if (data) setPipelineProgramIds(data.map((e: any) => e.program_id))
+    if (data) setPipelineProgramIds(data.map((e) => e.program_id))
   }, [supabase])
 
   const programMap = useMemo(() => {
@@ -190,9 +192,12 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
       setCoachResults([])
       setCoachTotal(0)
     } else {
-      let filtered = data || []
+      let filtered = (data || []) as CoachWithProgram[]
       if (division && division !== "ALL") {
-        filtered = filtered.filter((c: any) => c.programs?.division === division)
+        filtered = filtered.filter((c) => {
+          const prog = Array.isArray(c.programs) ? c.programs[0] : c.programs
+          return prog?.division === division
+        })
       }
       setCoachResults(filtered)
       setCoachTotal(division && division !== "ALL" ? filtered.length : (count || 0))
@@ -221,8 +226,9 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
     setCoachProgram(selectedProgram)
   }
 
-  const openCoachDirectly = (coach: Coach) => {
-    const prog = (coach as any).programs || programMap[coach.program_id]
+  const openCoachDirectly = (coach: CoachWithProgram) => {
+    const joined = Array.isArray(coach.programs) ? coach.programs[0] : coach.programs
+    const prog = joined || programMap[coach.program_id]
     if (prog) {
       setSelectedProgram(prog)
       setCoachProgram(prog)
@@ -267,8 +273,8 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
         const bo = DIVISION_ORDER[b.division] ?? 99
         return sortAsc ? ao - bo : bo - ao
       }
-      const av = (a as any)[sortField] || ""
-      const bv = (b as any)[sortField] || ""
+      const av = (a[sortField as keyof Program] as string | undefined) || ""
+      const bv = (b[sortField as keyof Program] as string | undefined) || ""
       return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av)
     })
     return result
@@ -286,9 +292,11 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
   )
 
   const sortedCoachResults = useMemo(() => {
+    const getProg = (c: CoachWithProgram): Program | undefined =>
+      Array.isArray(c.programs) ? c.programs[0] : (c.programs ?? undefined)
     return [...coachResults].sort((a, b) => {
-      const progA = (a as any).programs as Program | undefined
-      const progB = (b as any).programs as Program | undefined
+      const progA = getProg(a)
+      const progB = getProg(b)
       switch (coachSortField) {
         case "last_name": {
           const cmp = (a.last_name || "").localeCompare(b.last_name || "")
@@ -491,7 +499,7 @@ export function CoachesClient({ programs }: { programs: Program[] }) {
                 </TableHeader>
                 <TableBody>
                   {sortedCoachResults.map((coach) => {
-                    const prog = (coach as any).programs as Program | undefined
+                    const prog = Array.isArray(coach.programs) ? coach.programs[0] : (coach.programs ?? undefined)
                     return (
                       <TableRow
                         key={coach.id}

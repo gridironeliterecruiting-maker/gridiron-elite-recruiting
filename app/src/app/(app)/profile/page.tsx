@@ -20,21 +20,30 @@ export default async function ProfilePage() {
     .eq("id", user?.id)
     .single()
 
+  type ProfileExtras = {
+    workspace_email?: string | null
+    jersey_number?: number | null
+    grad_year?: number | null
+    role?: string | null
+    title?: string | null
+  }
+  const profileExtras = profile as (typeof profile & ProfileExtras) | null
+
   // Compute recruiting email for athletes and coaches
-  let recruitingEmail: string | null = (profile as any)?.workspace_email || null
-  if (!recruitingEmail && !((profile as any)?.role === 'admin') && profile?.first_name && profile?.last_name) {
+  let recruitingEmail: string | null = profileExtras?.workspace_email ?? null
+  if (!recruitingEmail && profileExtras?.role !== 'admin' && profile?.first_name && profile?.last_name) {
     recruitingEmail = await computeProposedEmail(
       profile.first_name,
       profile.last_name,
-      (profile as any)?.jersey_number,
-      (profile as any)?.grad_year,
+      profileExtras?.jersey_number,
+      profileExtras?.grad_year,
     ).catch(() => null)
   }
   // Detect Google-only auth (no password identity)
   const isGoogleUser = !!(
     user?.identities &&
     user.identities.length > 0 &&
-    user.identities.every((i: any) => i.provider === 'google')
+    user.identities.every((i) => i.provider === 'google')
   )
 
   const { data: twitterToken } = await admin
@@ -47,8 +56,21 @@ export default async function ProfilePage() {
   const { isCoach, isLegacyCoach, playerIds: managedPlayerIds, programName: managedProgramName } = await getCoachContext(user!.id)
 
   // Coach-specific data
+  type PlayerProfileRow = {
+    first_name: string | null
+    last_name: string | null
+    position: string | null
+    grad_year: number | null
+    high_school: string | null
+    city: string | null
+    state: string | null
+    gpa: number | null
+    height: string | null
+    weight: number | null
+    hudl_url: string | null
+  }
   let coachProfile: { program_name: string; title: string | null } | null = null
-  let activePlayerProfile: any = null
+  let activePlayerProfile: PlayerProfileRow | null = null
   let activePlayerId: string | null = null
 
   if (isCoach && user) {
@@ -100,7 +122,7 @@ export default async function ProfilePage() {
             <CoachInfoCard
               firstName={profile?.first_name || ''}
               lastName={profile?.last_name || ''}
-              title={(profile as any)?.title || 'Head Coach'}
+              title={profileExtras?.title || 'Head Coach'}
               programName={coachProfile?.program_name || ''}
               loginEmail={user?.email || profile?.email || ''}
               recruitingEmail={recruitingEmail}

@@ -276,7 +276,7 @@ function DashboardTab({ twitterHandle, hasTwitterToken }: { twitterHandle: strin
   const fetchTwitterProfile = useCallback(async () => {
     setTwitterLoading(true)
     setTwitterLoadFailed(false)
-    let lastData: any = null
+    let lastData: { connected?: boolean; profile?: unknown } | null = null
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const res = await fetch('/api/twitter/profile')

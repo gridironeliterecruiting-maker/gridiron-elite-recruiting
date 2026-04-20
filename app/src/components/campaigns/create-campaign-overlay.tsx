@@ -24,6 +24,16 @@ interface Program {
   logo_url: string | null
 }
 
+interface CoachApiRow {
+  id: string
+  first_name: string
+  last_name: string
+  title?: string | null
+  email: string
+  twitter_handle?: string | null
+  twitter_dm_open?: boolean | null
+}
+
 const EMAIL_STEPS = [
   { number: 1, label: "Target" },
   { number: 2, label: "Template" },
@@ -116,8 +126,8 @@ export function CreateCampaignOverlay({ programs, playerPosition, hasGmailToken,
         try {
           const res = await fetch(`/api/programs/${quickEmailData.programId}/coaches`)
           if (res.ok) {
-            const coaches = await res.json()
-            const coach = coaches.find((c: any) => c.id === quickEmailData.coachId)
+            const coaches = await res.json() as CoachApiRow[]
+            const coach = coaches.find((c) => c.id === quickEmailData.coachId)
             if (coach) {
               setDraft({
                 goal: campaignGoal,
@@ -150,8 +160,8 @@ export function CreateCampaignOverlay({ programs, playerPosition, hasGmailToken,
         try {
           const res = await fetch(`/api/programs/${quickDmData.programId}/coaches`)
           if (res.ok) {
-            const coaches = await res.json()
-            const coach = coaches.find((c: any) => c.id === quickDmData.coachId)
+            const coaches = await res.json() as CoachApiRow[]
+            const coach = coaches.find((c) => c.id === quickDmData.coachId)
             if (coach) {
               setDraft({
                 goal: campaignGoal,
@@ -161,7 +171,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, hasGmailToken,
                   programName: programs.find(p => p.id === quickDmData.programId)?.school_name || '',
                   coachName: `${coach.first_name} ${coach.last_name}`,
                   title: coach.title || 'Coach',
-                  email: coach.email || null,
+                  email: coach.email || '',
                   twitterHandle: coach.twitter_handle || null,
                   twitterDmOpen: coach.twitter_dm_open || false,
                 }],

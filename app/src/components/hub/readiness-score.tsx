@@ -128,7 +128,7 @@ export function ReadinessScore({ twitterProfile, athleteProfile, defaultOpen, on
 
     const hasLinkInBio =
       bio.match(/hudl|highlight|film|youtube|youtu\.be|bit\.ly|linktr/i) !== null ||
-      (twitterProfile as any).url != null
+      (twitterProfile as { url?: string | null }).url != null
 
     const hasProfilePhoto = twitterProfile.profileImageUrl != null && !twitterProfile.profileImageUrl.includes("default_profile")
 

@@ -83,15 +83,35 @@ const goalLabels: Record<string, string> = {
   other: "Other",
 }
 
+type CoachRow = {
+  id: string
+  program_id: string
+  first_name: string
+  last_name: string
+  title: string
+  email: string
+  phone: string | null
+  twitter_handle: string | null
+  twitter_dm_open: boolean
+  [key: string]: unknown
+}
+
+type ProgramRow = {
+  id: string
+  school_name: string
+  division: string
+  conference: string
+}
+
 /** Look up a coach by ID or by name+program fallback */
 async function fetchCoachAndProgram(
   coachId: string | null,
   coachName: string,
   programName: string,
-): Promise<{ coach: any; program: any } | null> {
+): Promise<{ coach: CoachRow; program: ProgramRow } | null> {
   const supabase = createClient()
 
-  let coachData: any = null
+  let coachData: CoachRow | null = null
 
   if (coachId) {
     const { data } = await supabase
@@ -148,7 +168,7 @@ export function DmCampaignOverlay({ campaignId, onClose, embedded = false, onAll
   const [filter, setFilter] = useState<FilterTab>("all")
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [markingId, setMarkingId] = useState<string | null>(null)
-  const [selectedCoachData, setSelectedCoachData] = useState<{ coach: any; program: any } | null>(null)
+  const [selectedCoachData, setSelectedCoachData] = useState<{ coach: CoachRow; program: ProgramRow } | null>(null)
   const [loadingCoach, setLoadingCoach] = useState<string | null>(null)
 
   // Twitter API auto-send state
@@ -294,8 +314,9 @@ export function DmCampaignOverlay({ campaignId, onClose, embedded = false, onAll
         )
       )
       return true
-    } catch (error: any) {
-      setSendError(error.message || 'Failed to send DM')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to send DM'
+      setSendError(message)
       return false
     } finally {
       setSendingDmId(null)

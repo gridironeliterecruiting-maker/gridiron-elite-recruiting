@@ -53,7 +53,7 @@ export async function getCoachContext(userId: string): Promise<CoachContext> {
         .eq('role', 'player')
         .not('user_id', 'is', null)
         .order('created_at')
-      playerIds = (members || []).map((m: any) => m.user_id)
+      playerIds = (members || []).map((m) => m.user_id).filter((id): id is string => !!id)
     }
 
     const programName = [program.school_name, program.mascot].filter(Boolean).join(' ')
