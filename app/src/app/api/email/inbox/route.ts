@@ -16,7 +16,7 @@ function parseFrom(fromRaw: string): { name: string; email: string } {
   if (!fromRaw) return { name: '', email: '' }
 
   // Zoho sent folder entries have HTML-encoded angle brackets — decode first
-  let s = fromRaw
+  const s = fromRaw
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&')

@@ -65,7 +65,7 @@ export async function GET(
     const programNames = [...new Set((recipients || []).map(r => r.program_name).filter(Boolean))]
 
     // Fetch program data (id + logo_url) by school_name
-    let programDataMap: Record<string, { program_id: string; logo_url: string | null }> = {}
+    const programDataMap: Record<string, { program_id: string; logo_url: string | null }> = {}
     if (programNames.length > 0) {
       const { data: programRows } = await supabase
         .from('programs')

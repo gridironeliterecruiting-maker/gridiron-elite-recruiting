@@ -367,7 +367,7 @@ export async function GET(request: Request) {
 
           // Resolve merge tags
           const subject = resolveEmailMergeTags(emailTemplate.subject, mergeData)
-          let body = resolveEmailMergeTags(emailTemplate.body, mergeData)
+          const body = resolveEmailMergeTags(emailTemplate.body, mergeData)
 
           // ============================================================
           // SAFETY CHECK: Block send if any merge tags remain unresolved.

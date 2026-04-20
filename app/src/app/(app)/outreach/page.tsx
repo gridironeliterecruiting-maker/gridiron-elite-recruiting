@@ -115,7 +115,7 @@ export default async function OutreachPage({
 
   // Get recipient counts and email event stats per campaign
   const campaignIds = campaigns.map((c) => c.id)
-  let campaignStats: Record<string, { total: number; sent: number; opened: number; clicked: number; replied: number; error: number }> = {}
+  const campaignStats: Record<string, { total: number; sent: number; opened: number; clicked: number; replied: number; error: number }> = {}
 
   if (campaignIds.length > 0) {
     // Single source of truth for all campaign stats — see campaign_clean_stats view in DB.

@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     // Find team in standings — try current season first, fall back to previous
     let record: Record<string, string> = {}
     const allEntries = standingsData.children?.flatMap((c: any) => c.standings?.entries || []) || []
-    let teamStanding = allEntries.find((e: any) => e.team?.id === espnId)
+    const teamStanding = allEntries.find((e: any) => e.team?.id === espnId)
 
     if (teamStanding) {
       for (const s of teamStanding.stats || []) {
