@@ -100,11 +100,13 @@ async function handleNewMail(payload: any) {
         .limit(1)
         .maybeSingle()
 
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://runwayrecruit.com'
+      const inboxUrl = `${siteUrl.replace(/^https?:\/\//, '')}/email`
       let message: string
       if (coach && (coach.programs as any)?.school_name) {
-        message = `You received an email from ${coach.first_name} ${coach.last_name} at ${(coach.programs as any).school_name}. View it now: runwayrecruit.com/email`
+        message = `You received an email from ${coach.first_name} ${coach.last_name} at ${(coach.programs as any).school_name}. View it now: ${inboxUrl}`
       } else {
-        message = `You received a new recruiting email. View it now: runwayrecruit.com/email`
+        message = `You received a new recruiting email. View it now: ${inboxUrl}`
       }
 
       void sendSms(normalizedPhone, message).catch((err) => {
