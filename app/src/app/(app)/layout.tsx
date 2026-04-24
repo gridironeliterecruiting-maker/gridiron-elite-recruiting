@@ -212,7 +212,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         .order('created_at')
 
       if (playerMembers && playerMembers.length > 0) {
-        const userIds = playerMembers.map((m: any) => m.user_id)
+        const userIds = playerMembers.map((m) => m.user_id)
         const { data: playerProfiles } = await admin
           .from('profiles')
           .select('id, first_name, last_name, position, grad_year, high_school')
@@ -220,14 +220,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
         if (playerProfiles) {
           // Preserve the program_members ORDER BY created_at ordering
-          const profileMap = Object.fromEntries(playerProfiles.map((p: any) => [p.id, p]))
+          type PlayerRow = typeof playerProfiles[number]
+          const profileMap = Object.fromEntries(playerProfiles.map((p) => [p.id, p])) as Record<string, PlayerRow>
           players = userIds
-            .map(id => profileMap[id])
-            .filter(Boolean)
-            .map((p: any) => ({
+            .map((id): PlayerRow | undefined => (id ? profileMap[id] : undefined))
+            .filter((p): p is PlayerRow => !!p)
+            .map((p) => ({
               id: p.id,
-              first_name: p.first_name,
-              last_name: p.last_name,
+              first_name: p.first_name || '',
+              last_name: p.last_name || '',
               position: p.position,
               grad_year: p.grad_year,
               high_school: p.high_school,
@@ -242,10 +243,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         .eq('coach_id', user.id)
 
       if (coachPlayers) {
-        players = coachPlayers.map((cp: any) => ({
+        type CoachPlayerRow = {
+          profiles: {
+            id: string
+            first_name: string | null
+            last_name: string | null
+            position: string | null
+            grad_year: number | null
+            high_school: string | null
+          }
+        }
+        players = (coachPlayers as unknown as CoachPlayerRow[]).map((cp) => ({
           id: cp.profiles.id,
-          first_name: cp.profiles.first_name,
-          last_name: cp.profiles.last_name,
+          first_name: cp.profiles.first_name || '',
+          last_name: cp.profiles.last_name || '',
           position: cp.profiles.position,
           grad_year: cp.profiles.grad_year,
           high_school: cp.profiles.high_school,

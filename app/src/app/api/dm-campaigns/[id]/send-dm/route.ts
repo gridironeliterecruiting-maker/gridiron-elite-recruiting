@@ -196,10 +196,11 @@ export async function POST(
       dmConversationId: result.dm_conversation_id,
       dmEventId: result.dm_event_id,
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Send DM error:', error)
+    const message = error instanceof Error ? error.message : 'Failed to send DM'
     return NextResponse.json(
-      { error: error.message || 'Failed to send DM' },
+      { error: message },
       { status: 500 }
     )
   }

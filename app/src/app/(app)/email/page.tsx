@@ -16,7 +16,7 @@ export default async function EmailPage() {
     .eq('id', user.id)
     .single()
 
-  let recruitingEmail: string | null = (profile as any)?.workspace_email || null
+  let recruitingEmail: string | null = (profile?.workspace_email as string | null) ?? null
 
   // If no workspace email yet, auto-provision the Zoho mailbox now.
   // Never display a proposed/fake address — only show a real provisioned one.
@@ -25,8 +25,8 @@ export default async function EmailPage() {
       const proposedEmail = await computeProposedEmail(
         profile.first_name,
         profile.last_name,
-        (profile as any).jersey_number,
-        (profile as any).grad_year,
+        profile.jersey_number,
+        profile.grad_year,
       )
       const username = proposedEmail.split('@')[0]
       const accountKey = await provisionZohoAccount(username, profile.first_name, profile.last_name)

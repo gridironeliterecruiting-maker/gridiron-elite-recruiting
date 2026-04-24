@@ -8,11 +8,6 @@ import {
   Bold,
   Italic,
   Underline,
-  List,
-  Minus,
-  Plus,
-  Check,
-  Save,
   PenLine,
   CircleCheck,
   Circle,
@@ -20,10 +15,9 @@ import {
   Eye,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
-import type { CampaignGoal, EmailTemplate, SelectedCoach } from "../types"
+import type { EmailTemplate, SelectedCoach } from "../types"
 
 interface BuildStepProps {
-  goal: CampaignGoal
   templates: EmailTemplate[]
   recruitingEmail?: string | null
   selectedCoaches?: SelectedCoach[]
@@ -122,7 +116,7 @@ const COACH_MERGE_TAGS = [
   "Coach Email Address",
 ]
 
-export function BuildStep({ goal, templates, recruitingEmail, selectedCoaches, onTemplatesChange, onNext, onBack }: BuildStepProps) {
+export function BuildStep({ templates, recruitingEmail, selectedCoaches, onTemplatesChange, onNext, onBack }: BuildStepProps) {
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [availableTemplates, setAvailableTemplates] = useState<DatabaseTemplate[]>([])

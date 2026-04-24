@@ -19,11 +19,9 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { messageId: directId, gmailMessageId, toEmail, toName, replyBody } = body as {
+  const { messageId: directId, gmailMessageId, replyBody } = body as {
     messageId?: string
     gmailMessageId?: string
-    toEmail: string
-    toName?: string
     replyBody: string
   }
   const messageId = directId || gmailMessageId || ''
@@ -41,8 +39,8 @@ export async function POST(req: NextRequest) {
 
   if (!profile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
 
-  const accountKey = (profile as any).zoho_account_key as string | null
-  const workspaceEmail = (profile as any).workspace_email as string | null
+  const accountKey = profile.zoho_account_key as string | null
+  const workspaceEmail = profile.workspace_email as string | null
   if (!accountKey || !workspaceEmail) {
     return NextResponse.json({ error: 'No Zoho account configured' }, { status: 400 })
   }
@@ -77,8 +75,9 @@ export async function POST(req: NextRequest) {
 
     const data = await res.json()
     return NextResponse.json({ ok: true, messageId: data.data?.messageId || '' })
-  } catch (err: any) {
+  } catch (err) {
     console.error('[email/reply] Error:', err)
-    return NextResponse.json({ error: err.message || 'Send failed' }, { status: 500 })
+    const message = err instanceof Error ? err.message : 'Send failed'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

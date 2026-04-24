@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, Rocket, Mail, Users, AlertCircle, CheckCircle2, Calendar, Loader2 } from "lucide-react"
+import { Rocket, Mail, Users, AlertCircle, CheckCircle2, Calendar, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import type { CampaignGoal, EmailTemplate } from "../campaigns/types"
@@ -19,7 +19,6 @@ interface LaunchConfirmationOverlayProps {
   goal: CampaignGoal
   selectedCoaches: SelectedCoach[]
   templates: EmailTemplate[]
-  gmailEmail: string | null
   hasGmailToken: boolean
   gmailTokenExpired: boolean
   campaignName: string
@@ -46,7 +45,6 @@ export function LaunchConfirmationOverlay({
   goal,
   selectedCoaches,
   templates,
-  gmailEmail,
   hasGmailToken,
   gmailTokenExpired,
   campaignName,
@@ -62,13 +60,10 @@ export function LaunchConfirmationOverlay({
 }: LaunchConfirmationOverlayProps) {
   const [checkingGmail, setCheckingGmail] = useState(false)
   const [hasValidGmail, setHasValidGmail] = useState(hasGmailToken && !gmailTokenExpired)
-  const [refreshedEmail, setRefreshedEmail] = useState<string | null>(null)
+  const [, setRefreshedEmail] = useState<string | null>(null)
   const programCount = new Set(selectedCoaches.map((sc) => sc.programId)).size
   const goalLabel = GOAL_LABELS[goal]
   
-  // Use refreshed email if available, otherwise use prop
-  const currentGmailEmail = refreshedEmail || gmailEmail
-
   const handleLaunchClick = async () => {
     // ALWAYS try to refresh first if token exists
     if (hasGmailToken && gmailTokenExpired) {
@@ -192,7 +187,7 @@ export function LaunchConfirmationOverlay({
       const appRoutes = ['dashboard','coaches','pipeline','outreach','profile']
       const base = segs.length >= 2 && appRoutes.includes(segs[1]) ? `/${segs[0]}` : ''
       window.location.href = `/api/gmail/authorize?campaign=${data.campaignId}&returnTo=${encodeURIComponent(`${base}/outreach`)}`
-    } catch (error) {
+    } catch {
       setIsLaunching(false)
       alert('Failed to save campaign. Please try again.')
     }
@@ -295,7 +290,7 @@ export function LaunchConfirmationOverlay({
                 ) : (
                   <>
                     <Rocket className="h-4 w-4" />
-                    Let's Go 🚀
+                    Let&apos;s Go 🚀
                   </>
                 )}
               </Button>

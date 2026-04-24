@@ -16,7 +16,7 @@ function parseFrom(fromRaw: string): { name: string; email: string } {
   if (!fromRaw) return { name: '', email: '' }
 
   // Zoho sent folder entries have HTML-encoded angle brackets — decode first
-  let s = fromRaw
+  const s = fromRaw
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&')
@@ -51,6 +51,18 @@ function normalizeSubject(subject: string): string {
     .toLowerCase()
 }
 
+interface ZohoMessage {
+  messageId?: string | number
+  subject?: string
+  summary?: string
+  fromAddress?: string
+  toAddress?: string
+  sender?: string
+  receivedTime?: string
+  sentDateInGMT?: string
+  status?: string | number
+}
+
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -63,8 +75,8 @@ export async function GET() {
     .eq('id', user.id)
     .single()
 
-  const accountKey = (profile as any)?.zoho_account_key as string | null
-  const workspaceEmail = ((profile as any)?.workspace_email as string | null)?.toLowerCase() || ''
+  const accountKey = (profile?.zoho_account_key as string | null) ?? null
+  const workspaceEmail = ((profile?.workspace_email as string | null) ?? '').toLowerCase()
 
   if (!accountKey) {
     return NextResponse.json({ threads: [], archivedThreads: [], unreadCount: 0 })
@@ -89,12 +101,12 @@ export async function GET() {
 
     const inboxData = inboxRes.ok ? await inboxRes.json() : null
     const sentData = sentRes?.ok ? await sentRes.json() : null
-    const inboxMessages: any[] = inboxData?.data || []
-    const sentMessages: any[] = sentData?.data || []
+    const inboxMessages: ZohoMessage[] = inboxData?.data || []
+    const sentMessages: ZohoMessage[] = sentData?.data || []
 
     // 3. Group inbox messages into conversations by normalized subject + sender
     //    This is the exact logic from commit 16c8375 that worked perfectly.
-    const conversationMap = new Map<string, { inbox: any[]; sent: any[] }>()
+    const conversationMap = new Map<string, { inbox: ZohoMessage[]; sent: ZohoMessage[] }>()
 
     for (const msg of inboxMessages) {
       const normalizedSubject = normalizeSubject(msg.subject || '')
@@ -124,7 +136,7 @@ export async function GET() {
       const allMsgs = [...conv.inbox, ...conv.sent]
 
       // Sort all messages by time, latest first
-      allMsgs.sort((a: any, b: any) => {
+      allMsgs.sort((a, b) => {
         const aMs = parseInt(a.receivedTime || a.sentDateInGMT || '0', 10)
         const bMs = parseInt(b.receivedTime || b.sentDateInGMT || '0', 10)
         return bMs - aMs
@@ -132,16 +144,16 @@ export async function GET() {
       const latest = allMsgs[0]
 
       // Collect all message IDs for the thread detail fast path
-      const allMessageIds = allMsgs.map((m: any) => String(m.messageId || ''))
+      const allMessageIds = allMsgs.map((m) => String(m.messageId || ''))
 
       // Build per-message metadata (no body) — passed to client for thread detail rendering
       const allMessagesMeta = allMsgs
-        .sort((a: any, b: any) => {
+        .sort((a, b) => {
           const aMs = parseInt(a.receivedTime || a.sentDateInGMT || '0', 10)
           const bMs = parseInt(b.receivedTime || b.sentDateInGMT || '0', 10)
           return aMs - bMs // oldest first for conversation order
         })
-        .map((m: any) => {
+        .map((m) => {
           const fromRaw = m.fromAddress || m.sender || ''
           const { name: fromName, email: fromEmail } = parseFrom(fromRaw)
           const receivedMs = parseInt(m.receivedTime || m.sentDateInGMT || '0', 10)
@@ -159,7 +171,7 @@ export async function GET() {
         })
 
       // The "other party" is always the inbox sender (not us)
-      const latestInbox = conv.inbox.sort((a: any, b: any) => {
+      const latestInbox = conv.inbox.sort((a, b) => {
         const aMs = parseInt(a.receivedTime || '0', 10)
         const bMs = parseInt(b.receivedTime || '0', 10)
         return bMs - aMs
@@ -188,7 +200,7 @@ export async function GET() {
 
       const receivedMs = parseInt(latest.receivedTime || latest.sentDateInGMT || '0', 10)
       const latestAt = receivedMs ? new Date(receivedMs).toISOString() : new Date().toISOString()
-      const unreadMsgs = conv.inbox.filter((m: any) => String(m.status) === '0')
+      const unreadMsgs = conv.inbox.filter((m) => String(m.status) === '0')
 
       return {
         threadId: String(latestInbox?.messageId || latest.messageId || ''),
@@ -219,8 +231,14 @@ export async function GET() {
         .in('email', otherEmails)
 
       if (coachRows) {
+        type CoachRow = {
+          email?: string | null
+          first_name?: string | null
+          last_name?: string | null
+          programs?: { logo_url?: string | null; school_name?: string | null } | { logo_url?: string | null; school_name?: string | null }[] | null
+        }
         const coachMap = new Map<string, { logoUrl: string | null; schoolName: string | null; coachName: string | null }>()
-        for (const row of coachRows as any[]) {
+        for (const row of coachRows as CoachRow[]) {
           const prog = Array.isArray(row.programs) ? row.programs[0] : row.programs
           const coachName = [row.first_name, row.last_name].filter(Boolean).join(' ') || null
           coachMap.set(row.email?.toLowerCase() || '', {
@@ -323,8 +341,9 @@ export async function GET() {
 
     const unreadCount = inboxThreads.reduce((sum, t) => sum + t.unreadCount, 0)
     return NextResponse.json({ threads: inboxThreads, archivedThreads, unreadCount })
-  } catch (err: any) {
-    console.error('[inbox] unexpected error:', err?.message || err)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[inbox] unexpected error:', msg)
     return NextResponse.json({ threads: [], archivedThreads: [], unreadCount: 0 })
   }
 }

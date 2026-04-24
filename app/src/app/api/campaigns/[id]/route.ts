@@ -123,7 +123,7 @@ export async function PATCH(
     const body = await request.json()
     const { status, name } = body
 
-    const update: Record<string, any> = { updated_at: new Date().toISOString() }
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() }
 
     if (name !== undefined) {
       if (typeof name !== 'string' || name.trim().length === 0) {

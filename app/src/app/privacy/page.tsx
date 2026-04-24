@@ -10,7 +10,7 @@ export default function PrivacyPage() {
         <p className="text-sm text-gray-500 mb-8">Effective Date: March 1, 2026 &nbsp;|&nbsp; Last Updated: March 1, 2026</p>
 
         <p className="text-gray-700 mb-6">
-          Runway Sports Technologies ("we," "us," or "our") operates Runway Recruit, accessible at{" "}
+          Runway Sports Technologies (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) operates Runway Recruit, accessible at{" "}
           <strong>runwayrecruit.com</strong>. This Privacy Policy explains how we collect, use, disclose, and
           protect your information when you use our platform. By using our service, you agree to the practices described
           in this policy.
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
           </p>
           <h3 className="font-semibold text-gray-800 mb-2">c. Gmail Access</h3>
           <p className="text-gray-700 mb-4">
-            With your explicit authorization, we access your Gmail account using Google's OAuth 2.0 to send recruiting
+            With your explicit authorization, we access your Gmail account using Google&apos;s OAuth 2.0 to send recruiting
             emails on your behalf (<code className="text-sm bg-gray-100 px-1 rounded">gmail.send</code>) and to detect
             replies from college coaches (
             <code className="text-sm bg-gray-100 px-1 rounded">gmail.readonly</code>). We do not read, store, or
@@ -101,7 +101,7 @@ export default function PrivacyPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-3">5. Children's Privacy</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">5. Children&apos;s Privacy</h2>
           <p className="text-gray-700">
             Our service is available to users aged 13 and older. We do not knowingly collect personal information from
             children under 13. If we become aware that a child under 13 has provided us with personal information, we

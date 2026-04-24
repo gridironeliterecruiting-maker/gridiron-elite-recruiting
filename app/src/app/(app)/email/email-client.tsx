@@ -520,7 +520,6 @@ function InboxView({ onUnreadCountChange, onArchivedThreadsUpdate, isActive, ref
   const [loading, setLoading] = useState(true)
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null)
   const isFirstLoad = useRef(true)
-  const prevLatestIdRef = useRef<string | null>(null)
   const listScrollRef = useRef<HTMLDivElement>(null)
   const savedScrollTop = useRef(0)
 

@@ -3,7 +3,6 @@
 import React, { useState, useCallback } from "react"
 
 import { createClient } from "@/lib/supabase/client"
-import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {

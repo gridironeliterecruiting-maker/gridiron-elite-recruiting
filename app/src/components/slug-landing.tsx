@@ -28,7 +28,6 @@ export function SlugLanding({
   logoAlt,
   programName,
   primaryColor,
-  accentColor,
   slug,
   backgroundImage = '/locker-room-bg.png',
 }: SlugLandingProps) {

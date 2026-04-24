@@ -167,7 +167,7 @@ export default async function HubPage() {
       .eq("status", "active")
 
     if (activeEntries && activeEntries.length > 0) {
-      const programIds = activeEntries.map((e: any) => e.program_id)
+      const programIds = activeEntries.map((e) => e.program_id)
       const { data: teamTwitter } = await supabase
         .from("coaches")
         .select("program_id, twitter_handle")
@@ -180,21 +180,28 @@ export default async function HubPage() {
         for (const t of teamTwitter) {
           if (t.twitter_handle) handleMap[t.program_id] = t.twitter_handle
         }
-        pipelinePrograms = (activeEntries as any[])
+        type PipelineEntryRow = {
+          program_id: string
+          programs?: { school_name?: string; logo_url?: string | null } | { school_name?: string; logo_url?: string | null }[] | null
+        }
+        pipelinePrograms = (activeEntries as PipelineEntryRow[])
           .filter(e => handleMap[e.program_id])
-          .map(e => ({
-            programId: e.program_id,
-            schoolName: e.programs?.school_name || "",
-            logoUrl: e.programs?.logo_url || null,
-            twitterHandle: handleMap[e.program_id],
-          }))
+          .map(e => {
+            const prog = Array.isArray(e.programs) ? e.programs[0] : e.programs
+            return {
+              programId: e.program_id,
+              schoolName: prog?.school_name || "",
+              logoUrl: prog?.logo_url || null,
+              twitterHandle: handleMap[e.program_id],
+            }
+          })
           .sort((a, b) => a.schoolName.localeCompare(b.schoolName))
       }
     }
   }
 
   // Compute recruiting email: use workspace_email if set, else propose one
-  let workspaceEmail: string | null = userProfile?.workspace_email || null
+  const workspaceEmail: string | null = userProfile?.workspace_email || null
   let proposedEmail: string | null = null
   if (!workspaceEmail && userProfile?.first_name && userProfile?.last_name) {
     proposedEmail = await computeProposedEmail(

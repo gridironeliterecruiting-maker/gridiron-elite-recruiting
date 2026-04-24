@@ -28,14 +28,26 @@ export async function POST(req: NextRequest) {
 
     // Always return 200 so Zoho doesn't retry
     return NextResponse.json({ ok: true })
-  } catch (err: any) {
-    console.error('[email/webhook] Error processing webhook:', err?.message || err)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[email/webhook] Error processing webhook:', msg)
     // Still return 200 to prevent Zoho from retrying on our errors
     return NextResponse.json({ ok: true })
   }
 }
 
-async function handleNewMail(payload: any) {
+interface ZohoNewMailPayload {
+  account_key?: string
+  thread_id?: string
+  from_address?: string
+  to_address?: string
+  subject?: string
+  summary?: string
+  message_id?: string
+  received_time?: string
+}
+
+async function handleNewMail(payload: ZohoNewMailPayload) {
   const accountKey = payload.account_key || ''
   const threadId = payload.thread_id || ''
   const fromAddress = payload.from_address || ''
@@ -100,11 +112,14 @@ async function handleNewMail(payload: any) {
         .limit(1)
         .maybeSingle()
 
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://runwayrecruit.com'
+      const inboxUrl = `${siteUrl.replace(/^https?:\/\//, '')}/email`
       let message: string
-      if (coach && (coach.programs as any)?.school_name) {
-        message = `You received an email from ${coach.first_name} ${coach.last_name} at ${(coach.programs as any).school_name}. View it now: runwayrecruit.com/email`
+      const programRow = coach?.programs as { school_name?: string } | null | undefined
+      if (coach && programRow?.school_name) {
+        message = `You received an email from ${coach.first_name} ${coach.last_name} at ${programRow.school_name}. View it now: ${inboxUrl}`
       } else {
-        message = `You received a new recruiting email. View it now: runwayrecruit.com/email`
+        message = `You received a new recruiting email. View it now: ${inboxUrl}`
       }
 
       void sendSms(normalizedPhone, message).catch((err) => {

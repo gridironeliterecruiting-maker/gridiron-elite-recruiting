@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Mail, MailOpen, Users, Play, Pause, Rocket, AlertCircle, MessageCircle, MousePointerClick, Send, Trash2 } from "lucide-react"
+import { Mail, MailOpen, Users, Rocket, AlertCircle, MessageCircle, MousePointerClick, Send, Trash2 } from "lucide-react"
 import { useState } from "react"
 
 interface CampaignCardProps {
@@ -22,7 +22,6 @@ interface CampaignCardProps {
     }
   }
   onClick: () => void
-  onStatusChange?: () => void
   onDelete?: () => void
 }
 
@@ -34,7 +33,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   cancelled: { label: "Cancelled", className: "bg-red-100 text-red-700" },
 }
 
-export function CampaignCard({ campaign, onClick, onStatusChange, onDelete }: CampaignCardProps) {
+export function CampaignCard({ campaign, onClick, onDelete }: CampaignCardProps) {
   const [isLaunching, setIsLaunching] = useState(false)
   const [launchError, setLaunchError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -82,7 +81,7 @@ export function CampaignCard({ campaign, onClick, onStatusChange, onDelete }: Ca
       }
 
       window.location.reload()
-    } catch (err) {
+    } catch {
       setLaunchError('Failed to launch campaign')
     } finally {
       setIsLaunching(false)

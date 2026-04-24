@@ -25,8 +25,6 @@ export function LoginUI({
   registerMode = false,
 }: LoginUIProps) {
   const color = primaryColor || '#0047AB'
-  const supabase = createClient()
-  const router = useRouter()
 
   // ─── Main site: username + password ──────────────────────────────────────
   if (!slug) {

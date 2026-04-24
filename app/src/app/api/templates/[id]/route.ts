@@ -30,7 +30,7 @@ export async function PUT(
     }
 
     // Build update object
-    const updates: any = { updated_at: new Date().toISOString() }
+    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
     if (name) updates.name = name
     if (subject) updates.subject = subject
     if (templateBody) updates.body = templateBody
