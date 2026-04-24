@@ -209,7 +209,7 @@ export async function GET(
     .eq('id', user.id)
     .single()
 
-  const accountKey = (profile as any)?.zoho_account_key as string | null
+  const accountKey = (profile?.zoho_account_key as string | null) ?? null
   if (!accountKey) return NextResponse.json({ bodies: {} })
 
   try {
@@ -233,8 +233,9 @@ export async function GET(
     )
 
     return NextResponse.json({ bodies })
-  } catch (err: any) {
-    console.error('[thread] unexpected error:', err?.message || err)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[thread] unexpected error:', msg)
     return NextResponse.json({ bodies: {} })
   }
 }

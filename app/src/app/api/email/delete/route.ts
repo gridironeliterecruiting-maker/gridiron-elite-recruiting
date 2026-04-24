@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     .eq('id', user.id)
     .single()
 
-  const accountKey = (profile as any)?.zoho_account_key as string | null
+  const accountKey = profile?.zoho_account_key as string | null
   if (!accountKey) return NextResponse.json({ error: 'No Zoho account configured' }, { status: 400 })
 
   try {
@@ -36,8 +36,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to delete email' }, { status: 500 })
     }
     return NextResponse.json({ ok: true })
-  } catch (err: any) {
+  } catch (err) {
     console.error('[email/delete] Error:', err)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    const message = err instanceof Error ? err.message : 'Delete failed'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

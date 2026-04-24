@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ found: true, profile })
-  } catch (error: any) {
+  } catch (error) {
     console.error('[lookup-profile]', error)
     return NextResponse.json({ found: false })
   }

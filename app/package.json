@@ -6,7 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:start": "cd .. && npx supabase start",
+    "db:stop": "cd .. && npx supabase stop",
+    "db:reset": "cd .. && npx supabase db reset",
+    "db:types": "cd .. && npx supabase gen types typescript --local > app/src/lib/database.types.ts",
+    "typecheck": "tsc --noEmit",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:headed": "playwright test --headed",
+    "qa": "npm run typecheck && npm run lint && npm run e2e"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -67,6 +76,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -74,6 +84,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "pg": "^8.20.0",
+    "playwright": "^1.59.1",
+    "supabase": "^2.92.1",
     "tailwindcss": "^3.4.19",
     "typescript": "5.9.3",
     "xlsx": "^0.18.5"

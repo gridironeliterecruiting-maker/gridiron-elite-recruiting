@@ -3,7 +3,7 @@
 import { useState, useRef } from "react"
 import { Loader2, ChevronRight, MessageCircle, Eye, EyeOff } from "lucide-react"
 import { Card } from "@/components/ui/card"
-import type { CampaignGoal, SelectedCoach } from "../types"
+import type { SelectedCoach } from "../types"
 import { resolveMergeTags } from "@/lib/merge-tags"
 
 const DM_MERGE_TAGS = [
@@ -21,7 +21,6 @@ const DEFAULT_DM_TEMPLATE =
   "Hi Coach ((Coach Last Name)), I'm ((Player First Name)) ((Player Last Name)). I'm a ((Player Grad Year)) ((Player Position)). Are you still recruiting ((Player Grad Year)) ((Player Position))? Here is my video. ((Player Film Link)) - ((Player First Name))"
 
 interface DmComposeStepProps {
-  goal: CampaignGoal
   selectedCoaches: SelectedCoach[]
   onCreateDmCampaign: (name: string, messageBody: string) => Promise<void>
   onBack: () => void
@@ -29,7 +28,6 @@ interface DmComposeStepProps {
 }
 
 export function DmComposeStep({
-  goal,
   selectedCoaches,
   onCreateDmCampaign,
   onBack,

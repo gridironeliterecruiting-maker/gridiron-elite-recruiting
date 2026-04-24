@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react"
 import { Suspense } from "react"
 import { X, Mail } from "lucide-react"
 import { GmailTokenCaptureWrapper } from "@/components/gmail-token-capture-wrapper"
-import { RecruitingEmailBadge } from "@/components/recruiting-email-badge"
 import { HubHeader } from "@/components/hub/hub-header"
 import { TwitterProfileCard } from "@/components/hub/twitter-profile-card"
 import { ReadinessScore } from "@/components/hub/readiness-score"
@@ -121,7 +120,7 @@ export function HubClient({
   const fetchTwitterProfile = useCallback(async () => {
     setTwitterLoading(true)
     setTwitterLoadFailed(false)
-    let lastData: any = null
+    let lastData: { connected?: boolean; profile?: unknown } | null = null
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const res = await fetch("/api/twitter/profile")

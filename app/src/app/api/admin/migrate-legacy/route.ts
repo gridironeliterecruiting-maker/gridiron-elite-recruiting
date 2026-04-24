@@ -95,7 +95,9 @@ export async function POST() {
 
     if (players) {
       for (const p of players) {
-        const playerEmail = (p.profiles as any)?.email
+        const profiles = p.profiles as { email?: string } | { email?: string }[] | null
+        const profile = Array.isArray(profiles) ? profiles[0] : profiles
+        const playerEmail = profile?.email
         if (playerEmail) {
           await admin.from('program_members').insert({
             program_id: newProgram.id,

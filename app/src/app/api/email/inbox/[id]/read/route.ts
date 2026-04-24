@@ -22,7 +22,7 @@ export async function PATCH(
     .eq('id', user.id)
     .single()
 
-  const accountKey = (profile as any)?.zoho_account_key as string | null
+  const accountKey = profile?.zoho_account_key as string | null
   if (!accountKey) return NextResponse.json({ ok: true })
 
   try {
@@ -40,7 +40,7 @@ export async function PATCH(
       }
     )
     return NextResponse.json({ ok: true })
-  } catch (err: any) {
+  } catch (err) {
     console.error('[email/read] Error:', err)
     return NextResponse.json({ ok: true })
   }

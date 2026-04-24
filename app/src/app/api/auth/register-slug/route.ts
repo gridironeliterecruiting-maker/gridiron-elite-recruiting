@@ -95,8 +95,9 @@ export async function POST(request: Request) {
         zohoAccountKey = await provisionZohoAccount(candidate, firstName, lastName)
         resolvedUsername = candidate
         break
-      } catch (zohoErr: any) {
-        const alreadyAdded = zohoErr?.message?.includes('already added') || zohoErr?.message?.includes('1000')
+      } catch (zohoErr) {
+        const zohoMsg = zohoErr instanceof Error ? zohoErr.message : ''
+        const alreadyAdded = zohoMsg.includes('already added') || zohoMsg.includes('1000')
         if (alreadyAdded) continue // taken in Zoho (e.g. orphaned from prior attempt), try next
         throw zohoErr // real Zoho error — bubble up
       }
@@ -199,8 +200,9 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true, workspaceEmail, username: resolvedUsername, role })
-  } catch (error: any) {
+  } catch (error) {
     console.error('[register-slug] Unexpected error:', error)
-    return NextResponse.json({ error: error?.message || 'Internal server error' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Internal server error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

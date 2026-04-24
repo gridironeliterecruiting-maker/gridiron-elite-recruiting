@@ -125,7 +125,7 @@ export function resolveEmailMergeTags(
   data: Record<string, string>
 ): string {
   // First handle "Coach ((Last Name))" special case - case insensitive
-  let result = template.replace(/Coach\s+\(\(Last[_ ]?Name\)\)/gi, (_match) => {
+  let result = template.replace(/Coach\s+\(\(Last[_ ]?Name\)\)/gi, () => {
     return 'Coach ' + (data['Coach_Last_Name'] || data['coach_last_name'] || data['Last_Name'] || data['last_name'] || '')
   })
   

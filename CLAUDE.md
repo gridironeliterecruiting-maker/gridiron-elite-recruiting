@@ -4,6 +4,41 @@
 
 ---
 
+## Self-QA Checklist — HARD RULE
+
+**NO feature is flagged "ready for review" without this entire checklist going green.** If a step can't be run (e.g. missing tooling, port in use), surface it to the user and pause — do not claim readiness.
+
+Run from `app/`:
+
+1. `npm run typecheck` — zero TS errors.
+2. `npm run lint` — zero ESLint errors (warnings ok unless the PR touches the file).
+3. `npm run build` — build must complete cleanly.
+4. `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:54321/rest/v1/` returns `401` — local Supabase is alive (if not, `npm run db:start`).
+5. `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000` returns `200` — dev server is alive (if not, `npm run dev` in a second terminal).
+6. **Targeted spec** — `npx playwright test e2e/<feature>.spec.ts` for any feature this change touches. Write the spec if one doesn't exist.
+7. **Smoke spec** — `npx playwright test e2e/smoke.spec.ts` — catches regressions in login/home/dashboard.
+8. Read Playwright's HTML report (`app/playwright-report/index.html`) for any failed test. Attach or summarize screenshots when reporting back.
+
+Green = safe to report ready. Red = iterate, do not hand back.
+
+**Do NOT skip this by running only the piece you just wrote.** The smoke suite is mandatory because it's the only tripwire for regressions in areas you didn't intentionally touch.
+
+---
+
+## Local Dev Quickstart (first-time setup)
+
+1. Install Docker Desktop + start it.
+2. From repo root: `cd app && npm install`.
+3. `npm run db:start` — boots local Supabase (~45s first time).
+4. `npm run dev` — boots Next.js on port 3000.
+5. Log in with `admin@example.test` / `password123` (see `supabase/seed.sql` for full seed creds).
+
+If anything in the migrations or seed changes, run `npm run db:reset` to rebuild the local DB from scratch. Run `npm run db:types` after schema changes to refresh `src/lib/database.types.ts`.
+
+**Prod schema is the source of truth** — migration `001_baseline_schema.sql` is a pg_dump of prod taken 2026-04-19. Future schema changes go in `002_*.sql` onwards. Never edit `001_baseline_schema.sql` directly. Never `supabase link` to the prod project from this machine.
+
+---
+
 ## User Preferences
 - Do NOT make arbitrary decisions. Ask on limits, thresholds, and behavior.
 - Do NOT overengineer. Keep solutions simple.

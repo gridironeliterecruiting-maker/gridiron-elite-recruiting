@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { ChevronDown, Users2, Plus, X, ExternalLink, AtSign } from "lucide-react"
 

@@ -72,7 +72,7 @@ export default function NavBar({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
-  const { activePlayer, isCoach } = useActivePlayer()
+  const { isCoach } = useActivePlayer()
 
   const routes = isCoach ? coachRoutes : athleteRoutes
 

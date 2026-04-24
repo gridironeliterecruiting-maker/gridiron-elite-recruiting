@@ -49,13 +49,12 @@ export async function POST(request: NextRequest) {
     })
 
     // Generate unique file path
-    const ext = file.name.split(".").pop() || "bin"
     const timestamp = Date.now()
     const filePath = `${user.id}/${timestamp}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`
 
     // Upload to Supabase Storage
     const arrayBuffer = await file.arrayBuffer()
-    const { data: uploadData, error: uploadError } = await admin.storage
+    const { error: uploadError } = await admin.storage
       .from("athlete-documents")
       .upload(filePath, arrayBuffer, {
         contentType: file.type,

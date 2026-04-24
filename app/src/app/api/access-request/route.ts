@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendGmailEmail, refreshGmailToken } from '@/lib/gmail'
+import { sendGmailEmail } from '@/lib/gmail'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {

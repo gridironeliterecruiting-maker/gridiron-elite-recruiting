@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   const isGoogleOnly =
     authUser.identities != null &&
     authUser.identities.length > 0 &&
-    authUser.identities.every((i: any) => i.provider === 'google')
+    authUser.identities.every((i) => i.provider === 'google')
 
   if (isGoogleOnly) {
     return NextResponse.json({ googleUser: true })

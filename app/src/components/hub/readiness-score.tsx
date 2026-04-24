@@ -83,7 +83,6 @@ export function ReadinessScore({ twitterProfile, athleteProfile, defaultOpen, on
     const bio = twitterProfile.description || ""
     const name = twitterProfile.name || ""
     const handle = twitterProfile.username || ""
-    const fullName = `${athleteProfile.first_name || ""} ${athleteProfile.last_name || ""}`.trim().toLowerCase()
     const firstName = (athleteProfile.first_name || "").toLowerCase()
     const lastName = (athleteProfile.last_name || "").toLowerCase()
 
@@ -129,7 +128,7 @@ export function ReadinessScore({ twitterProfile, athleteProfile, defaultOpen, on
 
     const hasLinkInBio =
       bio.match(/hudl|highlight|film|youtube|youtu\.be|bit\.ly|linktr/i) !== null ||
-      (twitterProfile as any).url != null
+      (twitterProfile as { url?: string | null }).url != null
 
     const hasProfilePhoto = twitterProfile.profileImageUrl != null && !twitterProfile.profileImageUrl.includes("default_profile")
 

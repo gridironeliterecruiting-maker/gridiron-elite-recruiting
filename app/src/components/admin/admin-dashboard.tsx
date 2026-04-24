@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Plus, X, Trash2, Upload, Users, Globe, Palette, Copy, Check, Tag, LayoutDashboard, TrendingUp, TrendingDown, Building2, UserCheck, Send, Target, Instagram, Youtube, Link2, MessageCircle, ChevronDown, LogOut } from 'lucide-react'
+import { Plus, X, Trash2, Upload, Users, Globe, Palette, Copy, Check, Tag, LayoutDashboard, Building2, UserCheck, Send, Target, Instagram, Youtube, ChevronDown, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -276,7 +276,7 @@ function DashboardTab({ twitterHandle, hasTwitterToken }: { twitterHandle: strin
   const fetchTwitterProfile = useCallback(async () => {
     setTwitterLoading(true)
     setTwitterLoadFailed(false)
-    let lastData: any = null
+    let lastData: { connected?: boolean; profile?: unknown } | null = null
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const res = await fetch('/api/twitter/profile')

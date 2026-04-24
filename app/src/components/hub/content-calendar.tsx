@@ -243,8 +243,6 @@ export function ContentCalendar({ profile }: ContentCalendarProps) {
   // Track texts confirmed as posted this session
   const [postedTexts, setPostedTexts] = useState<Set<string>>(new Set())
 
-  const category = CATEGORIES.find((c) => c.id === selectedCategory)!
-
   const shuffled = useMemo(() => {
     const posts = POSTS[selectedCategory] ?? []
     const seed = selectedCategory.split("").reduce((a, c) => a + c.charCodeAt(0), 0)

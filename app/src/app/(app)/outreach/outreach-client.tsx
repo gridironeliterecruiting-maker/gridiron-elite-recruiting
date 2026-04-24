@@ -1,22 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
-  Mail,
   Send,
   Inbox,
   Plus,
-  CheckCircle2,
-  AlertCircle,
-  Play,
-  Pause,
-  Users,
   MailOpen,
-  XCircle,
   Loader2,
   MessageCircle,
   Rocket,
@@ -30,14 +23,6 @@ import { CampaignCard } from "@/components/campaigns/campaign-card"
 import type { SelectedCoach, CampaignGoal } from "@/components/campaigns/types"
 import { IncompleteProfileBanner } from "@/components/incomplete-profile-banner"
 import { IncompleteProfileOverlay } from "@/components/incomplete-profile-overlay"
-
-interface EmailTemplate {
-  id: string
-  name: string
-  subject: string
-  category: string
-  body?: string
-}
 
 interface Program {
   id: string
@@ -67,79 +52,34 @@ interface Campaign {
   stats: CampaignStats
 }
 
-const categoryColors: Record<string, string> = {
-  introduction: "bg-primary/10 text-primary",
-  "follow-up": "bg-amber-100 text-amber-700",
-  camp: "bg-emerald-100 text-emerald-700",
-  film: "bg-blue-100 text-blue-700",
-  "thank-you": "bg-purple-100 text-purple-700",
-}
-
-const categoryLabels: Record<string, string> = {
-  introduction: "Intro",
-  "follow-up": "Follow-Up",
-  camp: "Camp",
-  film: "Film",
-  "thank-you": "Thank You",
-}
-
-const statusColors: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-700",
-  active: "bg-emerald-100 text-emerald-700",
-  paused: "bg-amber-100 text-amber-700",
-  completed: "bg-blue-100 text-blue-700",
-  cancelled: "bg-red-100 text-red-700",
-}
-
-const goalLabels: Record<string, string> = {
-  get_response: "Get Response",
-  evaluate_film: "Film Evaluation",
-  build_interest: "Build Interest",
-  secure_visit: "Secure Visit",
-  other: "Other",
-}
-
 interface OutreachClientProps {
-  templates: EmailTemplate[]
   programs: Program[]
   playerPosition: string
-  gmailEmail: string | null
   hasGmailToken: boolean
   gmailTokenExpired: boolean
-  twitterHandle: string | null
-  hasTwitterToken: boolean
   campaigns: Campaign[]
   activePlayerId?: string | null
   resumeCampaignId?: string
   resumeStep?: string
   gmailStatus?: string
-  twitterStatus?: string
-  hasWorkspaceEmail?: boolean
   proposedEmail?: string | null
   missingProfileFields?: string[]
 }
 
 export function OutreachClient({
-  templates,
   programs,
   playerPosition,
-  gmailEmail,
   hasGmailToken,
   gmailTokenExpired,
-  twitterHandle,
-  hasTwitterToken,
   campaigns,
   activePlayerId,
   resumeCampaignId,
   resumeStep,
   gmailStatus,
-  twitterStatus,
-  hasWorkspaceEmail = true,
   proposedEmail,
   missingProfileFields = [],
 }: OutreachClientProps) {
   const searchParams = useSearchParams()
-  const router = useRouter()
   const [showCreateCampaign, setShowCreateCampaign] = useState<'email' | 'dm' | null>(null)
   const [quickEmailData, setQuickEmailData] = useState<{
     goal: string | null
@@ -151,7 +91,6 @@ export function OutreachClient({
     coachId: string | null
     programId: string | null
   } | null>(null)
-  const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null)
   const [resumingCampaign, setResumingCampaign] = useState(false)
   const [launchedCampaign, setLaunchedCampaign] = useState<{
     name: string
@@ -315,24 +254,6 @@ export function OutreachClient({
     }
   }, [searchParams])
 
-  const handleToggleCampaign = async (campaignId: string, newStatus: string) => {
-    setTogglingCampaign(campaignId)
-    try {
-      const res = await fetch(`/api/campaigns/${campaignId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      })
-      if (res.ok) {
-        window.location.reload()
-      }
-    } catch (err) {
-      console.error("Failed to toggle campaign:", err)
-    } finally {
-      setTogglingCampaign(null)
-    }
-  }
-
   // Aggregate stats
   const emailCampaigns = campaigns.filter(c => c.type !== 'dm')
   const dmCampaigns = campaigns.filter(c => c.type === 'dm')
@@ -376,7 +297,6 @@ export function OutreachClient({
         <CreateCampaignOverlay
           programs={programs}
           playerPosition={playerPosition}
-          gmailEmail={gmailEmail}
           hasGmailToken={hasGmailToken}
           gmailTokenExpired={gmailTokenExpired}
           quickEmailData={quickEmailData}
@@ -476,7 +396,6 @@ export function OutreachClient({
                       setSelectedCampaignId(campaign.id)
                     }
                   }}
-                  onStatusChange={() => window.location.reload()}
                   onDelete={() => window.location.reload()}
                 />
               ))}

@@ -52,7 +52,7 @@ export async function GET(request: Request) {
       programName: [program.school_name, program.mascot].filter(Boolean).join(' '),
       spotsLeft: max - used,
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('[validate-invite]', error)
     return NextResponse.json({ valid: false, error: 'Internal server error' }, { status: 500 })
   }

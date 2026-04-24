@@ -10,8 +10,8 @@ export default function TermsPage() {
         <p className="text-sm text-gray-500 mb-8">Effective Date: March 1, 2026 &nbsp;|&nbsp; Last Updated: April 8, 2026</p>
 
         <p className="text-gray-700 mb-6">
-          These Terms of Service ("Terms") govern your access to and use of Runway Recruit, operated by{" "}
-          <strong>Runway Sports Technologies</strong> ("we," "us," or "our"), accessible at{" "}
+          These Terms of Service (&quot;Terms&quot;) govern your access to and use of Runway Recruit, operated by{" "}
+          <strong>Runway Sports Technologies</strong> (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), accessible at{" "}
           <strong>runwayrecruit.com</strong>. By accessing or using our platform, you agree to be bound by
           these Terms. If you do not agree, do not use the service.
         </p>
@@ -74,7 +74,7 @@ export default function TermsPage() {
           </ul>
           <p className="text-gray-700 mt-3">
             You are solely responsible for the content of messages sent through the platform. You agree not to use
-            these features to send spam, harassing messages, or content that violates Google's or Twitter/X's terms of
+            these features to send spam, harassing messages, or content that violates Google&apos;s or Twitter/X&apos;s terms of
             service. You may revoke access at any time through your Google or Twitter/X account settings.
           </p>
         </section>
@@ -149,7 +149,7 @@ export default function TermsPage() {
         <section className="mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-3">9. Disclaimers</h2>
           <p className="text-gray-700">
-            The platform is provided "as is" and "as available" without warranties of any kind, express or implied. We
+            The platform is provided &quot;as is&quot; and &quot;as available&quot; without warranties of any kind, express or implied. We
             do not guarantee that the service will be uninterrupted, error-free, or that any particular recruiting
             outcome will be achieved. Coach contact information is provided for informational purposes and may not be
             current or accurate. We are not affiliated with any college, university, or athletic program.
