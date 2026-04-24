@@ -147,11 +147,27 @@ export function BuildStep({ templates, recruitingEmail, selectedCoaches, onTempl
     delayDays: null,
   }
 
-  // Full display list: defaults + user saved + custom
+  // User-saved templates override any default with the same name — each user
+  // owns their own version. A user override keeps the default's list slot so
+  // the position doesn't jump after Save Changes. Truly-new user templates
+  // (named differently from any default, i.e. from Save As) append to the end.
+  const userTemplatesByNameLower = new Map<string, EmailTemplate>()
+  for (const t of userTemplates) userTemplatesByNameLower.set(t.name.toLowerCase(), t)
+  const defaultNamesLower = new Set(defaultTemplates.map(t => t.name.toLowerCase()))
+
+  const anchoredTemplates: EmailTemplate[] = defaultTemplates.map(
+    d => userTemplatesByNameLower.get(d.name.toLowerCase()) ?? d
+  )
+  const extraUserTemplates: EmailTemplate[] = userTemplates.filter(
+    t => !defaultNamesLower.has(t.name.toLowerCase())
+  )
+
+  // Full display list: default slots (user-overridden in-place where applicable)
+  //   + extra user templates (from Save As under a new name) + custom
   // Coaches get only the one recommended template + custom (no saved templates)
   const displayTemplates = audience === 'coach'
     ? [...defaultTemplates, customTemplate]
-    : [...defaultTemplates, ...userTemplates, customTemplate]
+    : [...anchoredTemplates, ...extraUserTemplates, customTemplate]
 
   // Load templates from database — also captures audience so we show the right defaults
   useEffect(() => {
@@ -172,17 +188,18 @@ export function BuildStep({ templates, recruitingEmail, selectedCoaches, onTempl
     loadTemplates()
   }, [])
 
-  // If the parent already has a template selected (e.g. going back from step 4),
-  // find it in the display list and restore the selection
+  // Keep selectedIndex in sync with the campaign's selected template name
+  // whenever the list composition changes — e.g., after Save Changes promotes
+  // a default template into the user section (different position), or on
+  // initial load when returning from a later step.
   useEffect(() => {
-    if (templates.length > 0 && selectedIndex === null) {
-      const existingName = templates[0].name
-      const idx = displayTemplates.findIndex(t => t.name === existingName)
-      if (idx >= 0) {
-        setSelectedIndex(idx)
-      }
+    if (templates.length === 0) return
+    const existingName = templates[0].name
+    const idx = displayTemplates.findIndex(t => t.name.toLowerCase() === existingName.toLowerCase())
+    if (idx >= 0 && idx !== selectedIndex) {
+      setSelectedIndex(idx)
     }
-  }, [templates, displayTemplates.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [templates, availableTemplates, audience]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelect = (index: number) => {
     setSelectedIndex(index)
@@ -206,6 +223,40 @@ export function BuildStep({ templates, recruitingEmail, selectedCoaches, onTempl
     const updated = { ...displayTemplates[selectedIndex], ...updates, delayDays: null }
     onTemplatesChange([updated])
     setEditingTemplate(null)
+  }
+
+  // Persist the user's edits to the DB under the current template name.
+  // - Existing user template (matched by name) → PATCH that row
+  // - Name not yet in user templates (i.e. first edit of a default) → POST
+  //   a new user template, which then overrides the default in the display.
+  const handlePersistTemplate = async (data: { name: string; subject: string; body: string }) => {
+    const match = availableTemplates.find(
+      t => !t.is_system && t.name.toLowerCase() === data.name.toLowerCase()
+    )
+    try {
+      if (match) {
+        const res = await fetch(`/api/templates/${match.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        })
+        if (!res.ok) throw new Error('Failed to update template')
+        const { template: updated } = await res.json()
+        setAvailableTemplates(prev => prev.map(t => t.id === updated.id ? updated : t))
+      } else {
+        const res = await fetch('/api/templates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        })
+        if (!res.ok) throw new Error('Failed to save template')
+        const { template: created } = await res.json()
+        setAvailableTemplates(prev => [created, ...prev])
+      }
+    } catch (error) {
+      console.error('Error saving template changes:', error)
+      throw error
+    }
   }
 
   const isCustom = (index: number) => index === displayTemplates.length - 1
@@ -372,18 +423,20 @@ export function BuildStep({ templates, recruitingEmail, selectedCoaches, onTempl
           template={editingTemplate}
           mergeTags={audience === 'coach' ? COACH_MERGE_TAGS : PLAYER_MERGE_TAGS}
           onUpdate={(updates) => handleEditorSave(updates)}
+          onSaveChanges={handlePersistTemplate}
           onClose={() => setEditingTemplate(null)}
           existingTemplateNames={availableTemplates.filter(t => !t.is_system).map(t => t.name)}
           userTemplateId={(() => {
-            // Check if the selected template is a user-saved template (not default, not custom)
-            const userStartIndex = defaultTemplates.length
-            const userEndIndex = displayTemplates.length - 1
-            if (selectedIndex >= userStartIndex && selectedIndex < userEndIndex) {
-              const userIdx = selectedIndex - userStartIndex
-              const userDbTemplates = availableTemplates.filter(t => !t.is_system)
-              return userDbTemplates[userIdx]?.id || null
-            }
-            return null
+            // Match by name against user-saved templates — the display list
+            // changes composition (defaults can be overridden by user copies),
+            // so index math is unreliable. The Custom Email row has a blank
+            // name and won't match anything.
+            const current = displayTemplates[selectedIndex]
+            if (!current?.name) return null
+            const match = availableTemplates.find(
+              t => !t.is_system && t.name.toLowerCase() === current.name.toLowerCase()
+            )
+            return match?.id || null
           })()}
           onDeleteTemplate={async (templateId) => {
             try {
@@ -430,6 +483,7 @@ function TemplateEditorOverlay({
   template,
   mergeTags,
   onUpdate,
+  onSaveChanges,
   onClose,
   onSaveAsTemplate,
   existingTemplateNames,
@@ -439,6 +493,7 @@ function TemplateEditorOverlay({
   template: EmailTemplate
   mergeTags: string[]
   onUpdate: (updates: Partial<EmailTemplate>) => void
+  onSaveChanges: (data: { name: string; subject: string; body: string }) => Promise<void>
   onClose: () => void
   onSaveAsTemplate: (data: { name: string; subject: string; body: string }) => Promise<void>
   existingTemplateNames: string[]
@@ -451,14 +506,36 @@ function TemplateEditorOverlay({
   const [showSaveAs, setShowSaveAs] = useState(false)
   const [saveAsName, setSaveAsName] = useState('')
   const [savingAs, setSavingAs] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const bodyRef = useRef<HTMLTextAreaElement>(null)
 
-  const handleSave = () => {
-    onUpdate({ name, subject, body, delayDays: null })
-    onClose()
+  // The Custom Email row is never saved to the user's template library — it's
+  // a one-off for this campaign. Save Changes hides/becomes a no-DB apply.
+  const isCustomEmail = template.name === 'Write Custom Email'
+
+  const handleSave = async () => {
+    const trimmedName = name.trim()
+    if (!trimmedName) {
+      setSaveError('Template name is required')
+      return
+    }
+    setSaving(true)
+    setSaveError(null)
+    try {
+      if (!isCustomEmail) {
+        await onSaveChanges({ name: trimmedName, subject, body })
+      }
+      onUpdate({ name: trimmedName, subject, body, delayDays: null })
+      onClose()
+    } catch {
+      setSaveError('Failed to save. Try again.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleSaveAs = async () => {
@@ -566,11 +643,17 @@ function TemplateEditorOverlay({
           <button
             type="button"
             onClick={handleSave}
-            className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+            disabled={saving}
+            className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Save Changes
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
+        {saveError && (
+          <div className="border-b border-red-200 bg-red-50 px-5 py-2 text-xs font-medium text-red-600 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
+            {saveError}
+          </div>
+        )}
 
         {/* Save As Popup */}
         {showSaveAs && (
