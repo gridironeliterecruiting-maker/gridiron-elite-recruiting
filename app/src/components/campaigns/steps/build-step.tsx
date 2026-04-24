@@ -148,16 +148,26 @@ export function BuildStep({ templates, recruitingEmail, selectedCoaches, onTempl
   }
 
   // User-saved templates override any default with the same name — each user
-  // owns their own version. The first time they Save Changes on a default,
-  // a user-scoped copy replaces that default in the list from then on.
-  const userTemplateNamesLower = new Set(userTemplates.map(t => t.name.toLowerCase()))
-  const visibleDefaults = defaultTemplates.filter(t => !userTemplateNamesLower.has(t.name.toLowerCase()))
+  // owns their own version. A user override keeps the default's list slot so
+  // the position doesn't jump after Save Changes. Truly-new user templates
+  // (named differently from any default, i.e. from Save As) append to the end.
+  const userTemplatesByNameLower = new Map<string, EmailTemplate>()
+  for (const t of userTemplates) userTemplatesByNameLower.set(t.name.toLowerCase(), t)
+  const defaultNamesLower = new Set(defaultTemplates.map(t => t.name.toLowerCase()))
 
-  // Full display list: defaults (minus those the user has overridden) + user saved + custom
+  const anchoredTemplates: EmailTemplate[] = defaultTemplates.map(
+    d => userTemplatesByNameLower.get(d.name.toLowerCase()) ?? d
+  )
+  const extraUserTemplates: EmailTemplate[] = userTemplates.filter(
+    t => !defaultNamesLower.has(t.name.toLowerCase())
+  )
+
+  // Full display list: default slots (user-overridden in-place where applicable)
+  //   + extra user templates (from Save As under a new name) + custom
   // Coaches get only the one recommended template + custom (no saved templates)
   const displayTemplates = audience === 'coach'
     ? [...defaultTemplates, customTemplate]
-    : [...visibleDefaults, ...userTemplates, customTemplate]
+    : [...anchoredTemplates, ...extraUserTemplates, customTemplate]
 
   // Load templates from database — also captures audience so we show the right defaults
   useEffect(() => {
