@@ -35,8 +35,11 @@ export async function PUT(
     if (subject) updates.subject = subject
     if (templateBody) updates.body = templateBody
 
-    // Update the template (only if user owns it)
-    const { data: template, error } = await supabase
+    // Use admin client to bypass RLS — authorization enforced by the
+    // created_by + is_system filters below. POST and DELETE on this
+    // resource use the same pattern.
+    const admin = createAdminClient()
+    const { data: template, error } = await admin
       .from('email_templates')
       .update(updates)
       .eq('id', id)
