@@ -236,7 +236,7 @@ export function BuildStep({ templates, recruitingEmail, selectedCoaches, onTempl
     try {
       if (match) {
         const res = await fetch(`/api/templates/${match.id}`, {
-          method: 'PATCH',
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data),
         })
