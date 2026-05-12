@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { getStripe, findOrCreateCustomer, getPriceId } from '@/lib/stripe'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function POST(request: Request) {
   try {
@@ -50,8 +51,31 @@ export async function POST(request: Request) {
     const subscription = await stripe.subscriptions.create(subscriptionParams)
 
     // If the subscription is already active (e.g. 100% off coupon, $0 invoice),
-    // there's no PaymentIntent — just return success with no clientSecret
+    // there's no PaymentIntent — return success with no clientSecret AND persist
+    // the local subscriptions row. The middleware gate on /profile-setup requires
+    // an active row in our DB; without it the user bounces back to /checkout.
+    // For paid checkouts the row is written by /api/auth/complete-profile after
+    // Stripe collects the card, but $0 invoices never enter that flow.
     if (subscription.status === 'active' || subscription.status === 'trialing') {
+      if (user) {
+        const stripeSubWithPeriod = subscription as Stripe.Subscription & { current_period_end?: number }
+        const currentPeriodEnd = stripeSubWithPeriod.current_period_end
+          ? new Date(stripeSubWithPeriod.current_period_end * 1000).toISOString()
+          : null
+        const admin = createAdminClient()
+        await admin.from('subscriptions').upsert(
+          {
+            user_id: user.id,
+            stripe_customer_id: customer.id,
+            stripe_subscription_id: subscription.id,
+            status: 'active',
+            plan,
+            current_period_end: currentPeriodEnd,
+          },
+          { onConflict: 'stripe_subscription_id' },
+        )
+      }
+
       return NextResponse.json({
         clientSecret: null,
         subscriptionId: subscription.id,

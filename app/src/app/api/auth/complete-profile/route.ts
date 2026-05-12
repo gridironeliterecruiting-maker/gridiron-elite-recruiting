@@ -74,47 +74,59 @@ export async function POST(request: Request) {
 
     // Verify subscription if provided
     if (subscriptionId) {
-      // Check that the subscription hasn't already been used
+      // A row may already exist for two legitimate reasons:
+      //   1. The 100%-off path — create-payment-intent writes the row eagerly
+      //      because the middleware gate on /profile-setup needs it before this
+      //      route is ever reached.
+      //   2. The user reloaded /profile-setup after a prior successful submit.
+      // Either way: same user → no-op and continue. Different user → 409
+      // (someone is trying to reuse another user's subscription).
       const { data: existingSub } = await admin
         .from('subscriptions')
-        .select('id')
+        .select('id, user_id, stripe_customer_id')
         .eq('stripe_subscription_id', subscriptionId)
-        .single()
+        .maybeSingle()
 
-      if (existingSub) {
+      if (existingSub && existingSub.user_id !== userId) {
         return NextResponse.json({ error: 'This subscription has already been used' }, { status: 409 })
       }
 
-      const stripe = getStripe()
-      let stripeSub
-      try {
-        stripeSub = await stripe.subscriptions.retrieve(subscriptionId)
-      } catch {
-        return NextResponse.json({ error: 'Invalid subscription ID' }, { status: 400 })
+      if (existingSub) {
+        // Already inserted by create-payment-intent (or a prior submit). Reuse
+        // the customer id we stored so we can stamp it onto profiles below.
+        stripeCustomerId = existingSub.stripe_customer_id
+      } else {
+        const stripe = getStripe()
+        let stripeSub
+        try {
+          stripeSub = await stripe.subscriptions.retrieve(subscriptionId)
+        } catch {
+          return NextResponse.json({ error: 'Invalid subscription ID' }, { status: 400 })
+        }
+
+        if (!['active', 'trialing', 'incomplete'].includes(stripeSub.status)) {
+          return NextResponse.json({ error: 'Subscription is not active' }, { status: 400 })
+        }
+
+        stripeCustomerId = typeof stripeSub.customer === 'string'
+          ? stripeSub.customer
+          : stripeSub.customer.id
+
+        const stripeSubWithPeriod = stripeSub as { current_period_end?: number }
+        currentPeriodEnd = stripeSubWithPeriod.current_period_end
+          ? new Date(stripeSubWithPeriod.current_period_end * 1000).toISOString()
+          : null
+
+        // Create subscription row
+        await admin.from('subscriptions').insert({
+          user_id: userId,
+          stripe_customer_id: stripeCustomerId,
+          stripe_subscription_id: subscriptionId,
+          status: stripeSub.status === 'active' ? 'active' : 'incomplete',
+          plan: plan || 'monthly',
+          current_period_end: currentPeriodEnd,
+        })
       }
-
-      if (!['active', 'trialing', 'incomplete'].includes(stripeSub.status)) {
-        return NextResponse.json({ error: 'Subscription is not active' }, { status: 400 })
-      }
-
-      stripeCustomerId = typeof stripeSub.customer === 'string'
-        ? stripeSub.customer
-        : stripeSub.customer.id
-
-      const stripeSubWithPeriod = stripeSub as { current_period_end?: number }
-      currentPeriodEnd = stripeSubWithPeriod.current_period_end
-        ? new Date(stripeSubWithPeriod.current_period_end * 1000).toISOString()
-        : null
-
-      // Create subscription row
-      await admin.from('subscriptions').insert({
-        user_id: userId,
-        stripe_customer_id: stripeCustomerId,
-        stripe_subscription_id: subscriptionId,
-        status: stripeSub.status === 'active' ? 'active' : 'incomplete',
-        plan: plan || 'monthly',
-        current_period_end: currentPeriodEnd,
-      })
     }
 
     // Upsert profile row
