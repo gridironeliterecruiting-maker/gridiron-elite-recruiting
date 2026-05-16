@@ -87,6 +87,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, hasGmailToken,
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [showSaveDraftDialog, setShowSaveDraftDialog] = useState(false)
   const [, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [dmCampaignId, setDmCampaignId] = useState<string | null>(null)
   const [dmAllSent, setDmAllSent] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -203,6 +204,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, hasGmailToken,
 
   const handleSaveDraft = async (title: string) => {
     setIsSaving(true)
+    setSaveError(null)
     try {
       const campaignData = {
         name: title,
@@ -228,17 +230,24 @@ export function CreateCampaignOverlay({ programs, playerPosition, hasGmailToken,
         body: JSON.stringify(campaignData)
       })
 
-      if (response.ok) {
-        window.scrollTo(0, 0)
-        onClose()
-      } else {
-        console.error('Failed to save draft')
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        setSaveError(data.error || 'Failed to save draft. Please try again.')
+        return
       }
+
+      // Save succeeded — close the dialog, close the builder, and reload the
+      // outreach page so the new draft appears in the campaign list. Without
+      // this, the user lands on a stale list and thinks the save failed.
+      setHasUnsavedChanges(false)
+      setShowSaveDraftDialog(false)
+      window.scrollTo(0, 0)
+      window.location.reload()
     } catch (error) {
       console.error('Error saving draft:', error)
+      setSaveError('Network error — please try again.')
     } finally {
       setIsSaving(false)
-      setShowSaveDraftDialog(false)
     }
   }
 
@@ -250,6 +259,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, hasGmailToken,
 
   const handleCancelDialog = () => {
     setShowSaveDraftDialog(false)
+    setSaveError(null)
   }
 
   const goToStep = (step: number) => {
@@ -458,6 +468,7 @@ export function CreateCampaignOverlay({ programs, playerPosition, hasGmailToken,
         onDelete={handleDeleteDraft}
         onCancel={handleCancelDialog}
         defaultTitle=""
+        error={saveError}
       />
     </div>
   )
