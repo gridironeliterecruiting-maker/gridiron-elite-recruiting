@@ -14,14 +14,20 @@ export async function POST(request: Request) {
     const { name, goal, templates, recipients, scheduledAt, status, type, dmMessageBody, playerId } = body
 
     const campaignType = type || 'email'
+    const isDraft = status === 'draft'
 
-    // Validation differs by type
-    if (campaignType === 'dm') {
-      if (!name || !goal || !recipients?.length) {
-        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-      }
-    } else {
-      if (!name || !goal || !templates?.length || !recipients?.length) {
+    // Drafts can be partial — that's the entire point of "Save as Draft": let
+    // users persist their in-progress work and finish later. Non-drafts must
+    // be complete since they go live as soon as they're created.
+    if (!name || !goal) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+    if (!isDraft) {
+      if (campaignType === 'dm') {
+        if (!recipients?.length) {
+          return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+        }
+      } else if (!templates?.length || !recipients?.length) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
       }
     }
@@ -69,26 +75,29 @@ export async function POST(request: Request) {
       }
     }
 
-    // Insert recipients
-    const recipientInserts = recipients.map((r: { coachId: string; coachName: string; email?: string; programName: string; twitterHandle?: string }) => ({
-      campaign_id: campaign.id,
-      coach_id: r.coachId || null,
-      coach_name: r.coachName,
-      coach_email: r.email || null,
-      program_name: r.programName,
-      current_step: campaignType === 'dm' ? 0 : 1,
-      status: 'pending',
-      twitter_handle: campaignType === 'dm' ? (r.twitterHandle || null) : null,
-    }))
+    // Insert recipients — only when present. A draft can be saved with zero
+    // recipients (user is mid-build), so skip the insert entirely in that case.
+    if (recipients?.length) {
+      const recipientInserts = recipients.map((r: { coachId: string; coachName: string; email?: string; programName: string; twitterHandle?: string }) => ({
+        campaign_id: campaign.id,
+        coach_id: r.coachId || null,
+        coach_name: r.coachName,
+        coach_email: r.email || null,
+        program_name: r.programName,
+        current_step: campaignType === 'dm' ? 0 : 1,
+        status: 'pending',
+        twitter_handle: campaignType === 'dm' ? (r.twitterHandle || null) : null,
+      }))
 
-    const { error: recipientError } = await supabase
-      .from('campaign_recipients')
-      .insert(recipientInserts)
+      const { error: recipientError } = await supabase
+        .from('campaign_recipients')
+        .insert(recipientInserts)
 
-    if (recipientError) {
-      console.error('Failed to insert recipients:', recipientError)
-      await supabase.from('campaigns').delete().eq('id', campaign.id)
-      return NextResponse.json({ error: 'Failed to add recipients', details: recipientError.message }, { status: 500 })
+      if (recipientError) {
+        console.error('Failed to insert recipients:', recipientError)
+        await supabase.from('campaigns').delete().eq('id', campaign.id)
+        return NextResponse.json({ error: 'Failed to add recipients', details: recipientError.message }, { status: 500 })
+      }
     }
 
     return NextResponse.json({ success: true, campaignId: campaign.id })

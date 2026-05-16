@@ -9,9 +9,10 @@ interface SaveDraftDialogProps {
   onDelete: () => void
   onCancel: () => void
   defaultTitle?: string
+  error?: string | null
 }
 
-export function SaveDraftDialog({ isOpen, onSave, onDelete, onCancel, defaultTitle = "" }: SaveDraftDialogProps) {
+export function SaveDraftDialog({ isOpen, onSave, onDelete, onCancel, defaultTitle = "", error = null }: SaveDraftDialogProps) {
   const [title, setTitle] = useState(defaultTitle)
 
   if (!isOpen) return null
@@ -54,6 +55,9 @@ export function SaveDraftDialog({ isOpen, onSave, onDelete, onCancel, defaultTit
               placeholder="Give this campaign a name..."
               autoFocus
             />
+            {error && (
+              <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">{error}</p>
+            )}
           </div>
 
           <div className="flex gap-3">
