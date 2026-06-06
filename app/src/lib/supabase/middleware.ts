@@ -238,12 +238,19 @@ export async function updateSession(request: NextRequest) {
 
     const needsPayment = !profile || (!profile.is_grandfathered && profile.role !== 'admin' && profile.role !== 'coach')
     if (needsPayment) {
+      // /profile-setup must be reachable as soon as the user has STARTED checkout
+      // (status='incomplete' = Stripe sub created, card not yet confirmed). The
+      // /hub gate keeps 'active' only, so an incomplete sub can't actually use
+      // the app — they just have to be able to fill out their profile while
+      // Stripe finalizes the payment. Required by both the paid card path and
+      // the 100%-off path (which writes status='active' immediately).
       const { data: sub } = await supabase
         .from('subscriptions')
         .select('id')
         .eq('user_id', user.id)
-        .eq('status', 'active')
-        .single()
+        .in('status', ['active', 'incomplete'])
+        .limit(1)
+        .maybeSingle()
 
       if (!sub) return redirectTo('/checkout')
     }

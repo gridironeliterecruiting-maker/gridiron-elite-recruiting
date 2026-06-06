@@ -50,32 +50,38 @@ export async function POST(request: Request) {
 
     const subscription = await stripe.subscriptions.create(subscriptionParams)
 
-    // If the subscription is already active (e.g. 100% off coupon, $0 invoice),
-    // there's no PaymentIntent — return success with no clientSecret AND persist
-    // the local subscriptions row. The middleware gate on /profile-setup requires
-    // an active row in our DB; without it the user bounces back to /checkout.
-    // For paid checkouts the row is written by /api/auth/complete-profile after
-    // Stripe collects the card, but $0 invoices never enter that flow.
-    if (subscription.status === 'active' || subscription.status === 'trialing') {
-      if (user) {
-        const stripeSubWithPeriod = subscription as Stripe.Subscription & { current_period_end?: number }
-        const currentPeriodEnd = stripeSubWithPeriod.current_period_end
-          ? new Date(stripeSubWithPeriod.current_period_end * 1000).toISOString()
-          : null
-        const admin = createAdminClient()
-        await admin.from('subscriptions').upsert(
-          {
-            user_id: user.id,
-            stripe_customer_id: customer.id,
-            stripe_subscription_id: subscription.id,
-            status: 'active',
-            plan,
-            current_period_end: currentPeriodEnd,
-          },
-          { onConflict: 'stripe_subscription_id' },
-        )
-      }
+    // Persist the local subscriptions row immediately for BOTH the $0 and the
+    // paid paths. The middleware gate on /profile-setup requires a row in our
+    // DB (active OR incomplete) — without this insert the user bounces back to
+    // /checkout in a loop. The Stripe webhook updates this row to 'active' when
+    // payment confirms, so the gate on /hub (which requires 'active') still
+    // does its job.
+    if (user) {
+      const stripeSubWithPeriod = subscription as Stripe.Subscription & { current_period_end?: number }
+      const currentPeriodEnd = stripeSubWithPeriod.current_period_end
+        ? new Date(stripeSubWithPeriod.current_period_end * 1000).toISOString()
+        : null
+      const persistedStatus =
+        subscription.status === 'active' || subscription.status === 'trialing'
+          ? 'active'
+          : 'incomplete'
+      const admin = createAdminClient()
+      await admin.from('subscriptions').upsert(
+        {
+          user_id: user.id,
+          stripe_customer_id: customer.id,
+          stripe_subscription_id: subscription.id,
+          status: persistedStatus,
+          plan,
+          current_period_end: currentPeriodEnd,
+        },
+        { onConflict: 'stripe_subscription_id' },
+      )
+    }
 
+    // If the subscription is already active (e.g. 100% off coupon, $0 invoice),
+    // there's no PaymentIntent — just return success with no clientSecret.
+    if (subscription.status === 'active' || subscription.status === 'trialing') {
       return NextResponse.json({
         clientSecret: null,
         subscriptionId: subscription.id,
